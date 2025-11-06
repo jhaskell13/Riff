@@ -1,0 +1,51 @@
+name: Deploy Laravel to EC2 via CodeDeploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Fetch CodeDeploy variables
+      run: |
+        APP=$(aws ssm get-parameter \
+          --name "/prod/codedeploy/app_name" \
+          --query "Parameter.Value" \
+          --output text)
+        GROUP=$(aws ssm get-parameter \
+          --name "/prod/codedeploy/deployment_group_name" \
+          --query "Parameter.Value" \
+          --output text)
+        BUCKET=$(aws ssm get-parameter \
+          --name "/myapp/s3/bucket_name" \
+          --query "Parameter.Value" \
+          --output text)
+
+        echo "APP=$APP" >> $GITHUB_ENV
+        echo "GROUP=$GROUP" >> $GITHUB_ENV
+        echo "S3_BUCKET=$BUCKET" >> $GITHUB_EN
+
+    - name: Zip source
+      run: zip -r release.zip .
+
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
+
+    - name: Upload to S3
+      run: aws s3 cp release.zip s3://your-bucket/releases/release.zip
+
+    - name: Trigger CodeDeploy
+      run: |
+        aws deploy create-deployment \
+          --application-name "$APP" \
+          --deployment-group-name "$GROUP" \
+          --s3-location bucket="$BUCKET",bundleType=zip,key=releases/release.zip

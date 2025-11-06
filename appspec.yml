@@ -1,0 +1,15 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/www/laravel
+hooks:
+  AfterInstall:
+    - location: .github/scripts/composer.sh
+      timeout: 300
+  ApplicationStart:
+    - location: .github/scripts/restart_php.sh
+      timeout: 60
+  AfterAllowTraffic:
+    - location: .github/scripts/migrate.sh
+      timeout: 300
