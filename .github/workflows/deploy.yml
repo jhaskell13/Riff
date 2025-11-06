@@ -11,6 +11,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
+
     - name: Fetch CodeDeploy variables
       run: |
         APP=$(aws ssm get-parameter \
@@ -32,13 +39,6 @@ jobs:
 
     - name: Zip source
       run: zip -r release.zip .
-
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
 
     - name: Upload to S3
       run: aws s3 cp release.zip s3://your-bucket/releases/release.zip
