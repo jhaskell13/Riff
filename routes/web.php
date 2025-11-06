@@ -6,6 +6,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+Route::get('/health', fn () => 200);
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -16,12 +18,12 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    
+
     // Dashboard
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->middleware(['verified'])->name('dashboard');
-    
+
     // Live Stream broadcast management
     Route::group(['prefix' => 'streams'], function () {
         Route::get('/', [StreamController::class, 'index'])->name('streams');
@@ -33,7 +35,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
         Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
     });
-    
+
     // Live Stream viewer actions
     // Route::group(['prefix' => 'stream/{stream}'], function () {
     //     Route::post('/like', [StreamInteractionController::class, 'like']);
