@@ -35,7 +35,7 @@ jobs:
 
         echo "APP=$APP" >> $GITHUB_ENV
         echo "GROUP=$GROUP" >> $GITHUB_ENV
-        echo "S3_BUCKET=$BUCKET" >> $GITHUB_ENV
+        echo "BUCKET=$BUCKET" >> $GITHUB_ENV
 
     - name: Zip source
       run: zip -r release.zip .
