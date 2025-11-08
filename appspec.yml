@@ -7,11 +7,11 @@ files:
 
 hooks:
   AfterInstall:
-    - location: /.github/scripts/after_install.sh
+    - location: code-deploy/scripts/after_install.sh
       timeout: 300
       runas: root
 
   ApplicationStart:
-    - location: /.github/scripts/application_start.sh
+    - location: code-deploy/scripts/application_start.sh
       timeout: 300
       runas: root

@@ -7,12 +7,6 @@ cd /var/www/laravel
 export COMPOSER_ALLOW_SUPERUSER=1
 composer install --no-dev --prefer-dist --optimize-autoloader
 
-if [ ! -f .env]; then
-    cp .env.example .env
-fi
-
-php artisan key:generate
-
 # Laravel optimization
 php artisan config:cache
 php artisan route:cache
