@@ -43,6 +43,7 @@ jobs:
       run: |
         sudo apt update -y
         sudo apt install -y php-cli php-mbstring php-xml php-curl php-zip unzip php-bcmath php-pdo php-mysqlnd php-pgsql php-json php-fpm
+        composer install --no-dev --prefer-dist --optimize-autoloader
 
     - name: Setup Node
       uses: actions/setup-node@v3

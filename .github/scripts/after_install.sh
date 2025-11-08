@@ -4,8 +4,10 @@ set -e
 cd /var/www/laravel
 
 # Install PHP dependencies
-export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --prefer-dist --optimize-autoloader
+# export COMPOSER_ALLOW_SUPERUSER=1
+# composer install --no-dev --prefer-dist --optimize-autoloader
+
+php artisan key:generate
 
 # Laravel optimization
 php artisan config:cache
