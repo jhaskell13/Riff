@@ -5,11 +5,11 @@ files:
     destination: /var/www/laravel
 hooks:
   AfterInstall:
-    - location: .github/scripts/composer.sh
+    - location: .github/scripts/after_install.sh
       timeout: 300
   ApplicationStart:
-    - location: .github/scripts/restart_php.sh
+    - location: .github/scripts/app_start.sh
       timeout: 60
   AfterAllowTraffic:
-    - location: .github/scripts/migrate.sh
+    - location: .github/scripts/after_allow_traffic.sh
       timeout: 300

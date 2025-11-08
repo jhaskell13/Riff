@@ -37,8 +37,24 @@ jobs:
         echo "GROUP=$GROUP" >> $GITHUB_ENV
         echo "BUCKET=$BUCKET" >> $GITHUB_ENV
 
+
+    # Install PHP and Node build dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt update -y
+        sudo apt install -y php-cli php-mbstring php-xml php-curl php-zip unzip php-bcmath php-pdo php-mysqlnd php-pgsql php-json php-fpm
+
+    - name: Setup Node
+      uses: actions/setup-node@v3
+
+    # Install Node dependencies & build assets
+    - name: Build assets
+      run: |
+        npm ci
+        npm run build
+
     - name: Zip source
-      run: zip -r release.zip .
+      run: zip -r release.zip . -x "*.git*" "node_modules/*" "tests/*" "vendor/*"
 
     - name: Upload to S3
       run: aws s3 cp release.zip s3://$BUCKET/releases/release.zip
