@@ -3,13 +3,15 @@ os: linux
 files:
   - source: /
     destination: /var/www/laravel
+    overwrite: true
+
 hooks:
   AfterInstall:
-    - location: .github/scripts/after_install.sh
+    - location: scripts/after_install.sh
       timeout: 300
+      runas: root
+
   ApplicationStart:
-    - location: .github/scripts/app_start.sh
-      timeout: 60
-  AfterAllowTraffic:
-    - location: .github/scripts/after_allow_traffic.sh
+    - location: scripts/application_start.sh
       timeout: 300
+      runas: root
