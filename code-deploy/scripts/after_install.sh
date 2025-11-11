@@ -12,8 +12,12 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
   --query SecretString \
   --output text)
 
+DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
+if [[ $DB_CONNECTION == "postgres" ]]; then
+    DB_CONNECTION="pgsql"
+fi
 echo "APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)" >> .env
-echo "DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)" >> .env
+echo "DB_CONNECTION=$DB_CONNECTION" >> .env
 echo "DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)" >> .env
 echo "DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)" >> .env
 echo "DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)" >> .env
