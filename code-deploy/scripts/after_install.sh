@@ -12,23 +12,23 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
   --query SecretString \
   --output text)
 
-sed -i "s|^#\?\s*APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)" >> .env
-
-DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
-if [[ $DB_CONNECTION == "postgres" ]]; then
-    DB_CONNECTION="pgsql"
-fi
-
+APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
 DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
 DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password.password)
+DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
 
-sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION" .env
+if [[ $DB_CONNECTION == "postgres" ]]; then
+    DB_CONNECTION="pgsql"
+fi
+
+sed -i "s|^#\?\s*APP_ENV=$APP_ENV" .env
 sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST" .env
 sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE" .env
 sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME" .env
 sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD" .env
+sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION" .env
 
 # Install PHP dependencies
 export COMPOSER_ALLOW_SUPERUSER=1
