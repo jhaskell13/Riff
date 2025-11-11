@@ -10,13 +10,13 @@ cp .env.example .env
 SECRET_JSON=$(aws secretsmanager get-secret-value \
   --secret-id production-db-credentials \
   --query SecretString \
-  --output text | jq -r .)
+  --output text)
 
 APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
 DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
-DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password.password)
+DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
 
 if [[ $DB_CONNECTION == "postgres" ]]; then
