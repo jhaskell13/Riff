@@ -34,9 +34,10 @@ jobs:
         aws-region: us-east-2
 
     - name: Fetch CodeDeploy variables
-      env:
-        ENVIRONMENT: ${{ inputs.environment }}
       run: |
+        ENVIRONMENT="${{ inputs.environment }}"
+        echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+
         APP=$(aws ssm get-parameter \
           --name "/$ENVIRONMENT/codedeploy/app_name" \
           --query "Parameter.Value" \
