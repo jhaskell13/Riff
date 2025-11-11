@@ -40,6 +40,8 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+php artisan migrate --force
+
 # Set directory permissions
 mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache
 chown -R nginx:nginx /var/www/laravel

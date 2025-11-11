@@ -11,10 +11,10 @@ hooks:
       timeout: 300
       runas: root
 
-  AfterAllowTraffic:
-    - location: code-deploy/scripts/after_allow_traffic.sh
-      timeout: 300
-      runas: root
+  # AfterAllowTraffic:
+  #   - location: code-deploy/scripts/after_allow_traffic.sh
+  #     timeout: 300
+  #     runas: root
 
   ApplicationStart:
     - location: code-deploy/scripts/application_start.sh
