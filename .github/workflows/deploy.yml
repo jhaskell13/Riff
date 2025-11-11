@@ -35,7 +35,9 @@ jobs:
 
     - name: Fetch CodeDeploy variables
       run: |
-        ENVIRONMENT=${{ inputs.environment }}
+        ENVIRONMENT="${{ inputs.environment }}"
+        echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+
         APP=$(aws ssm get-parameter \
           --name "/$ENVIRONMENT/codedeploy/app_name" \
           --query "Parameter.Value" \
@@ -49,7 +51,6 @@ jobs:
           --query "Parameter.Value" \
           --output text)
 
-        echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
         echo "APP=$APP" >> $GITHUB_ENV
         echo "GROUP=$GROUP" >> $GITHUB_ENV
         echo "BUCKET=$BUCKET" >> $GITHUB_ENV
