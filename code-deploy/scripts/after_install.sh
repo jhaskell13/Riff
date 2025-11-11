@@ -10,7 +10,7 @@ cp .env.example .env
 SECRET_JSON=$(aws secretsmanager get-secret-value \
   --secret-id production-db-credentials \
   --query SecretString \
-  --output text)
+  --output text | jq -r .)
 
 APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
