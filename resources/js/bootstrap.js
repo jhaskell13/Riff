@@ -4,7 +4,7 @@ window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 import { configureEcho } from "@laravel/echo-vue";
- 
+
 // configureEcho({
 //     broadcaster: "reverb",
 //     key: import.meta.env.VITE_REVERB_APP_KEY,
@@ -18,7 +18,7 @@ import { configureEcho } from "@laravel/echo-vue";
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
- 
+
 window.Echo = new Echo({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
