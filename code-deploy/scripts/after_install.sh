@@ -18,11 +18,17 @@ DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
 if [[ $DB_CONNECTION == "postgres" ]]; then
     DB_CONNECTION="pgsql"
 fi
+
+DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
+DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
+DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
+DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password.password)
+
 sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION" .env
-sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)" .env
-sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)" .env
-sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)" .env
-sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password.password)" .env
+sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST" .env
+sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE" .env
+sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME" .env
+sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD" .env
 
 # Install PHP dependencies
 export COMPOSER_ALLOW_SUPERUSER=1
