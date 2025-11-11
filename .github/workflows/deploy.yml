@@ -35,19 +35,21 @@ jobs:
 
     - name: Fetch CodeDeploy variables
       run: |
+        ENVIRONMENT=${{ inputs.environment }}
         APP=$(aws ssm get-parameter \
-          --name "/${{ inputs.environment }}/codedeploy/app_name" \
+          --name "/$ENVIRONMENT/codedeploy/app_name" \
           --query "Parameter.Value" \
           --output text)
         GROUP=$(aws ssm get-parameter \
-          --name "/${{ inputs.environment }}/codedeploy/deployment_group_name" \
+          --name "/$ENVIRONMENT/codedeploy/deployment_group_name" \
           --query "Parameter.Value" \
           --output text)
         BUCKET=$(aws ssm get-parameter \
-          --name "/${{ inputs.environment }}/s3/bucket_name" \
+          --name "/$ENVIRONMENT/s3/bucket_name" \
           --query "Parameter.Value" \
           --output text)
 
+        echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
         echo "APP=$APP" >> $GITHUB_ENV
         echo "GROUP=$GROUP" >> $GITHUB_ENV
         echo "BUCKET=$BUCKET" >> $GITHUB_ENV
