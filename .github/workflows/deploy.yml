@@ -1,23 +1,23 @@
 name: Deploy Laravel to EC2 via CodeDeploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      checkout-target:
-        description: 'Branch to deploy'
-        required: true
-        default: main
-      environment:
-        type: choice
-        description: 'Environment to deploy to'
-        required: true
-        default: 'production'
-        options:
-          - production
-          - staging
+  # workflow_dispatch:
+  #   inputs:
+  #     checkout-target:
+  #       description: 'Branch to deploy'
+  #       required: true
+  #       default: main
+  #     environment:
+  #       type: choice
+  #       description: 'Environment to deploy to'
+  #       required: true
+  #       default: 'production'
+  #       options:
+  #         - production
+  #         - staging
 
-  # push:
-  #   branches: [ "main" ]
+  push:
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -35,7 +35,7 @@ jobs:
 
     - name: Fetch CodeDeploy variables
       run: |
-        ENVIRONMENT="${{ inputs.environment }}"
+        ENVIRONMENT="production"
         echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
 
         APP=$(aws ssm get-parameter \
