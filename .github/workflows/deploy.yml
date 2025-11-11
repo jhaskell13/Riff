@@ -1,22 +1,23 @@
 name: Deploy Laravel to EC2 via CodeDeploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      checkout-target:
-        description: 'Branch to deploy'
-        required: true
-        default: main
-      environment:
-        type: choice
-        description: 'Environment to deploy to'
-        required: true
-        default: 'staging'
-        options:
-          - production
-          - staging
-  # push:
-  #   branches: [ "main" ]
+  # workflow_dispatch:
+  #   inputs:
+  #     checkout-target:
+  #       description: 'Branch to deploy'
+  #       required: true
+  #       default: main
+  #     environment:
+  #       type: choice
+  #       description: 'Environment to deploy to'
+  #       required: true
+  #       default: 'staging'
+  #       options:
+  #         - production
+  #         - staging
+
+  push:
+    branches: [ "main" ]
 
 jobs:
   deploy:
