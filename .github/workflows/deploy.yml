@@ -1,8 +1,22 @@
 name: Deploy Laravel to EC2 via CodeDeploy
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      checkout-target:
+        description: 'Branch to deploy'
+        required: true
+        default: main
+      environment:
+        type: choice
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        options:
+          - production
+          - staging
+  # push:
+  #   branches: [ "main" ]
 
 jobs:
   deploy:
@@ -21,15 +35,15 @@ jobs:
     - name: Fetch CodeDeploy variables
       run: |
         APP=$(aws ssm get-parameter \
-          --name "/production/codedeploy/app_name" \
+          --name "/${{ inputs.environment }}/codedeploy/app_name" \
           --query "Parameter.Value" \
           --output text)
         GROUP=$(aws ssm get-parameter \
-          --name "/production/codedeploy/deployment_group_name" \
+          --name "/${{ inputs.environment }}/codedeploy/deployment_group_name" \
           --query "Parameter.Value" \
           --output text)
         BUCKET=$(aws ssm get-parameter \
-          --name "/production/s3/bucket_name" \
+          --name "/${{ inputs.environment }}/s3/bucket_name" \
           --query "Parameter.Value" \
           --output text)
 
