@@ -6,15 +6,15 @@ import NavLink from '@/Components/NavLink.vue';
 
 const navLinks = ref([
     {
-        route: 'dashboard',
+        route: 'feed',
         name: 'Home Feed',
     },
     {
-        route: 'dashboard',
+        route: 'feed',
         name: 'Live Streams',
     },
     {
-        route: 'dashboard',
+        route: 'feed',
         name: 'Local Scene',
     },
 ])
@@ -23,10 +23,10 @@ const navLinks = ref([
 <template>
     <div class=" bg-[#171E37]">
         <div class="max-w-7xl min-h-screen flex mx-auto px-0 [@media(min-width:950px)]:px-8">
-            
+
             <!-- Navigation -->
             <nav class="hidden [@media(min-width:950px)]:flex min-w-[200px] p-8 flex-col items-start text-gray-200 bg-[#232A44]">
-                <Link :href="route('dashboard')">
+                <Link :href="route('feed')">
                     <div class="flex items-end">
                         <ApplicationLogo class="h-[50px]" />
                         <span class="ml-2 text-2xl font-bold">Riff</span>

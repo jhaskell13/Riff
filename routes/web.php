@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StreamController;
+use App\Http\Controllers\MapController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -19,13 +20,18 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
 
-    // Dashboard
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->middleware(['verified'])->name('dashboard');
+    // Feed
+    Route::get('/feed', function () {
+        return Inertia::render('Feed');
+    })->middleware(['verified'])->name('feed');
+
+    // Band map
+    Route::prefix('map')->group(function () {
+        Route::get('/', [MapController::class, 'index'])->name('map');
+    });
 
     // Live Stream broadcast management
-    Route::group(['prefix' => 'streams'], function () {
+    Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'index'])->name('streams');
         Route::get('/create', [StreamController::class, 'create'])->name('stream.create');
         Route::post('/store', [StreamController::class, 'store'])->name('stream.store');
