@@ -1,13 +1,16 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
+import '@quasar/extras/material-icons/material-icons.css';
+import 'quasar/src/css/index.sass';
 
 const navLinks = [
     { name: 'feed', title: 'Feed', icon: 'home', },
     { name: 'map', title: 'Map', icon: 'map'},
+    { name: 'artist_zone', title: 'Artist Zone', icon: 'music' },
 ];
 
-const activeTab = computed(() => navLinks.find(link => route().current(link.name)).name);
+const activeTab = computed(() => navLinks.find(link => route().current(link.name))?.name);
 </script>
 
 <template>
@@ -31,7 +34,45 @@ const activeTab = computed(() => navLinks.find(link => route().current(link.name
 
                 <q-btn flat round dense icon="search" class="q-mr-xs" color="grey-4" />
                 <q-btn flat round dense icon="notifications" color="grey-4">
-                <q-badge color="primary" floating rounded>3</q-badge>
+                    <q-badge color="primary" floating rounded>3</q-badge>
+                </q-btn>
+                <!-- <q-btn flat round dense icon="person" color="grey-4" /> -->
+                 <q-btn flat round dense icon="person" color="grey-4">
+                    <q-menu anchor="bottom right" self="top right">
+                        <q-list style="min-width: 200px">
+                            <q-item
+                                clickable
+                                v-close-popup
+                                @click=""
+                            >
+                                <q-item-section avatar>
+                                    <q-icon name="person" />
+                                </q-item-section>
+                                <q-item-section>Profile</q-item-section>
+                            </q-item>
+                            <q-item
+                                clickable
+                                v-close-popup
+                                @click=""
+                            >
+                                <q-item-section avatar>
+                                    <q-icon name="settings" />
+                                </q-item-section>
+                                <q-item-section>Settings</q-item-section>
+                            </q-item>
+                            <q-separator />
+                            <q-item
+                                clickable
+                                v-close-popup
+                                @click="router.post(route('logout'))"
+                            >
+                                <q-item-section avatar>
+                                    <q-icon name="logout" />
+                                </q-item-section>
+                                <q-item-section>Logout</q-item-section>
+                            </q-item>
+                        </q-list>
+                    </q-menu>
                 </q-btn>
             </q-toolbar>
         </q-header>

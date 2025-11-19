@@ -66,11 +66,11 @@
                         <q-card-section class="q-pb-sm">
                         <div class="row items-center no-wrap">
                             <q-avatar size="48px" class="avatar-gradient">
-                            <span class="text-h6">{{ post.avatar }}</span>
+                                <span class="text-h6">{{ post.avatar }}</span>
                             </q-avatar>
                             <div class="col q-ml-md">
-                            <div class="text-subtitle1 text-weight-medium text-grey-2">{{ post.author }}</div>
-                            <div class="text-caption text-grey-6">{{ post.username }} • {{ post.timestamp }}</div>
+                                <div class="text-subtitle1 text-weight-medium text-grey-2">{{ post.author }}</div>
+                                <div class="text-caption text-grey-6">{{ post.username }} • {{ post.timestamp }}</div>
                             </div>
                             <q-btn flat round dense icon="more_vert" color="grey-5" size="sm" />
                         </div>
@@ -132,7 +132,7 @@
                             >
                             <div class="row items-start q-gutter-sm">
                                 <q-avatar size="36px" class="avatar-gradient-sm">
-                                <span class="text-body2">{{ comment.avatar }}</span>
+                                    <span class="text-body2">{{ comment.avatar }}</span>
                                 </q-avatar>
                                 <div class="col">
                                 <div class="comment-bubble">

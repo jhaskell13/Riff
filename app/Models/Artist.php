@@ -9,14 +9,13 @@ class Artist extends Model
 {
     protected $fillable = [
         'name',
-        'location',
+        'hometown',
+        'stateOrProvince',
+        'country',
         'genre',
-        'genres',
-        'members',
         'biography',
         'website',
         'email',
-        'social_media',
         'image_url',
         'formed_date',
     ];
@@ -24,7 +23,7 @@ class Artist extends Model
     protected $casts = [
         'formed_date' => 'datetime',
     ];
-    
+
     /**
      * Get all of the members for the Artist
      *

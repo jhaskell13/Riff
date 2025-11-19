@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StreamController;
 use App\Http\Controllers\MapController;
 use Illuminate\Foundation\Application;
+use Illuminate\Routing\RouteGroup;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,10 +27,18 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('Feed');
     })->middleware(['verified'])->name('feed');
 
-    // Band map
+    // Venue map
     Route::prefix('map')->group(function () {
         Route::get('/', [MapController::class, 'index'])->name('map');
     });
+
+    // Artist Zone
+    Route::prefix('artist_zone')->group(function () {
+        Route::get('/', [ArtistZoneController::class, 'index'])->name('artist_zone');
+        Route::get('/create', [ArtistZoneController::class, 'create'])->name('artist_zone.create');
+        Route::post('/', [ArtistZoneController::class, 'store'])->name('artist_zone.store');
+    });
+    // Route::resource('artist_zone', ArtistZoneController::class);
 
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {

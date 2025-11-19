@@ -60,7 +60,7 @@ return new class extends Migration
             $table->foreignId('comment_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-            
+
             // Ensure a user can only like a comment once
             $table->unique(['comment_id', 'user_id']);
             $table->index('comment_id');
@@ -74,5 +74,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('posts');
+        Schema::dropIfExists('post_likes');
+        Schema::dropIfExists('comments');
+        Schema::dropIfExists('comment_likes');
     }
 };

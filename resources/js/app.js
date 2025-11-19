@@ -1,3 +1,4 @@
+import '../css/app.css';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -5,10 +6,6 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { Quasar } from 'quasar';
-
-import '@quasar/extras/material-icons/material-icons.css';
-import 'quasar/src/css/index.sass';
-import '../css/app.css';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

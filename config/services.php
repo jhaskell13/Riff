@@ -34,5 +34,12 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
+    'google' => [
+        'maps' => [
+            'key' => env('GOOGLE_MAPS_API_KEY'),
+        ],
+    ],
+    'ticketmaster' => [
+        'key' => env('TICKETMASTER_API_KEY'),
+    ],
 ];
