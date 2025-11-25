@@ -33,12 +33,13 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Artist Zone
-    Route::prefix('artist_zone')->group(function () {
-        Route::get('/', [ArtistZoneController::class, 'index'])->name('artist_zone');
-        Route::get('/create', [ArtistZoneController::class, 'create'])->name('artist_zone.create');
-        Route::post('/', [ArtistZoneController::class, 'store'])->name('artist_zone.store');
-    });
-    // Route::resource('artist_zone', ArtistZoneController::class);
+    // Route::prefix('artist')->group(function () {
+    //     Route::get('/', [ArtistZoneController::class, 'index'])->name('artist');
+    //     Route::get('/create', [ArtistZoneController::class, 'create'])->name('artist.create');
+    //     Route::post('/', [ArtistZoneController::class, 'store'])->name('artist.store');
+    //     Route::delete('/{artistId}', [ArtistZoneController::class, 'destroy'])->name('artist.delete');
+    // });
+    Route::resource('artists', ArtistZoneController::class);
 
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {

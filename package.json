@@ -30,6 +30,7 @@
         "@quasar/extras": "^1.17.0",
         "leaflet": "^1.9.4",
         "leaflet-providers": "^3.0.0",
+        "leaflet.markercluster": "^1.5.3",
         "quasar": "^2.18.5"
     }
 }

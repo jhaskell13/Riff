@@ -7,7 +7,7 @@ import 'quasar/src/css/index.sass';
 const navLinks = [
     { name: 'feed', title: 'Feed', icon: 'home', },
     { name: 'map', title: 'Map', icon: 'map'},
-    { name: 'artist_zone', title: 'Artist Zone', icon: 'music' },
+    { name: 'artists.index', title: 'Artist Zone', icon: 'music' },
 ];
 
 const activeTab = computed(() => navLinks.find(link => route().current(link.name))?.name);

@@ -1,7 +1,7 @@
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { useForm, Link, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({
     artists: {
@@ -25,14 +25,21 @@ const props = defineProps({
                                 <div class="text-h6 text-weight-bold text-grey-3">
                                     Your Artist Identities
                                 </div>
-                                <!-- <p class="text-grey-7 m-0">
-                                    You can create your own artist identity, or join an existing artist/band by requesting.
-                                    Note: Only artists actively looking for members or accepting requests will be shown.
-                                </p> -->
                             </div>
+                            <q-card-actions class="ml-auto">
+                                <q-btn
+                                    v-if="artists.length > 0"
+                                    unelevated
+                                    rounded
+                                    color="primary"
+                                    label="Create/Join Artist"
+                                    padding="xs lg"
+                                    @click="router.visit(route('artists.create'))"
+                                />
+                            </q-card-actions>
                         </q-card-section>
                         <q-separator color="grey-9" />
-                        <q-card-section>
+                        <q-card-section v-if="artists.length > 0">
                             <div
                                 v-for="artist in artists"
                                 :key="artist.id"
@@ -44,10 +51,43 @@ const props = defineProps({
                                 </q-avatar>
                                 <div class="col q-ml-md">
                                     <div class="text-subtitle1 text-weight-medium text-grey-2">{{ artist.name }}</div>
-                                    <div class="text-caption text-grey-6">{{ artist.hometown }}, {{ artist.stateOrProvince }} • {{ artist.genre }}</div>
+                                    <div class="text-caption text-grey-6">
+                                        <span>
+                                            {{ artist.address }} • {{ artist.genre }} • Members:
+                                        </span>
+                                        <span
+                                            v-for="(member, index) in artist.members"
+                                            :key="member.name"
+                                        >
+                                            {{ member.name }}{{ index < artist.length - 1 ? ', ' : '' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="my-auto">
+                                    <q-btn
+                                        round
+                                        color="primary"
+                                        icon="delete_outline"
+                                        size="xs"
+                                        @click="router.delete(route('artists.destroy', artist.id))"
+                                    />
                                 </div>
                                 <q-separator color="grey-9" />
                             </div>
+                        </q-card-section>
+                        <q-card-section v-else class="flex flex-col">
+                            <div class="text-h5 mx-auto mt-8 text-weight-bold text-grey-3">
+                                You are not an artist... yet!
+                            </div>
+                            <q-btn
+                                unelevated
+                                rounded
+                                color="primary"
+                                label="Create/Join Artist"
+                                padding="xs lg"
+                                class="mt-2 m-auto"
+                                @click="router.visit(route('artists.create'))"
+                            />
                         </q-card-section>
                     </q-card>
                 </div>

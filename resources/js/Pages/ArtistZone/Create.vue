@@ -65,7 +65,7 @@ const clearInputs = () => {
 
                 <div class="leading-tight">
                     <div class="text-h6 text-weight-bold text-grey-3">
-                        You are not an artist... Yet!
+                        Create your own Artist Identity, or join an existing one!
                     </div>
                     <p class="text-grey-7 m-0">
                         You can create your own artist identity, or join an existing artist/band by requesting.
@@ -242,7 +242,7 @@ const clearInputs = () => {
                 label="Create"
                 padding="xs lg"
                 :loading="form.processing"
-                @click="form.post(route('artist_zone.store'))"
+                @click="form.post(route('artists.store'))"
               />
 
               <!-- Request to join button -->

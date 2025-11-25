@@ -2,25 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ArtistZone\ArtistDeleteRequest;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Models\Artist;
 use App\Models\ArtistUser;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Response;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as HttpFoundationResponse;
 
 class ArtistZoneController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        if (! $user->artists->count()) {
-            return to_route('artist_zone');
-        }
+
+        $artists = $user
+            ->artists()
+            ->select('artists.id', 'artists.name', 'artists.genre', 'artists.hometown', 'artists.stateOrProvince', 'artists.country')
+            ->with(['members' => fn ($q) => $q->select('users.id', 'users.name')])
+            ->get();
 
         return Inertia::render('ArtistZone/Index', [
-            'artists' => $user->artists,
+            'artists' => $artists
         ]);
     }
 
@@ -42,10 +46,14 @@ class ArtistZoneController extends Controller
             'biography' => $request->description,
         ]);
 
-        ArtistUser::create([
-            'artist_id' => $artist->id,
-            'user_id' => $user->id,
-        ]);
+        $artist->members()->attach($user->id);
+
+        return to_route('artists.index');
+    }
+
+    public function destroy(ArtistDeleteRequest $request, Artist $artist): HttpFoundationResponse
+    {
+        $artist->delete();
 
         return redirect()->back();
     }
