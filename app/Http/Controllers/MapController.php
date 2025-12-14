@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\GeoHashEncode;
+use App\Actions\GeoHashEncodeAction;
 use App\Models\Artist;
 use App\Services\EventFinder;
 use App\Services\Geocoder;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,7 +15,7 @@ class MapController extends Controller
     public function index(
         Geocoder $geocoder,
         EventFinder $eventFinder,
-        GeoHashEncode $geoHashEncode,
+        GeoHashEncodeAction $geoHashEncode,
     ): Response
     {
         $user = Auth::user();
@@ -38,7 +37,7 @@ class MapController extends Controller
                 'lng' => $location->lng,
             ],
             'localArtists' => $localArtists,
-            'events' => [],//$eventFinder->getNearbyEvents($geoHashEncode->execute($location->lat, $location->lng)),
+            'events' => [],//$eventFinder->getNearbyEvents($geoHashEncode->handle($location->lat, $location->lng)),
         ]);
     }
 }

@@ -32,7 +32,7 @@ onMounted(()=> {
         minZoom: 0,
         maxZoom: 25,
         zoomControl: false,
-    }).setView([props.currentLocation.lat, props.currentLocation.lng], 10);
+    }).setView([props.currentLocation.lat, props.currentLocation.lng], 12);
 
     // Control and Tile settings
     L.control.zoom({

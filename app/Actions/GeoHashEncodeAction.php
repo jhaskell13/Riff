@@ -2,11 +2,11 @@
 
 namespace App\Actions;
 
-class GeoHashEncode
+class GeoHashEncodeAction
 {
     private static $base32Chars = '0123456789bcdefghjkmnpqrstuvwxyz';
 
-    public function execute($latitude, $longitude, $precision = 9): string
+    public function handle($latitude, $longitude, $precision = 9): string
     {
         $bits = '';
         $latMin = -90.0;
