@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\Http;
 
 class Geocoder
 {
-    const GEOCODE_ENDPOINT = 'https://maps.googleapis.com/maps/api/geocode/json';
+    protected const GEOCODE_ENDPOINT = 'https://maps.googleapis.com/maps/api/geocode/json';
 
-    const DEFAULT_LAT = 41.727173300123091;
+    protected const DEFAULT_LAT = 41.727173300123091;
 
-    const DEFAULT_LNG = -72.824225127696991;
+    protected const DEFAULT_LNG = -72.824225127696991;
 
-    private function defaultCoords(): object
+    public function defaultCoords(): object
     {
         return (object) [
             'lat' => self::DEFAULT_LAT,
@@ -27,19 +27,29 @@ class Geocoder
         $address .= isset($country) ? ", $country" : "";
 
         $results = Cache::rememberForever("gmaps.geocode.address.$address", function () use ($address) {
-            $response = Http::get(self::GEOCODE_ENDPOINT, [
-                'address' => $address,
-                'key'     => config('services.google.maps.key'),
-            ]);
+            try {
+                $response = Http::get(self::GEOCODE_ENDPOINT, [
+                    'address' => $address,
+                    'key'     => config('services.google.maps.key'),
+                ]);
 
-            $response = json_decode($response->body());
+                $response = json_decode($response->body());
 
-            if ($response->status != 'OK' || ! $response?->results[0]) {
-                // Error...
+                if ($response?->status != 'OK' || ! $response?->results[0]) {
+                    \Log::info("Invalid geocoder request: [STATUS CODE $response?->status]");
+                    return $this->defaultCoords();
+                }
+
+                $location = $response->results[0]->geometry->location;
+
+                return (object) [
+                    'lat' => round($location->lat, 7),
+                    'lng' => round($location->lng, 7),
+                ];
+            } catch (\Throwable $e) {
+                \Log::error('Geocoder error: ' . $e->getMessage());
                 return $this->defaultCoords();
             }
-
-            return $response->results[0]->geometry->location;
         });
 
         if ($results == $this->defaultCoords()) {

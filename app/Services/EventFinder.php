@@ -20,7 +20,7 @@ class EventFinder
         if (isset($response->errors)) {
             dd($response->errors);
         }
-        // dd($response);
+
         return collect($response->_embedded);
     }
 
@@ -59,7 +59,7 @@ class EventFinder
     /**
      * Maps lat/lng for each venue at an event, given the collection of events
      *
-     *  @param Collection $events Collected events from this service
+     * @param Collection $events Collected events from this service
      *
      * @return Collection
      */

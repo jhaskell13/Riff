@@ -16,10 +16,9 @@ class MapController extends Controller
         Geocoder $geocoder,
         EventFinder $eventFinder,
         GeoHashEncodeAction $geoHashEncode,
-    ): Response
-    {
+    ): Response {
         $user = Auth::user();
-        $location = $geocoder->fromAddress($user->city, $user->state, $user->country);
+        $userLocation = $geocoder->fromAddress($user->city, $user->state, $user->country);
 
         $localArtists = [];
         $artists = Artist::all();
@@ -33,11 +32,11 @@ class MapController extends Controller
 
         return Inertia::render('Map/Index', [
             'currentLocation' => [
-                'lat' => $location->lat,
-                'lng' => $location->lng,
+                'lat' => $userLocation->lat,
+                'lng' => $userLocation->lng,
             ],
             'localArtists' => $localArtists,
-            'events' => [],//$eventFinder->getNearbyEvents($geoHashEncode->handle($location->lat, $location->lng)),
+            'events' => [],//$eventFinder->getNearbyEvents($geoHashEncode->handle($userLocation->lat, $userLocation->lng)),
         ]);
     }
 }

@@ -71,11 +71,11 @@ onMounted(()=> {
         markers.addLayer(L.marker([artist.location.lat, artist.location.lng]));
     });
 
-    props.events.forEach(event => {
-        event.locations.forEach(location => {
-            markers.addLayer(L.marker([location.lat, location.lng]));
-        });
-    });
+    // props.events.forEach(event => {
+    //     event.locations.forEach(location => {
+    //         markers.addLayer(L.marker([location.lat, location.lng]));
+    //     });
+    // });
 
     initialMap.value.addLayer(markers);
 });
