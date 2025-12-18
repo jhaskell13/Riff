@@ -33,7 +33,7 @@ sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
 sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
 
 # perl uses literal strings to avoid special char errors
-perl -i -pe "s/^#?\s*DB_PASSWORD=.*/DB_PASSWORD=\Q$DB_PASSWORD\E/" .env
+perl -i -pe "s/^#?\s*DB_PASSWORD=.*/DB_PASSWORD=\"\Q$DB_PASSWORD\E\"/" .env
 
 # Laravel optimization
 php artisan key:generate --force
