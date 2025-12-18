@@ -16,7 +16,7 @@ APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
 DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
-DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
+# DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
 # DB_PASSWORD_ESCAPED=$(printf '%s\n' "$DB_PASSWORD" | sed -e 's/[\/&]/\\&/g')
 DB_PASSWORD_ESCAPED="${DB_PASSWORD//\\/\\\\}"
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
@@ -30,11 +30,13 @@ sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
 sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
 sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
 sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
-sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD_ESCAPED|" .env
+# sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD_ESCAPED|" .env
 sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
 
-# perl uses literal strings to avoid special char errors
-# perl -i -pe "s/^#?\s*DB_PASSWORD=.*/DB_PASSWORD='\Q$DB_PASSWORD\E'/" .env
+grep -v "^#\?\s*DB_PASSWORD=" .env > .env.tmp
+echo "DB_PASSWORD='$(echo "$SECRET_JSON" | jq -r .password)'" >> .env.tmp
+mv .env.tmp .env
+rm .env.tmp
 
 # Laravel optimization
 php artisan key:generate --force
