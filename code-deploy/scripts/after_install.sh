@@ -12,27 +12,27 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
   --query SecretString \
   --output text)
 
-APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
-DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
-DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
-DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
-DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
-DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
+export APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
+export DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
+export DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
+export DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
+export DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
+export DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
 
 if [[ $DB_CONNECTION == "postgres" ]]; then
-    DB_CONNECTION="pgsql"
+    export DB_CONNECTION="pgsql"
 fi
 
-sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
-sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
-sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
-sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
-sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" .env
-sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
+# sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
+# sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
+# sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
+# sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
+# sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" .env
+# sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
 
 # Install PHP dependencies
-export COMPOSER_ALLOW_SUPERUSER=1
-composer install --no-dev --prefer-dist --optimize-autoloader
+# export COMPOSER_ALLOW_SUPERUSER=1
+# composer install --no-dev --prefer-dist --optimize-autoloader
 
 # Laravel optimization
 php artisan key:generate

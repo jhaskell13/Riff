@@ -73,7 +73,7 @@ jobs:
         npm run build
 
     - name: Zip source
-      run: zip -r release.zip . -x "*.git*" "node_modules/*" "tests/*" "vendor/*"
+      run: zip -r release.zip . -x "*.git*" "node_modules/*" "tests/*"
 
     - name: Upload to S3
       run: aws s3 cp release.zip s3://$BUCKET/releases/release.zip
