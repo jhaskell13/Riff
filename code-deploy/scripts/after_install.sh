@@ -36,10 +36,7 @@ echo "DB_PASSWORD='$(echo "$SECRET_JSON" | jq -r .password)'" >> .env.tmp
 mv .env.tmp .env
 
 # Clear old caches
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-php artisan cache:clear
+php artisan optimize:clear
 
 # Rebuild caches
 php artisan config:cache
