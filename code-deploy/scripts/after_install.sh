@@ -14,11 +14,9 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
 
 APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
+DB_PORT=$(echo "$SECRET_JSON" | jq -r .port)
 DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
 DB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
-# DB_PASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
-# DB_PASSWORD_ESCAPED=$(printf '%s\n' "$DB_PASSWORD" | sed -e 's/[\/&]/\\&/g')
-DB_PASSWORD_ESCAPED="${DB_PASSWORD//\\/\\\\}"
 DB_CONNECTION=$(echo "$SECRET_JSON" | jq -r .engine)
 
 if [[ $DB_CONNECTION == "postgres" ]]; then
@@ -27,6 +25,7 @@ fi
 
 sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
 sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
+sed -i "s|^#\?\s*DB_PORT=.*|DB_PORT=$DB_PORT" .env
 sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
 sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
 sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
@@ -36,8 +35,13 @@ grep -v "^#\?\s*DB_PASSWORD=" .env > .env.tmp
 echo "DB_PASSWORD='$(echo "$SECRET_JSON" | jq -r .password)'" >> .env.tmp
 mv .env.tmp .env
 
-# Laravel optimization
-php artisan key:generate --force
+# Clear old caches
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan cache:clear
+
+# Rebuild caches
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
