@@ -24,13 +24,13 @@ if [[ $DB_CONNECTION == "postgres" ]]; then
     DB_CONNECTION="pgsql"
 fi
 
-
-sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
-sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
-sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
-sed -i "s|^#\?\s*DB_USERNAME=.*|DB_USERNAME=$DB_USERNAME|" .env
-sed -i "s|^#\?\s*DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD_ESCAPED|" .env
-sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
+# `@@@` is the delimiter since `|` could be in the generated db password
+sed -i "s@@@^#\?\s*APP_ENV=.*@@@APP_ENV=$APP_ENV@@@" .env
+sed -i "s@@@^#\?\s*DB_HOST=.*@@@DB_HOST=$DB_HOST@@@" .env
+sed -i "s@@@^#\?\s*DB_DATABASE=.*@@@DB_DATABASE=$DB_DATABASE@@@" .env
+sed -i "s@@@^#\?\s*DB_USERNAME=.*@@@DB_USERNAME=$DB_USERNAME@@@" .env
+sed -i "s@@@^#\?\s*DB_PASSWORD=.*@@@DB_PASSWORD=$DB_PASSWORD_ESCAPED@@@" .env
+sed -i "s@@@^#\?\s*DB_CONNECTION=.*@@@DB_CONNECTION=$DB_CONNECTION@@@" .env
 
 # Laravel optimization
 php artisan key:generate --force
