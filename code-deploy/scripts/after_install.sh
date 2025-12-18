@@ -36,7 +36,6 @@ sed -i "s|^#\?\s*DB_CONNECTION=.*|DB_CONNECTION=$DB_CONNECTION|" .env
 grep -v "^#\?\s*DB_PASSWORD=" .env > .env.tmp
 echo "DB_PASSWORD='$(echo "$SECRET_JSON" | jq -r .password)'" >> .env.tmp
 mv .env.tmp .env
-rm .env.tmp
 
 # Laravel optimization
 php artisan key:generate --force
