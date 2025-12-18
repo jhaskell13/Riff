@@ -12,8 +12,6 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
   --query SecretString \
   --output text)
 
-export APP_URL="https://haskellsolutions.com"
-
 export APP_ENV=$(echo "$SECRET_JSON" | jq -r .environment)
 export DB_HOST=$(echo "$SECRET_JSON" | jq -r .host)
 export DB_DATABASE=$(echo "$SECRET_JSON" | jq -r .dbname)
