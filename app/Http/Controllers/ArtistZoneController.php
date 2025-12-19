@@ -7,9 +7,9 @@ use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Models\Artist;
 use App\Models\ArtistUser;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 use Inertia\Inertia;
-use Symfony\Component\HttpFoundation\Response as HttpFoundationResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ArtistZoneController extends Controller
 {
@@ -28,7 +28,7 @@ class ArtistZoneController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(): InertiaResponse
     {
         return Inertia::render('ArtistZone/Create');
     }
@@ -51,7 +51,7 @@ class ArtistZoneController extends Controller
         return to_route('artists.index');
     }
 
-    public function destroy(ArtistDeleteRequest $request, Artist $artist): HttpFoundationResponse
+    public function destroy(ArtistDeleteRequest $request, Artist $artist): Response
     {
         $artist->delete();
 

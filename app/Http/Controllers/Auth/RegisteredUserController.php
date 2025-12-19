@@ -52,6 +52,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('feed', absolute: false));
+        return redirect(route('feed.index', absolute: false));
     }
 }

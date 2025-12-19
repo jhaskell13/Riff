@@ -5,8 +5,8 @@ import '@quasar/extras/material-icons/material-icons.css';
 import 'quasar/src/css/index.sass';
 
 const navLinks = [
-    { name: 'feed', title: 'Feed', icon: 'home', },
-    { name: 'map', title: 'Map', icon: 'map'},
+    { name: 'feed.index', title: 'Feed', icon: 'home', },
+    { name: 'map.index', title: 'Map', icon: 'map'},
     { name: 'artists.index', title: 'Artist Zone', icon: 'music' },
 ];
 

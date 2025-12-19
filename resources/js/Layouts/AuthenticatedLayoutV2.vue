@@ -26,7 +26,7 @@ const navLinks = ref([
 
             <!-- Navigation -->
             <nav class="hidden [@media(min-width:950px)]:flex min-w-[200px] p-8 flex-col items-start text-gray-200 bg-[#232A44]">
-                <Link :href="route('feed')">
+                <Link :href="route('feed.index')">
                     <div class="flex items-end">
                         <ApplicationLogo class="h-[50px]" />
                         <span class="ml-2 text-2xl font-bold">Riff</span>

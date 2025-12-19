@@ -1,11 +1,10 @@
 <?php
 
 use App\Http\Controllers\ArtistZoneController;
+use App\Http\Controllers\FeedController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\StreamController;
 use App\Http\Controllers\MapController;
 use Illuminate\Foundation\Application;
-use Illuminate\Routing\RouteGroup;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -23,35 +22,31 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
 
     // Feed
-    Route::get('/feed', function () {
-        return Inertia::render('Feed');
-    })->middleware(['verified'])->name('feed');
+    // Route::get('/feed', function () {
+    //     return Inertia::render('Feed');
+    // })->middleware(['verified'])->name('feed');
+
+    Route::resource('feed', FeedController::class)->middleware(['verified']);
 
     // Venue map
     Route::prefix('map')->group(function () {
-        Route::get('/', [MapController::class, 'index'])->name('map');
+        Route::get('/', [MapController::class, 'index'])->name('map.index');
     });
 
     // Artist Zone
-    // Route::prefix('artist')->group(function () {
-    //     Route::get('/', [ArtistZoneController::class, 'index'])->name('artist');
-    //     Route::get('/create', [ArtistZoneController::class, 'create'])->name('artist.create');
-    //     Route::post('/', [ArtistZoneController::class, 'store'])->name('artist.store');
-    //     Route::delete('/{artistId}', [ArtistZoneController::class, 'destroy'])->name('artist.delete');
-    // });
     Route::resource('artists', ArtistZoneController::class);
 
     // Live Stream broadcast management
-    Route::prefix('streams')->group(function () {
-        Route::get('/', [StreamController::class, 'index'])->name('streams');
-        Route::get('/create', [StreamController::class, 'create'])->name('stream.create');
-        Route::post('/store', [StreamController::class, 'store'])->name('stream.store');
-        Route::get('/{stream}', [StreamController::class, 'show'])->name('stream.show');
-        Route::get('/{stream}/manage', [StreamController::class, 'edit'])->name('stream.edit');
-        Route::post('/{stream}/data', [StreamController::class, 'sendData'])->name('stream.data');
-        Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
-        Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
-    });
+    // Route::prefix('streams')->group(function () {
+    //     Route::get('/', [StreamController::class, 'index'])->name('streams');
+    //     Route::get('/create', [StreamController::class, 'create'])->name('stream.create');
+    //     Route::post('/store', [StreamController::class, 'store'])->name('stream.store');
+    //     Route::get('/{stream}', [StreamController::class, 'show'])->name('stream.show');
+    //     Route::get('/{stream}/manage', [StreamController::class, 'edit'])->name('stream.edit');
+    //     Route::post('/{stream}/data', [StreamController::class, 'sendData'])->name('stream.data');
+    //     Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
+    //     Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
+    // });
 
     // Live Stream viewer actions
     // Route::group(['prefix' => 'stream/{stream}'], function () {

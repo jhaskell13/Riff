@@ -2,41 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\BuildArtistMapData;
 use App\Actions\GeoHashEncodeAction;
+use App\Actions\ResolveUserLocation;
 use App\Models\Artist;
 use App\Services\EventFinder;
 use App\Services\Geocoder;
+use App\Services\MapBuilder;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MapController extends Controller
 {
-    public function index(
-        Geocoder $geocoder,
-        EventFinder $eventFinder,
-        GeoHashEncodeAction $geoHashEncode,
-    ): Response {
-        $user = Auth::user();
-        $userLocation = $geocoder->fromAddress($user->city, $user->state, $user->country);
-
-        $localArtists = [];
-        $artists = Artist::all();
-
-        foreach ($artists as $artist) {
-            $localArtists[] = (object) [
-                'name' => $artist->name,
-                'location' => $geocoder->fromAddress($artist->hometown, $artist->stateOrProvince, $artist->country),
-            ];
-        }
+    public function index(MapBuilder $mapBuilder): Response {
+        $data = $mapBuilder->buildMapDataForUser(Auth::user());
 
         return Inertia::render('Map/Index', [
-            'currentLocation' => [
-                'lat' => $userLocation->lat,
-                'lng' => $userLocation->lng,
-            ],
-            'localArtists' => $localArtists,
-            'events' => [],//$eventFinder->getNearbyEvents($geoHashEncode->handle($userLocation->lat, $userLocation->lng)),
+            'currentLocation' => $data['userLocation'],
+            'localArtists' => $data['artistLocations'],
         ]);
     }
 }

@@ -188,10 +188,15 @@
 
 <script setup>
 import { ref } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const newPost = ref('');
+
+const form = useForm({
+    content: '',
+});
+
 const posts = ref([
     {
     id: 1,
