@@ -35,9 +35,7 @@ grep -v "^#\?\s*DB_PASSWORD=" .env > .env.tmp
 echo "DB_PASSWORD='$(echo "$SECRET_JSON" | jq -r .password)'" >> .env.tmp
 mv .env.tmp .env
 
-# Regnerate app key and clear old caches
 php artisan key:generate --force
-php artisan optimize:clear
 
 # Rebuild caches
 php artisan config:cache
