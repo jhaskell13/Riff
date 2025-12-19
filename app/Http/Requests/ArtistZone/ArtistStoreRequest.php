@@ -28,7 +28,7 @@ class ArtistStoreRequest extends FormRequest
             'hometown' => 'required|string',
             'stateOrProvince' => 'required|string',
             'country' => 'required|string',
-            'description' => 'nullable|string',
+            'biography' => 'nullable|string',
         ];
     }
 }

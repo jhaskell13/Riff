@@ -14,11 +14,7 @@ class ArtistDeleteRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $userBelongsToArtist = ArtistUser::where('user_id', Auth::id())
-            ->where('artist_id', $this->route('artist')->id)
-            ->exists();
-
-        return Auth::check() && $userBelongsToArtist;
+        return Auth::user()->isMemberOf($this->route('artist'));
     }
 
     /**

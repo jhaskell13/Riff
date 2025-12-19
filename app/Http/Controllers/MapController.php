@@ -2,12 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\BuildArtistMapData;
-use App\Actions\GeoHashEncodeAction;
-use App\Actions\ResolveUserLocation;
-use App\Models\Artist;
-use App\Services\EventFinder;
-use App\Services\Geocoder;
 use App\Services\MapBuilder;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;

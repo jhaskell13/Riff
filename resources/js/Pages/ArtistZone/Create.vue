@@ -11,7 +11,7 @@ const selectedArtistId = ref(null);
 const form = useForm({
   name: '',
   genre: '',
-  description: '',
+  biography: '',
   hometown: '',
   stateOrProvince: '',
   country: '',
@@ -158,16 +158,16 @@ const clearInputs = () => {
                 />
 
                 <q-input
-                  v-model="form.description"
-                  label="Artist Description"
+                  v-model="form.biography"
+                  label="Artist biography"
                   type="textarea"
                   autogrow
                   rounded
                   outlined
                   bg-color="grey-8"
                   color="grey-4"
-                  :error="!!form.errors.description"
-                  :error-message="form.errors.description"
+                  :error="!!form.errors.biography"
+                  :error-message="form.errors.biography"
                 />
               </div>
 

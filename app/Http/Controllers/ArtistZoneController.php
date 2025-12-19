@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ArtistZone\ArtistDeleteRequest;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Models\Artist;
-use App\Models\ArtistUser;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Response as InertiaResponse;
 use Inertia\Inertia;
@@ -20,7 +19,7 @@ class ArtistZoneController extends Controller
         $artists = $user
             ->artists()
             ->select('artists.id', 'artists.name', 'artists.genre', 'artists.hometown', 'artists.stateOrProvince', 'artists.country')
-            ->with(['members' => fn ($q) => $q->select('users.id', 'users.name')])
+            ->with(['members:id,name']) // Select [id, name] from users who are members of each artist
             ->get();
 
         return Inertia::render('ArtistZone/Index', [
@@ -33,20 +32,10 @@ class ArtistZoneController extends Controller
         return Inertia::render('ArtistZone/Create');
     }
 
-    public function store(ArtistStoreRequest $request)
+    public function store(ArtistStoreRequest $request): Response
     {
-        $user = Auth::user();
-
-        $artist = Artist::create([
-            'name' => $request->name,
-            'genre' => $request->genre,
-            'hometown' => $request->hometown,
-            'stateOrProvince' => $request->stateOrProvince,
-            'country' => $request->country,
-            'biography' => $request->description,
-        ]);
-
-        $artist->members()->attach($user->id);
+        $artist = Artist::create($request->validated());
+        $artist->members()->attach(Auth::id());
 
         return to_route('artists.index');
     }
