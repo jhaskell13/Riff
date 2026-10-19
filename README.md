@@ -1,61 +1,117 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Riff
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Riff is an experimental local music discovery app. It helps listeners find independent artists near a chosen area and gives bands, solo artists, rappers, producers, and other music makers an artist identity they can use to share their work.
 
-## About Laravel
+The core idea is map-led discovery: explore local artists, hear their music, and find a reason to follow them or see them live. The project also contains early experiments with artist posts, events, and livestreaming. Those parts are still in progress; see the [development roadmap](ROADMAP.md).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Project status
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Riff is a prototype under active development, not a finished public service. The codebase has authentication, artist records and memberships, a Leaflet map, and early social and streaming implementations. Some screens and interactions are experimental or use placeholder data. In particular, map and feed experiences are not yet a complete production discovery flow.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Stack
 
-## Learning Laravel
+- Laravel 12 and PHP 8.2+
+- Vue 3, Inertia.js, and Vite
+- Leaflet with marker clustering for the map
+- SQLite by default for local development; Laravel supports other configured database connections
+- Optional Google Maps geocoding, Ticketmaster event lookup, and Laravel broadcasting integrations
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Requirements
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP 8.2 or newer with the extensions required by Laravel
+- Composer
+- Node.js and npm
+- A database supported by Laravel (SQLite is the default)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Local setup
 
-## Laravel Sponsors
+From the repository root:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+```
 
-### Premium Partners
+On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Update `.env` for your machine. At minimum, set `APP_URL=http://127.0.0.1:8000`. The example uses SQLite; make sure the configured database file exists, then run migrations:
 
-## Contributing
+```bash
+php artisan migrate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+To load the development sample data:
 
-## Code of Conduct
+```bash
+php artisan db:seed
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The seeder creates sample artists, users, and memberships. Use only in a local development database: it adds records and is not intended for production data.
 
-## Security Vulnerabilities
+Start the development processes:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+composer run dev
+```
+
+This runs the Laravel server, queue listener, log viewer, and Vite dev server. Open the local URL printed by `php artisan serve` (usually `http://127.0.0.1:8000`). To run processes separately, use `php artisan serve` and `npm run dev`; the composer script also starts the queue listener and log viewer.
+
+For a production asset build:
+
+```bash
+npm run build
+```
+
+## Configuration
+
+Most local use does not require third-party API credentials. Optional integrations read these environment variables:
+
+| Variable | Used for | Notes |
+| --- | --- | --- |
+| `GOOGLE_MAPS_API_KEY` | Geocoding artist and listener-entered city/region locations | Configure an appropriately restricted key and enable the required Geocoding API. |
+| `TICKETMASTER_API_KEY` | Ticketmaster event lookup service | Event lookup exists in the backend but is not currently wired into the map UI. |
+| `VITE_LEAFLET_JAWG_PROVIDER_KEY` | Jawg map tile layer in the map page | Exposed to browser code by Vite. A valid provider key is required for the configured Jawg layer. |
+| `BROADCAST_CONNECTION` | Laravel event broadcasting | Defaults to `log` in the example environment. Live streaming experiments need a configured real-time broadcaster such as Reverb or Pusher to deliver events. |
+| `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Reverb broadcaster | Set when using Reverb; see Laravel Reverb configuration. |
+| `PUSHER_APP_ID`, `PUSHER_APP_KEY`, `PUSHER_APP_SECRET`, `PUSHER_APP_CLUSTER` | Pusher broadcaster | Set when using Pusher. |
+
+Never commit real credentials. Keep secret values in your local or deployment environment configuration.
+
+## Main areas of the code
+
+- `app/Models` — users, artists, posts, comments, likes, and livestream records.
+- `app/Http/Controllers` — request handling for maps, artist identities, feeds, profiles, and streams.
+- `app/Services` and `app/Actions` — geocoding, map data, and event lookup.
+- `database/migrations` — database schema.
+- `resources/js/Pages` — Inertia/Vue screens, including the map and experimental feed/stream pages.
+- `routes/web.php` — web routes.
+- `tests` — PHPUnit feature and unit tests.
+- `ROADMAP.md` — product direction, current gaps, and proposed milestones.
+
+## Tests and code style
+
+Run the PHPUnit suite with:
+
+```bash
+composer test
+```
+
+Format PHP files with Laravel Pint:
+
+```bash
+./vendor/bin/pint
+```
+
+On Windows, run `vendor/bin/pint` from PowerShell if the Unix-style path is unavailable.
+
+Some existing tests exercise external geocoding behavior; configure credentials/network access as needed, or use mocked HTTP responses when adding deterministic tests.
+
+## Product direction
+
+Riff is focused on helping people discover artists who may not appear in their usual streaming recommendations. The recommended next step is to make artist profiles, nearby map results, and music previews dependable in a small pilot area, then add local events and community features based on what listeners and artists use. Real-time livestreaming and remote live jams remain exploratory because they add significant reliability, moderation, and latency challenges.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Riff is licensed under the [MIT License](LICENSE).

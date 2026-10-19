@@ -6,6 +6,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MapController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StreamController;
 use Inertia\Inertia;
 
 Route::get('/health', fn () => 200);
@@ -22,39 +23,33 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
 
     // Feed
-    // Route::get('/feed', function () {
-    //     return Inertia::render('Feed');
-    // })->middleware(['verified'])->name('feed');
-
     Route::resource('feed', FeedController::class)->middleware(['verified']);
 
-    // Venue map
-    Route::prefix('map')->group(function () {
-        Route::get('/', [MapController::class, 'index'])->name('map.index');
-    });
+    // Artist Map
+    Route::get('map', MapController::class)->name('map.index');
 
     // Artist Zone
     Route::resource('artists', ArtistZoneController::class);
 
     // Live Stream broadcast management
-    // Route::prefix('streams')->group(function () {
-    //     Route::get('/', [StreamController::class, 'index'])->name('streams');
-    //     Route::get('/create', [StreamController::class, 'create'])->name('stream.create');
-    //     Route::post('/store', [StreamController::class, 'store'])->name('stream.store');
-    //     Route::get('/{stream}', [StreamController::class, 'show'])->name('stream.show');
-    //     Route::get('/{stream}/manage', [StreamController::class, 'edit'])->name('stream.edit');
-    //     Route::post('/{stream}/data', [StreamController::class, 'sendData'])->name('stream.data');
-    //     Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
-    //     Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
-    // });
+    Route::prefix('streams')->group(function () {
+        Route::get('/', [StreamController::class, 'index'])->name('streams');
+        Route::get('/create', [StreamController::class, 'create'])->name('stream.create');
+        Route::post('/store', [StreamController::class, 'store'])->name('stream.store');
+        Route::get('/{stream}', [StreamController::class, 'show'])->name('stream.show');
+        Route::get('/{stream}/manage', [StreamController::class, 'edit'])->name('stream.edit');
+        Route::post('/{stream}/data', [StreamController::class, 'sendData'])->name('stream.data');
+        Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
+        Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
+    });
 
     // Live Stream viewer actions
-    // Route::group(['prefix' => 'stream/{stream}'], function () {
-    //     Route::post('/like', [StreamInteractionController::class, 'like']);
-    //     Route::post('/comment', [StreamInteractionController::class, 'comment']);
-    //     Route::post('/reaction', [StreamInteractionController::class, 'reaction']);
-    //     Route::post('/donate', [StreamInteractionController::class, 'donate']);
-    // });
+    Route::group(['prefix' => 'stream/{stream}'], function () {
+        Route::post('/like', [StreamInteractionController::class, 'like']);
+        Route::post('/comment', [StreamInteractionController::class, 'comment']);
+        Route::post('/reaction', [StreamInteractionController::class, 'reaction']);
+        Route::post('/donate', [StreamInteractionController::class, 'donate']);
+    });
 });
 
 Route::middleware('auth')->group(function () {

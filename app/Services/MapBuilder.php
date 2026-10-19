@@ -33,4 +33,6 @@ class MapBuilder
             ];
         }
     }
+
+    // getNearbyArtists(int radius= 50miles)
 }

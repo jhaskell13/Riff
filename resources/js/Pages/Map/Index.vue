@@ -50,8 +50,7 @@ onMounted(()=> {
     }).addTo(initialMap.value);
 
     L.tileLayer.provider('Jawg.Dark', {
-        // TODO: Add this to secrets and refresh public key, for now just hardcoding since non-sensitive data
-        accessToken: "JftlgfbgvbuP5xI1BreDtre4VtxiNXZMQEdPRtjgJH6W2FXT8tBTMjruMfaTmEt5"//import.meta.env.VITE_LEAFLET_JAWG_PROVIDER_KEY
+        accessToken: import.meta.env.VITE_LEAFLET_JAWG_PROVIDER_KEY
     }).addTo(initialMap.value);
 
     // Clusters and Markers
