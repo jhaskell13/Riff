@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Events\LiveStreamStarted;
 use App\Models\Artist;
 use App\Models\LiveStream;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class StreamAuthorizationTest extends TestCase
@@ -56,11 +58,14 @@ class StreamAuthorizationTest extends TestCase
 
     public function test_a_member_can_start_and_end_their_stream(): void
     {
+        Event::fake([LiveStreamStarted::class]);
+
         $stream = LiveStream::factory()->create();
         $member = $this->memberOf($stream->artist);
 
         $this->actingAs($member)->post(route('stream.start', $stream))->assertOk();
         $this->assertSame('live', $stream->fresh()->status);
+        Event::assertDispatched(LiveStreamStarted::class, fn ($event) => $event->streamId === $stream->id);
 
         $this->actingAs($member)->post(route('stream.end', $stream))->assertOk();
         $this->assertSame('ended', $stream->fresh()->status);
@@ -68,11 +73,14 @@ class StreamAuthorizationTest extends TestCase
 
     public function test_a_non_member_cannot_start_a_stream(): void
     {
+        Event::fake([LiveStreamStarted::class]);
+
         $stream = LiveStream::factory()->create();
         $outsider = User::factory()->create();
 
         $this->actingAs($outsider)->post(route('stream.start', $stream))->assertForbidden();
         $this->assertSame('scheduled', $stream->fresh()->status);
+        Event::assertNotDispatched(LiveStreamStarted::class);
     }
 
     public function test_a_non_member_cannot_end_a_stream(): void
