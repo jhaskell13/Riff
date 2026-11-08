@@ -12,7 +12,7 @@
           />
           
           <!-- Debug Info -->
-          <div class="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-sm">
+          <div class="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded-sm text-sm">
             <div>Connection: {{ connectionStatus }}</div>
             <div>MediaSource: {{ mediaSourceState }}</div>
             <div>Buffer: {{ bufferState }}</div>
@@ -55,26 +55,26 @@
           <div class="flex gap-2">
             <button 
               @click="reinitializePlayer"
-              class="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+              class="bg-blue-500 text-white px-3 py-1 rounded-sm text-sm"
             >
               Reinitialize Player
             </button>
             <button 
               @click="clearBuffer"
-              class="bg-yellow-500 text-white px-3 py-1 rounded text-sm"
+              class="bg-yellow-500 text-white px-3 py-1 rounded-sm text-sm"
             >
               Clear Buffer
             </button>
             <button 
               @click="toggleDebugMode"
-              class="bg-purple-500 text-white px-3 py-1 rounded text-sm"
+              class="bg-purple-500 text-white px-3 py-1 rounded-sm text-sm"
             >
               {{ debugMode ? 'Hide' : 'Show' }} Debug
             </button>
           </div>
           
           <!-- <div v-if="debugMode" class="mt-4 text-sm">
-            <div class="bg-white p-2 rounded border max-h-32 overflow-y-auto">
+            <div class="bg-white p-2 rounded-sm border max-h-32 overflow-y-auto">
               <div v-for="log in debugLogs" :key="log.id" class="text-xs mb-1">
                 <span class="text-gray-500">{{ log.time }}</span>: {{ log.message }}
               </div>

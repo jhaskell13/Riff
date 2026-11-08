@@ -56,7 +56,7 @@ const clearInputs = () => {
           <q-card class="post-card q-pb-md q-mb-xl">
 
             <!-- Header -->
-            <q-card-section class="row !flex-nowrap items-center gap-5">
+            <q-card-section class="row flex-nowrap! items-center gap-5">
                 <q-avatar class="self-start q-mt-sm" size="48px" color="primary" text-color="white">
                     <q-icon v-if="mode === 'create'" name="add_to_queue" size="24px" />
                     <q-icon v-else name="queue_music" size="24px" />
@@ -75,7 +75,7 @@ const clearInputs = () => {
 
             <q-separator color="grey-9" />
 
-            <q-card-section class="!pb-0">
+            <q-card-section class="pb-0!">
                 <!-- Segmented control -->
                 <q-btn-toggle
                     v-model="mode"

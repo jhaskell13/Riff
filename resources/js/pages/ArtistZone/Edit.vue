@@ -42,7 +42,7 @@ const archive = () => {
             <div class="row justify-center">
                 <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5 q-pa-md">
                     <q-card class="post-card q-pb-md q-mb-md">
-                        <q-card-section class="row !flex-nowrap items-center gap-5">
+                        <q-card-section class="row flex-nowrap! items-center gap-5">
                             <q-avatar class="self-start q-mt-sm" size="48px" color="primary" text-color="white">
                                 <q-icon name="edit" size="24px" />
                             </q-avatar>

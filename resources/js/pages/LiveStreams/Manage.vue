@@ -65,20 +65,20 @@
           <div class="mt-4 flex gap-2">
             <button 
               @click="testConnection"
-              class="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+              class="bg-blue-500 text-white px-3 py-1 rounded-sm text-sm"
             >
               Test Connection
             </button>
             <button 
               @click="toggleDebugMode"
-              class="bg-purple-500 text-white px-3 py-1 rounded text-sm"
+              class="bg-purple-500 text-white px-3 py-1 rounded-sm text-sm"
             >
               {{ debugMode ? 'Hide' : 'Show' }} Debug Logs
             </button>
           </div>
           
           <div v-if="debugMode" class="mt-4 text-sm">
-            <div class="bg-white p-2 rounded border max-h-32 overflow-y-auto">
+            <div class="bg-white p-2 rounded-sm border max-h-32 overflow-y-auto">
               <div v-for="(log, index) in debugLogs" :key="index" class="text-xs mb-1">
                 <span class="text-gray-500">{{ log.time }}</span>: {{ log.message }}
               </div>

@@ -20,7 +20,7 @@ defineProps({
             <div class="row justify-center">
                 <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5 q-pa-md">
                     <q-card class="post-card q-pb-md q-mb-xl">
-                        <q-card-section class="row !flex-nowrap items-center gap-5">
+                        <q-card-section class="row flex-nowrap! items-center gap-5">
                             <q-avatar size="72px" :color="artist.image_url ? '' : 'primary'" text-color="white">
                                 <img v-if="artist.image_url" :src="artist.image_url" />
                                 <q-icon v-else name="groups" size="36px" />

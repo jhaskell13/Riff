@@ -115,7 +115,10 @@ onMounted(() => {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    L.tileLayer.provider('Jawg.Dark', {
+    // leaflet-providers v4 folded the named Jawg styles into a single
+    // provider with a variant option.
+    L.tileLayer.provider('Jawg', {
+        variant: 'jawg-dark',
         accessToken: import.meta.env.VITE_LEAFLET_JAWG_PROVIDER_KEY,
     }).addTo(map);
 
@@ -153,7 +156,7 @@ onBeforeUnmount(() => {
         <div id="map" class="absolute top-[50px] bottom-0 w-full"></div>
         <div
             v-if="loadFailed"
-            class="absolute top-[60px] left-1/2 -translate-x-1/2 z-[1000] rounded bg-red-900/90 px-4 py-2 text-sm text-red-100"
+            class="absolute top-[60px] left-1/2 -translate-x-1/2 z-1000 rounded-sm bg-red-900/90 px-4 py-2 text-sm text-red-100"
         >
             Couldn't load artists for this area. Move the map to retry.
         </div>

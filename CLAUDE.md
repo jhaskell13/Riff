@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Riff is a local music discovery platform (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 3, Leaflet). The map of nearby artists is the core feature. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. See ROADMAP.md for phased product direction — Phase 0 (dependable prototype) is complete; Phase 1 (local discovery MVP) is next.
+Riff is a local music discovery platform (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 4, Vite 8, Leaflet). The map of nearby artists is the core feature. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. See ROADMAP.md for phased product direction — Phase 0 (dependable prototype) is complete; Phase 1 (local discovery MVP) is next.
 
 ## Commands
 
@@ -44,4 +44,7 @@ Local default is SQLite; queue/cache/session use the database drivers. Test user
 - Like relations are named `likers()` (Post, Comment): the tables carry integer `likes` counter columns, and a relation named `likes` would be shadowed by the column.
 - Archived artists can be restored: `artists.restore` route uses `->withTrashed()` binding and `ArtistPolicy::restore` (membership checked with trashed included). Coordinates are nulled the moment an address changes (observer `updating`) — stale map positions are a bug.
 - CI (`.github/workflows/ci.yml`): pint --test, npm build, PHPUnit; deploy.yml requires it before CodeDeploy to EC2 on pushes to main. The CodeDeploy script builds production `.env` from `.env.example` + Secrets Manager and currently regenerates APP_KEY every deploy (known issue).
+- Tailwind 4 is CSS-first: design tokens live in `@theme` inside resources/css/app.css (no tailwind.config.js); plugins load via `@plugin`, extra scan paths via `@source`. The `@tailwindcss/vite` plugin replaces PostCSS.
+- Quasar's vite plugin runs with `astAutoImport: false` (see vite.config.js) because its AST auto-import double-registers under Vite 8 and breaks the build with duplicate imports; revisit when the plugin supports Vite 8 cleanly.
+- leaflet-providers v4 uses a single `Jawg` provider with a `variant` option (`jawg-dark`), not `Jawg.Dark`.
 - Do not commit or push unless asked; the owner handles remotes.
