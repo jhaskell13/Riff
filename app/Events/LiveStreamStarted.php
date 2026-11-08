@@ -16,10 +16,7 @@ class LiveStreamStarted implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public function __construct(public int $streamId)
-    {
-        \Log::info('STREAM STARTED!');
-    }
+    public function __construct(public int $streamId) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -28,8 +25,6 @@ class LiveStreamStarted implements ShouldBroadcastNow
      */
     public function broadcastOn(): array
     {
-        \Log::info('broadcastOn');
-
         return [
             new Channel("livestream.{$this->streamId}"),
         ];
@@ -37,8 +32,6 @@ class LiveStreamStarted implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
-        \Log::info('broadcastWith');
-
         return [
             'stream_id' => $this->streamId,
             'status' => 'live',

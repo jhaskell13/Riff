@@ -4,32 +4,31 @@ namespace App\Http\Requests\ArtistZone;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 class ArtistStoreRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Authorization is handled by ArtistPolicy in the controller.
      */
     public function authorize(): bool
     {
-        return Auth::check();
+        return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'name' => 'required|string',
-            'genre' => 'required|string',
-            'hometown' => 'required|string',
-            'stateOrProvince' => 'required|string',
-            'country' => 'required|string',
-            'biography' => 'nullable|string',
+            'name' => ['required', 'string', 'max:255'],
+            'genre' => ['required', 'string', 'max:255'],
+            'hometown' => ['required', 'string', 'max:255'],
+            'stateOrProvince' => ['required', 'string', 'max:255'],
+            'country' => ['required', 'string', 'max:255'],
+            'biography' => ['nullable', 'string', 'max:5000'],
+            'website' => ['nullable', 'url', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
         ];
     }
 }

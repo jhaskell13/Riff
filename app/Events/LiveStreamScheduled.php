@@ -31,7 +31,7 @@ class LiveStreamScheduled implements ShouldBroadcast
         ];
     }
 
-    public function broadcastAd(): string
+    public function broadcastAs(): string
     {
         return 'livestream.scheduled';
     }

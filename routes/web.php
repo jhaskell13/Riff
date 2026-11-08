@@ -20,10 +20,10 @@ Route::get('/', function () {
     ]);
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // Feed
-    Route::resource('feed', FeedController::class)->middleware(['verified']);
+    Route::resource('feed', FeedController::class);
 
     // Artist Map
     Route::get('map', MapController::class)->name('map.index');

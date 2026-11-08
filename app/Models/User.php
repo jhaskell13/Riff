@@ -62,7 +62,7 @@ class User extends Authenticatable
 
     public function isMemberOf(Artist $artist): bool
     {
-        return $this->artists->pluck('id')->contains($artist->id);
+        return $this->artists()->whereKey($artist->id)->exists();
     }
 
     /**

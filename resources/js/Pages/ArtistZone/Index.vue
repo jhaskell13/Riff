@@ -9,6 +9,12 @@ const props = defineProps({
         default: () => [],
     },
 });
+
+const archive = (artist) => {
+    if (confirm(`Archive ${artist.name}? The identity is hidden from Riff but can be restored later.`)) {
+        router.delete(route('artists.destroy', artist.id));
+    }
+};
 </script>
 
 <template>
@@ -59,18 +65,38 @@ const props = defineProps({
                                             v-for="(member, index) in artist.members"
                                             :key="member.name"
                                         >
-                                            {{ member.name }}{{ index < artist.length - 1 ? ', ' : '' }}
+                                            {{ member.name }}{{ index < artist.members.length - 1 ? ', ' : '' }}
                                         </span>
                                     </div>
                                 </div>
-                                <div class="my-auto">
+                                <div class="my-auto flex gap-2">
                                     <q-btn
                                         round
                                         color="primary"
-                                        icon="delete_outline"
+                                        icon="visibility"
                                         size="xs"
-                                        @click="router.delete(route('artists.destroy', artist.id))"
-                                    />
+                                        @click="router.visit(route('artists.show', artist.id))"
+                                    >
+                                        <q-tooltip>View profile</q-tooltip>
+                                    </q-btn>
+                                    <q-btn
+                                        round
+                                        color="primary"
+                                        icon="edit"
+                                        size="xs"
+                                        @click="router.visit(route('artists.edit', artist.id))"
+                                    >
+                                        <q-tooltip>Edit</q-tooltip>
+                                    </q-btn>
+                                    <q-btn
+                                        round
+                                        color="negative"
+                                        icon="archive"
+                                        size="xs"
+                                        @click="archive(artist)"
+                                    >
+                                        <q-tooltip>Archive</q-tooltip>
+                                    </q-btn>
                                 </div>
                                 <q-separator color="grey-9" />
                             </div>
