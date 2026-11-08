@@ -10,7 +10,7 @@ Riff is a prototype under active development, not a finished public service. The
 
 ## Stack
 
-- Laravel 12 and PHP 8.2+
+- Laravel 13 and PHP 8.3+
 - Vue 3, Inertia.js, and Vite
 - Leaflet with marker clustering for the map
 - SQLite by default for local development; Laravel supports other configured database connections
@@ -18,7 +18,7 @@ Riff is a prototype under active development, not a finished public service. The
 
 ## Requirements
 
-- PHP 8.2 or newer with the extensions required by Laravel
+- PHP 8.3 or newer with the extensions required by Laravel
 - Composer
 - Node.js and npm
 - A database supported by Laravel (SQLite is the default)
