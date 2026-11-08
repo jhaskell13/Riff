@@ -23,7 +23,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // Feed
-    Route::resource('feed', FeedController::class);
+    Route::resource('feed', FeedController::class)->only(['index', 'store']);
 
     // Artist Map
     Route::get('map', MapController::class)->name('map.index');

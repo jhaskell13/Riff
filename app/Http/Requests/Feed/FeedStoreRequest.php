@@ -4,27 +4,25 @@ namespace App\Http\Requests\Feed;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
 
 class FeedStoreRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Any authenticated, verified user may post; route middleware
+     * already enforces that.
      */
     public function authorize(): bool
     {
-        return Auth::check();
+        return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            //
+            'content' => ['required', 'string', 'max:5000'],
         ];
     }
 }
