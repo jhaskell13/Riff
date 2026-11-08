@@ -1,4 +1,3 @@
-<!-- resources/js/Pages/Streams/Watch.vue -->
 <template>
   <div class="max-w-6xl mx-auto p-6">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">

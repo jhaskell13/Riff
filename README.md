@@ -85,7 +85,7 @@ Never commit real credentials. Keep secret values in your local or deployment en
 - `app/Http/Controllers` — request handling for maps, artist identities, feeds, profiles, and streams.
 - `app/Services` and `app/Actions` — geocoding, map data, and event lookup.
 - `database/migrations` — database schema.
-- `resources/js/Pages` — Inertia/Vue screens, including the map and experimental feed/stream pages.
+- `resources/js/pages` — Inertia/Vue screens, including the map and experimental feed/stream pages.
 - `routes/web.php` — web routes.
 - `tests` — PHPUnit feature and unit tests.
 - `ROADMAP.md` — product direction, current gaps, and proposed milestones.

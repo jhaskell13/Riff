@@ -1,4 +1,3 @@
-<!-- resources/js/Pages/Streams/Broadcast.vue -->
 <template>
   <div class="max-w-6xl mx-auto p-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
