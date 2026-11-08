@@ -30,6 +30,8 @@ class UserFactory extends Factory
             'city' => fake()->city,
             'state' => fake()->stateAbbr,
             'country' => 'USA',
+            'lat' => fake()->latitude(40.9, 42.4),
+            'lng' => fake()->longitude(-73.7, -71.1),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

@@ -26,7 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('feed', FeedController::class)->only(['index', 'store']);
 
     // Artist Map
-    Route::get('map', MapController::class)->name('map.index');
+    Route::get('map', [MapController::class, 'index'])->name('map.index');
+    Route::get('map/artists', [MapController::class, 'artists'])->name('map.artists');
 
     // Artist Zone
     Route::resource('artists', ArtistZoneController::class);

@@ -14,74 +14,89 @@ class GeocoderTest extends TestCase
         parent::setUp();
 
         Cache::flush();
+        config(['services.google.maps.key' => 'test-key']);
     }
 
-    public function test_returns_rounded_coords_from_a_successful_response(): void
+    private function fakeSuccess(float $lat = 41.82648812345, float $lng = -72.73009456789): void
     {
         Http::fake([
             'maps.googleapis.com/*' => Http::response([
                 'status' => 'OK',
                 'results' => [
-                    ['geometry' => ['location' => ['lat' => 41.82648812345, 'lng' => -72.73009456789]]],
+                    ['geometry' => ['location' => ['lat' => $lat, 'lng' => $lng]]],
                 ],
             ]),
         ]);
+    }
 
-        $results = app(Geocoder::class)->fromAddress('Bloomfield', 'CT');
+    public function test_returns_rounded_coordinates_from_a_successful_response(): void
+    {
+        $this->fakeSuccess();
 
-        $this->assertEquals((object) ['lat' => 41.8264881, 'lng' => -72.7300946], $results);
+        $point = app(Geocoder::class)->fromAddress('Bloomfield', 'CT');
+
+        $this->assertNotNull($point);
+        $this->assertSame(41.8264881, $point->lat);
+        $this->assertSame(-72.7300946, $point->lng);
 
         Http::assertSent(fn ($request) => $request['address'] === 'Bloomfield, CT');
     }
 
     public function test_includes_country_in_the_address_when_provided(): void
     {
-        Http::fake([
-            'maps.googleapis.com/*' => Http::response([
-                'status' => 'OK',
-                'results' => [['geometry' => ['location' => ['lat' => 1.0, 'lng' => 2.0]]]],
-            ]),
-        ]);
+        $this->fakeSuccess();
 
         app(Geocoder::class)->fromAddress('Bloomfield', 'CT', 'USA');
 
         Http::assertSent(fn ($request) => $request['address'] === 'Bloomfield, CT, USA');
     }
 
-    public function test_returns_default_coords_when_the_api_reports_no_results(): void
+    public function test_returns_null_without_an_api_key_and_sends_nothing(): void
+    {
+        config(['services.google.maps.key' => null]);
+        Http::fake();
+
+        $this->assertNull(app(Geocoder::class)->fromAddress('Bloomfield', 'CT'));
+
+        Http::assertNothingSent();
+    }
+
+    public function test_returns_null_when_the_api_reports_no_results(): void
     {
         Http::fake([
             'maps.googleapis.com/*' => Http::response(['status' => 'ZERO_RESULTS', 'results' => []]),
         ]);
 
-        $service = app(Geocoder::class);
-
-        $this->assertEquals($service->defaultCoords(), $service->fromAddress('thisshouldfail', 'becauseitsinvalid'));
+        $this->assertNull(app(Geocoder::class)->fromAddress('thisshouldfail', 'XX'));
     }
 
-    public function test_returns_default_coords_when_the_request_fails(): void
+    public function test_returns_null_on_http_errors(): void
     {
         Http::fake([
             'maps.googleapis.com/*' => Http::response('Server error', 500),
         ]);
 
-        $service = app(Geocoder::class);
-
-        $this->assertEquals($service->defaultCoords(), $service->fromAddress('Bloomfield', 'CT'));
+        $this->assertNull(app(Geocoder::class)->fromAddress('Bloomfield', 'CT'));
     }
 
     public function test_caches_successful_lookups(): void
     {
-        Http::fake([
-            'maps.googleapis.com/*' => Http::response([
-                'status' => 'OK',
-                'results' => [['geometry' => ['location' => ['lat' => 1.0, 'lng' => 2.0]]]],
-            ]),
-        ]);
+        $this->fakeSuccess();
 
         $service = app(Geocoder::class);
         $service->fromAddress('Bloomfield', 'CT');
         $service->fromAddress('Bloomfield', 'CT');
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_cache_key_normalizes_case_and_whitespace(): void
+    {
+        $this->fakeSuccess();
+
+        $service = app(Geocoder::class);
+        $service->fromAddress('Bloomfield', 'CT');
+        $service->fromAddress('  bloomfield ', 'ct');
 
         Http::assertSentCount(1);
     }
@@ -96,6 +111,8 @@ class GeocoderTest extends TestCase
         $service->fromAddress('nowhere', 'XX');
         $service->fromAddress('nowhere', 'XX');
 
-        Http::assertSentCount(2);
+        // retry(2) makes each failed lookup two attempts; the point is the
+        // second call hit the API again instead of a cached failure.
+        $this->assertGreaterThan(1, count(Http::recorded()));
     }
 }

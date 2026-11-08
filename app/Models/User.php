@@ -3,14 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Contracts\Geocodable;
+use App\Observers\GeocodableObserver;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+#[ObservedBy([GeocodableObserver::class])]
+class User extends Authenticatable implements Geocodable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -27,6 +31,8 @@ class User extends Authenticatable
         'city',
         'state',
         'country',
+        'lat',
+        'lng',
     ];
 
     /**
@@ -49,6 +55,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'lat' => 'float',
+            'lng' => 'float',
         ];
     }
 
@@ -58,6 +66,16 @@ class User extends Authenticatable
     public function artists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class);
+    }
+
+    public function geocodableAddress(): array
+    {
+        return [$this->city, $this->state, $this->country];
+    }
+
+    public function geocodableAttributes(): array
+    {
+        return ['city', 'state', 'country'];
     }
 
     public function isMemberOf(Artist $artist): bool

@@ -70,7 +70,7 @@ Most local use does not require third-party API credentials. Optional integratio
 
 | Variable | Used for | Notes |
 | --- | --- | --- |
-| `GOOGLE_MAPS_API_KEY` | Geocoding artist and listener-entered city/region locations | Configure an appropriately restricted key and enable the required Geocoding API. |
+| `GOOGLE_MAPS_API_KEY` | Geocoding artist and listener-entered city/region locations | Configure an appropriately restricted key and enable the required Geocoding API. Coordinates are geocoded once when an address is saved (queued job) and stored on the record; run `php artisan riff:geocode-missing` to backfill records created before a key was configured. Without a key, records simply stay off the map. |
 | `TICKETMASTER_API_KEY` | Ticketmaster event lookup service | Event lookup exists in the backend but is not currently wired into the map UI. |
 | `VITE_LEAFLET_JAWG_PROVIDER_KEY` | Jawg map tile layer in the map page | Exposed to browser code by Vite. A valid provider key is required for the configured Jawg layer. |
 | `BROADCAST_CONNECTION` | Laravel event broadcasting | Defaults to `log` in the example environment. Live streaming experiments need a configured real-time broadcaster such as Reverb or Pusher to deliver events. |

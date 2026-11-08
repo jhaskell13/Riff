@@ -6,7 +6,7 @@ class GeoHashEncodeAction
 {
     private static $base32Chars = '0123456789bcdefghjkmnpqrstuvwxyz';
 
-    public function handle(int $latitude, int $longitude, int $precision = 9): string
+    public function handle(float $latitude, float $longitude, int $precision = 9): string
     {
         $bits = '';
         $latMin = -90.0;

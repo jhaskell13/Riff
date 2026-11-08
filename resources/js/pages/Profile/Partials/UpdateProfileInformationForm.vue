@@ -19,6 +19,9 @@ const user = usePage().props.auth.user;
 const form = useForm({
     name: user.name,
     email: user.email,
+    city: user.city,
+    state: user.state,
+    country: user.country,
 });
 </script>
 
@@ -52,6 +55,51 @@ const form = useForm({
                 />
 
                 <InputError class="mt-2" :message="form.errors.name" />
+            </div>
+
+            <div>
+                <InputLabel for="city" value="City" />
+
+                <TextInput
+                    id="city"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.city"
+                    required
+                    autocomplete="address-level2"
+                />
+
+                <InputError class="mt-2" :message="form.errors.city" />
+            </div>
+
+            <div>
+                <InputLabel for="state" value="State / Province" />
+
+                <TextInput
+                    id="state"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.state"
+                    required
+                    autocomplete="address-level1"
+                />
+
+                <InputError class="mt-2" :message="form.errors.state" />
+            </div>
+
+            <div>
+                <InputLabel for="country" value="Country" />
+
+                <TextInput
+                    id="country"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.country"
+                    required
+                    autocomplete="country-name"
+                />
+
+                <InputError class="mt-2" :message="form.errors.country" />
             </div>
 
             <div>

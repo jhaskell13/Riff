@@ -25,6 +25,11 @@ class ArtistFactory extends Factory
             'stateOrProvince' => fake()->stateAbbr,
             'country' => 'USA',
             'genre' => fake()->randomElement($genres),
+            // Southern New England spread, matching the default map center,
+            // so a seeded database puts visible markers on the map without
+            // needing a geocoding API key.
+            'lat' => fake()->latitude(40.9, 42.4),
+            'lng' => fake()->longitude(-73.7, -71.1),
         ];
     }
 }
