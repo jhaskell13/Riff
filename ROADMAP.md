@@ -12,7 +12,7 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 
 ## Current foundation
 
-- Laravel, Inertia, and Vue app with authentication and email verification scaffolding.
+- Laravel 13, Inertia 3, and Vue 3 app with authentication and email verification scaffolding, Pint formatting, and CI gating the deploy.
 - Artist records with genre, biography, hometown, image URL, website, and member relationships.
 - Leaflet map with marker clustering and a user city/state location.
 - Geocoding through Google Maps with a fallback location and cache.
@@ -32,7 +32,7 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 - Fix map correctness: return artist IDs and profile data, display clickable markers/cards, and filter to an explicit nearby radius. Do not silently plot failed geocodes at the same default coordinates.
 - Harden external API handling: add timeouts, status/error handling, configuration checks, and bounded caching. Remove `dd()` from Ticketmaster errors. Avoid one remote geocode request per artist during every map build; persist coordinates and geocode on profile save/update.
 - Add focused automated coverage for map output, artist authorization, feed creation, and stream authorization. Make external-service tests deterministic with fakes.
-- Replace the stock Laravel README with Riff setup, environment variables, local development, and deployment guidance.
+- ~~Replace the stock Laravel README with Riff setup, environment variables, local development, and deployment guidance.~~ Done.
 
 **Done when:** A new user can create an account, make or manage an artist identity, find it on the map, and view a real profile; unauthorized edits are rejected and expected flows have automated coverage.
 

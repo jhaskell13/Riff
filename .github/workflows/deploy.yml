@@ -20,7 +20,11 @@ on:
     branches: [ "main" ]
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -64,7 +68,9 @@ jobs:
         composer install --no-dev --prefer-dist --optimize-autoloader
 
     - name: Setup Node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
 
     # Install Node dependencies & build assets
     - name: Build assets

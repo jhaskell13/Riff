@@ -106,7 +106,17 @@ Format PHP files with Laravel Pint:
 
 On Windows, run `vendor/bin/pint` from PowerShell if the Unix-style path is unavailable.
 
-Some existing tests exercise external geocoding behavior; configure credentials/network access as needed, or use mocked HTTP responses when adding deterministic tests.
+The suite is fully offline: external services are faked with `Http::fake()`. Keep new tests deterministic the same way.
+
+Check formatting without changing files:
+
+```bash
+./vendor/bin/pint --test
+```
+
+## Continuous integration and deployment
+
+`.github/workflows/ci.yml` runs Pint, the Vite production build, and the PHPUnit suite on every pull request and on pushes to non-`main` branches. `.github/workflows/deploy.yml` runs the same checks and then deploys to EC2 via AWS CodeDeploy on pushes to `main`; a failing check blocks the deploy. The CodeDeploy install script in `code-deploy/scripts` builds the production `.env` from `.env.example`, overriding the database settings from AWS Secrets Manager plus `APP_ENV`, `APP_DEBUG`, and `APP_URL`.
 
 ## Product direction
 

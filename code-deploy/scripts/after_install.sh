@@ -24,6 +24,8 @@ if [[ $DB_CONNECTION == "postgres" ]]; then
 fi
 
 sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
+sed -i "s|^#\?\s*APP_DEBUG=.*|APP_DEBUG=false|" .env
+sed -i "s|^#\?\s*APP_URL=.*|APP_URL=https://haskellsolutions.com|" .env
 sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
 sed -i "s|^#\?\s*DB_PORT=.*|DB_PORT=$DB_PORT|" .env
 sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
