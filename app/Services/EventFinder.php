@@ -59,9 +59,7 @@ class EventFinder
     /**
      * Maps lat/lng for each venue at an event, given the collection of events
      *
-     * @param Collection $events Collected events from this service
-     *
-     * @return Collection
+     * @param  Collection  $events  Collected events from this service
      */
     private function mapEventLocations(Collection $events): Collection
     {

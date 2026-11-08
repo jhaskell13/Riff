@@ -9,7 +9,8 @@ use Inertia\Response;
 
 class MapController extends Controller
 {
-    public function __invoke(MapBuilder $mapBuilder): Response {
+    public function __invoke(MapBuilder $mapBuilder): Response
+    {
         $data = $mapBuilder->buildMapDataForUser(Auth::user());
 
         return Inertia::render('Map/Index', [

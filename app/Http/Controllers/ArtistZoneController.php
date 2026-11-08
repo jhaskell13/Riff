@@ -6,8 +6,8 @@ use App\Http\Requests\ArtistZone\ArtistDeleteRequest;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Models\Artist;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Response as InertiaResponse;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ArtistZoneController extends Controller
@@ -23,7 +23,7 @@ class ArtistZoneController extends Controller
             ->get();
 
         return Inertia::render('ArtistZone/Index', [
-            'artists' => $artists
+            'artists' => $artists,
         ]);
     }
 

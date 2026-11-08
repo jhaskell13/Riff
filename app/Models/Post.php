@@ -28,8 +28,6 @@ class Post extends Model
 
     /**
      * Get the user that owns the Post
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -38,8 +36,6 @@ class Post extends Model
 
     /**
      * Get all of the comments for the Post
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function comments(): HasMany
     {

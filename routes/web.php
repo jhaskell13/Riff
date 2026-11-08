@@ -2,11 +2,11 @@
 
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StreamController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\StreamController;
 use Inertia\Inertia;
 
 Route::get('/health', fn () => 200);

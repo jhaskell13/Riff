@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use App\Models\Artist;
-use App\Models\Comment;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -55,8 +54,6 @@ class User extends Authenticatable
 
     /**
      * Get the artist that owns the User
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function artists(): BelongsToMany
     {
@@ -70,8 +67,6 @@ class User extends Authenticatable
 
     /**
      * Get all of the posts for the User
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function posts(): HasMany
     {
@@ -80,8 +75,6 @@ class User extends Authenticatable
 
     /**
      * The postLikes that belong to the User
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function postLikes(): BelongsToMany
     {
@@ -90,8 +83,6 @@ class User extends Authenticatable
 
     /**
      * Get all of the comments for the User
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function comments(): HasMany
     {

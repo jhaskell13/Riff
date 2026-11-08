@@ -4,7 +4,6 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -25,11 +24,12 @@ class LiveStreamStarted implements ShouldBroadcastNow
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\PrivateChannel>
+     * @return array<int, PrivateChannel>
      */
     public function broadcastOn(): array
     {
         \Log::info('broadcastOn');
+
         return [
             new Channel("livestream.{$this->streamId}"),
         ];
@@ -38,6 +38,7 @@ class LiveStreamStarted implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         \Log::info('broadcastWith');
+
         return [
             'stream_id' => $this->streamId,
             'status' => 'live',

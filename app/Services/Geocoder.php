@@ -23,20 +23,21 @@ class Geocoder
 
     public function fromAddress(string $city, string $state, ?string $country = null): object
     {
-        $address  = "$city, $state";
-        $address .= isset($country) ? ", $country" : "";
+        $address = "$city, $state";
+        $address .= isset($country) ? ", $country" : '';
 
         $results = Cache::rememberForever("gmaps.geocode.address.$address", function () use ($address) {
             try {
                 $response = Http::get(self::GEOCODE_ENDPOINT, [
                     'address' => $address,
-                    'key'     => config('services.google.maps.key'),
+                    'key' => config('services.google.maps.key'),
                 ]);
 
                 $response = json_decode($response->body());
 
                 if ($response?->status != 'OK' || ! $response?->results[0]) {
                     \Log::info("Invalid geocoder request: [STATUS CODE $response?->status]");
+
                     return $this->defaultCoords();
                 }
 
@@ -47,7 +48,8 @@ class Geocoder
                     'lng' => round($location->lng, 7),
                 ];
             } catch (\Throwable $e) {
-                \Log::error('Geocoder error: ' . $e->getMessage());
+                \Log::error('Geocoder error: '.$e->getMessage());
+
                 return $this->defaultCoords();
             }
         });

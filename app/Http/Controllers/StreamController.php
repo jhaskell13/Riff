@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Events\LiveStreamDataSent;
-use App\Events\LiveStreamScheduled;
 use App\Events\LiveStreamStarted;
-use App\Models\Artist;
 use App\Models\LiveStream;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 

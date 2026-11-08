@@ -31,8 +31,6 @@ class Artist extends Model
 
     /**
      * Get all of the members for the Artist
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function members(): BelongsToMany
     {
@@ -41,6 +39,6 @@ class Artist extends Model
 
     public function getAddressAttribute(): string
     {
-        return $this->hometown . ', ' . $this->stateOrProvince . ', ' . $this->country;
+        return $this->hometown.', '.$this->stateOrProvince.', '.$this->country;
     }
 }

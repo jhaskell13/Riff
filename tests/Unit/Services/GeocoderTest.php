@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Services;
 
-use Tests\TestCase;
 use App\Services\Geocoder;
+use Tests\TestCase;
 
 class GeocoderTest extends TestCase
 {
@@ -13,7 +13,7 @@ class GeocoderTest extends TestCase
 
         $results = $service->fromAddress('Bloomfield', 'CT');
 
-        $expected =   (object) [
+        $expected = (object) [
             'lat' => 41.826488,
             'lng' => -72.7300945,
         ];

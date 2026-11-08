@@ -27,6 +27,7 @@ class MapBuilder
             ];
         } catch (\Throwable $e) {
             \Log::error("Error building map data... [$e->getMessage()]");
+
             return [
                 'userLocation' => $this->geocoder->defaultCoords(),
                 'artistLocations' => collect(),

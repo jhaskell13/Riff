@@ -24,8 +24,6 @@ class LiveStream extends Model
 
     /**
      * Get the artist that owns the LiveStream
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function artist(): BelongsTo
     {

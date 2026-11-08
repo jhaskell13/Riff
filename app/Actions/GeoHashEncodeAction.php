@@ -38,7 +38,7 @@ class GeoHashEncodeAction
                     $latMax = $mid;
                 }
             }
-            $evenBit = !$evenBit;
+            $evenBit = ! $evenBit;
         }
 
         $geohash = '';
