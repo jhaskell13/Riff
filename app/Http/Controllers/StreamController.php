@@ -74,7 +74,10 @@ class StreamController extends Controller
         $this->authorize('manage', $stream);
 
         $request->validate([
-            'chunk' => ['required', 'string'],
+            // ~1.5MB of base64 per chunk; broadcasting video through HTTP
+            // POSTs is a prototype transport, but it should not accept
+            // arbitrarily large payloads while it exists.
+            'chunk' => ['required', 'string', 'max:1500000'],
             'type' => ['required', 'in:video,audio'],
         ]);
 
