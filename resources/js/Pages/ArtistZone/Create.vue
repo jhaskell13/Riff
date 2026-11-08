@@ -28,7 +28,6 @@ watch(search, async (val) => {
     searchResults.value = []
     return
   }
-  console.log('searching...');
 
 //   try {
 //     const res = await fetch(`/api/bands/search?q=${encodeURIComponent(val)}`)

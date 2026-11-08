@@ -135,7 +135,6 @@ const addDebugLog = (message) => {
     debugLogs.value = debugLogs.value.slice(0, 50)
   }
   
-  console.log('[Broadcast Debug]', message)
 }
 
 const testConnection = async () => {
@@ -269,7 +268,6 @@ const startBroadcast = async () => {
     method: 'arraybuffer'
   });
 
-  console.log('res: ', response);
   
   
   chunksSent.value++
@@ -390,7 +388,6 @@ const setupReverbListeners = () => {
   try {
     window.Echo.channel(`livestream.${props.stream.id}`)
         .listen('.LiveStreamStarted' , (e) => {
-            console.log('started stream...');
             
         })
       .listen('.viewer.count', (e) => {

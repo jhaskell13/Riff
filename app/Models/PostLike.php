@@ -30,7 +30,6 @@ class PostLike extends Pivot
         parent::boot();
 
         static::created(function ($like) {
-            dump($like->post);
             $like->post->incrementLikesCount();
         });
 

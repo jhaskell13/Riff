@@ -65,6 +65,18 @@ class StreamController extends Controller
         ]);
     }
 
+    public function end(Request $request, LiveStream $stream): JsonResponse
+    {
+        $stream->update([
+            'status' => 'ended',
+            'ended_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Stream ended.',
+        ]);
+    }
+
     public function sendData(Request $request, LiveStream $stream): JsonResponse
     {
         $request->validate([

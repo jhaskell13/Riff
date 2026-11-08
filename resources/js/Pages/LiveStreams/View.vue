@@ -144,7 +144,6 @@ const addDebugLog = (message) => {
     debugLogs.value = debugLogs.value.slice(0, 50)
   }
   
-  console.log('[Stream Debug]', message)
 }
 
 const initializePlayer = () => {
@@ -206,7 +205,6 @@ const initializePlayer = () => {
         
         sourceBuffer.addEventListener('error', (e) => {
           addDebugLog(`SourceBuffer error`)
-          console.log(e);
           
           bufferState.value = 'Error'
         })
@@ -236,7 +234,6 @@ const initializePlayer = () => {
 }
 
 const handleStreamData = (data) => {
-    console.log('stream data: ', data);
     
   chunksReceived.value++
   lastChunkTime.value = new Date().toLocaleTimeString()

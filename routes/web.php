@@ -42,14 +42,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
         Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
     });
-
-    // Live Stream viewer actions
-    Route::group(['prefix' => 'stream/{stream}'], function () {
-        Route::post('/like', [StreamInteractionController::class, 'like']);
-        Route::post('/comment', [StreamInteractionController::class, 'comment']);
-        Route::post('/reaction', [StreamInteractionController::class, 'reaction']);
-        Route::post('/donate', [StreamInteractionController::class, 'donate']);
-    });
 });
 
 Route::middleware('auth')->group(function () {

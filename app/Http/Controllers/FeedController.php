@@ -39,8 +39,6 @@ class FeedController extends Controller
             'contnet' => $request->content,
         ]);
 
-        dd($post, $post->user, $post->comments, $post->likes);
-
         return to_route('feed.index');
     }
 

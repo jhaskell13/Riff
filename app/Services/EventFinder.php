@@ -18,7 +18,7 @@ class EventFinder
         $response = json_decode(Http::get($endpoint, $params)->body());
 
         if (isset($response->errors)) {
-            dd($response->errors);
+            throw new \RuntimeException('Ticketmaster API error: '.json_encode($response->errors));
         }
 
         return collect($response->_embedded);
