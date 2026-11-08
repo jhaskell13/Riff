@@ -4,11 +4,11 @@ namespace App\Jobs;
 
 use App\Contracts\Geocodable;
 use App\Services\Geocoder;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
 
-class GeocodeAddress implements ShouldQueue
+class GeocodeAddress implements ShouldQueueAfterCommit
 {
     use Queueable;
 
@@ -17,17 +17,31 @@ class GeocodeAddress implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [10, 60];
 
+    /**
+     * A record deleted before the job runs is not an error.
+     */
+    public bool $deleteWhenMissingModels = true;
+
     public function __construct(
         public Model&Geocodable $model,
     ) {}
 
     public function handle(Geocoder $geocoder): void
     {
-        [$city, $state, $country] = $this->model->geocodableAddress();
+        $address = $this->model->geocodableAddress();
 
-        $point = $geocoder->fromAddress($city, $state, $country);
+        $point = $geocoder->fromAddress(...$address);
 
         if ($point === null) {
+            return;
+        }
+
+        // Guard against a stale write: if the address changed while this
+        // job was geocoding (another job is queued for the new address),
+        // these coordinates no longer describe the record.
+        $this->model->refresh();
+
+        if ($this->model->geocodableAddress() !== $address) {
             return;
         }
 

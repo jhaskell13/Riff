@@ -17,7 +17,7 @@ class PostTest extends TestCase
         $liker = User::factory()->create();
         $other = User::factory()->create();
 
-        $post->likes()->attach($liker);
+        $post->likers()->attach($liker);
 
         $this->assertTrue($post->isLikedBy($liker));
         $this->assertFalse($post->isLikedBy($other));

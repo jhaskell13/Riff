@@ -40,7 +40,10 @@ class Comment extends Model
         return $this->hasMany(self::class, 'parent_id');
     }
 
-    public function likes(): BelongsToMany
+    /**
+     * Named likers, not likes: comments carry an integer likes column.
+     */
+    public function likers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'comment_likes')->withTimestamps();
     }
@@ -48,15 +51,5 @@ class Comment extends Model
     public function scopeTopLevel($query): Builder
     {
         return $query->whereNull('parent_id');
-    }
-
-    public function incrementLikesCount()
-    {
-        $this->increment('likes');
-    }
-
-    public function decrementLikesCount()
-    {
-        $this->decrement('likes');
     }
 }

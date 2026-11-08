@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Streams;
 
+use App\Models\Artist;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StreamStoreRequest extends FormRequest
 {
@@ -22,7 +24,7 @@ class StreamStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'artist_id' => ['required', 'integer', 'exists:artists,id'],
+            'artist_id' => ['required', 'integer', Rule::exists(Artist::class, 'id')->withoutTrashed()],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
         ];

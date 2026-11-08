@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Artist;
 use App\Models\LiveStream;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,18 @@ class StreamValidationTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('stream.store'), ['artist_id' => 999, 'title' => 'Ghost'])
+            ->assertSessionHasErrors('artist_id');
+    }
+
+    public function test_stream_creation_rejects_archived_artists(): void
+    {
+        $artist = Artist::factory()->create();
+        $member = User::factory()->create();
+        $artist->members()->attach($member);
+        $artist->delete();
+
+        $this->actingAs($member)
+            ->post(route('stream.store'), ['artist_id' => $artist->id, 'title' => 'Ghost show'])
             ->assertSessionHasErrors('artist_id');
     }
 

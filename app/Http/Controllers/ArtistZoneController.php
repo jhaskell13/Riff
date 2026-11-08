@@ -14,14 +14,25 @@ class ArtistZoneController extends Controller
 {
     public function index(): Response
     {
+        $columns = ['artists.id', 'artists.name', 'artists.genre', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_url'];
+
         $artists = Auth::user()
             ->artists()
-            ->select('artists.id', 'artists.name', 'artists.genre', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_url')
+            ->select($columns)
             ->with(['members:id,name'])
-            ->get();
+            ->get()
+            ->each->append('address');
+
+        $archivedArtists = Auth::user()
+            ->artists()
+            ->onlyTrashed()
+            ->select($columns)
+            ->get()
+            ->each->append('address');
 
         return Inertia::render('ArtistZone/Index', [
             'artists' => $artists,
+            'archivedArtists' => $archivedArtists,
         ]);
     }
 
@@ -47,7 +58,7 @@ class ArtistZoneController extends Controller
         $this->authorize('view', $artist);
 
         return Inertia::render('ArtistZone/Show', [
-            'artist' => $artist->load('members:id,name'),
+            'artist' => $artist->load('members:id,name')->append('address'),
             'canManage' => Auth::user()->can('update', $artist),
         ]);
     }
@@ -81,5 +92,14 @@ class ArtistZoneController extends Controller
         $artist->delete();
 
         return to_route('artists.index');
+    }
+
+    public function restore(Artist $artist): RedirectResponse
+    {
+        $this->authorize('restore', $artist);
+
+        $artist->restore();
+
+        return to_route('artists.show', $artist);
     }
 }

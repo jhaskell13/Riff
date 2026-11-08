@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Feed\FeedStoreRequest;
+use App\Http\Resources\PostResource;
 use App\Models\Post;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -16,10 +17,11 @@ class FeedController extends Controller
             ->published()
             ->with(['user:id,name', 'artist:id,name,image_url'])
             ->latest('published_at')
+            ->latest('id')
             ->paginate(15);
 
         return Inertia::render('Feed', [
-            'posts' => $posts,
+            'posts' => PostResource::collection($posts),
         ]);
     }
 

@@ -8,7 +8,17 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    archivedArtists: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const restore = (artist) => {
+    if (confirm(`Restore ${artist.name}? The identity becomes visible on Riff again.`)) {
+        router.post(route('artists.restore', artist.id));
+    }
+};
 
 const archive = (artist) => {
     if (confirm(`Archive ${artist.name}? The identity is hidden from Riff but can be restored later.`)) {
@@ -114,6 +124,37 @@ const archive = (artist) => {
                                 class="mt-2 m-auto"
                                 @click="router.visit(route('artists.create'))"
                             />
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card v-if="archivedArtists.length > 0" class="post-card q-pb-md q-mb-xl">
+                        <q-card-section>
+                            <div class="text-subtitle1 text-weight-medium text-grey-4">Archived artists</div>
+                            <p class="text-caption text-grey-7 m-0">
+                                Hidden from the map and profiles. Restore one to bring it back.
+                            </p>
+                        </q-card-section>
+                        <q-separator color="grey-9" />
+                        <q-card-section>
+                            <div
+                                v-for="artist in archivedArtists"
+                                :key="artist.id"
+                                class="flex items-center mt-4 first:mt-0"
+                            >
+                                <div class="col">
+                                    <div class="text-subtitle2 text-grey-4">{{ artist.name }}</div>
+                                    <div class="text-caption text-grey-7">{{ artist.address }} • {{ artist.genre }}</div>
+                                </div>
+                                <q-btn
+                                    round
+                                    color="primary"
+                                    icon="unarchive"
+                                    size="xs"
+                                    @click="restore(artist)"
+                                >
+                                    <q-tooltip>Restore</q-tooltip>
+                                </q-btn>
+                            </div>
                         </q-card-section>
                     </q-card>
                 </div>

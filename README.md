@@ -6,7 +6,7 @@ The core idea is map-led discovery: explore local artists, hear their music, and
 
 ## Project status
 
-Riff is a prototype under active development, not a finished public service. The codebase has authentication, artist records and memberships, a Leaflet map, and early social and streaming implementations. Some screens and interactions are experimental or use placeholder data. In particular, map and feed experiences are not yet a complete production discovery flow.
+Riff is a prototype under active development, not a finished public service. Phase 0 of the roadmap is complete: authentication with enforced email verification, policy-protected artist identities with a full lifecycle, a server-backed feed, and a viewport-driven artist map with persisted geocoded coordinates. Livestreaming remains an early prototype and the Ticketmaster event lookup is not yet wired into the UI.
 
 ## Stack
 
@@ -81,14 +81,19 @@ Never commit real credentials. Keep secret values in your local or deployment en
 
 ## Main areas of the code
 
-- `app/Models` — users, artists, posts, comments, likes, and livestream records.
+- `app/Models` — users, artists, posts, comments, and livestream records.
+- `app/Policies` — authorization for artists and streams; every state-changing route checks these.
 - `app/Http/Controllers` — request handling for maps, artist identities, feeds, profiles, and streams.
-- `app/Services` and `app/Actions` — geocoding, map data, and event lookup.
+- `app/Http/Resources` — JSON shapes for client-fetched data such as map markers.
+- `app/Services`, `app/Contracts`, `app/DTO` — geocoding, the pluggable event-provider contract, and shared value objects.
+- `app/Jobs` and `app/Observers` — queued geocoding triggered by address changes.
+- `config/riff.php` — map defaults (center, marker cap) and geocoder tuning.
 - `database/migrations` — database schema.
 - `resources/js/pages` — Inertia/Vue screens, including the map and experimental feed/stream pages.
 - `routes/web.php` — web routes.
-- `tests` — PHPUnit feature and unit tests.
-- `ROADMAP.md` — product direction, current gaps, and proposed milestones.
+- `tests` — PHPUnit feature and unit tests (fully offline; external services are faked).
+- `ROADMAP.md` — product direction, current status, and milestones.
+- `CLAUDE.md` — architecture and convention notes for AI-assisted development.
 
 ## Tests and code style
 

@@ -10,31 +10,32 @@ Build a reliable local discovery loop before expanding into a broad social netwo
 
 Treat artist identity as a profile for a band, solo act, rapper, producer, or other music maker. Build first for a useful experience in one populated area, then broaden geography as artist density grows. Use approximate, artist-chosen public locations; never reveal a person's live or home location.
 
-## Current foundation
+## Current foundation (updated November 2026, post-Phase 0)
 
-- Laravel 13, Inertia 3, and Vue 3 app with authentication and email verification scaffolding, Pint formatting, and CI gating the deploy.
-- Artist records with genre, biography, hometown, image URL, website, and member relationships.
-- Leaflet map with marker clustering and a user city/state location.
-- Geocoding through Google Maps with a fallback location and cache.
-- Early post/comment/like models and UI, but the feed currently uses hard-coded sample posts and the store path is incomplete.
-- Early livestream models, pages, events, and broadcast endpoints; the experience and access controls are not yet production-ready.
-- Ticketmaster event lookup service exists but is not connected to the visible map flow.
+- Laravel 13, Inertia 3, and Vue 3 app with enforced email verification, Pint formatting, and CI (lint + build + tests) gating the deploy.
+- Artist identities with full lifecycle: create, public profile, edit, archive (soft delete), all behind membership policies.
+- Viewport-driven Leaflet map: artists store geocoded coordinates, the client fetches only markers inside the visible bounds (capped), markers link to profiles.
+- Geocoding runs once per address change through a queued job; failures leave records off the map instead of plotting fake locations. `riff:geocode-missing` backfills.
+- Server-backed paginated feed with validated, rate-limited posting. Likes/comments schema exists but the UI is hidden until the feature ships properly (Phase 3).
+- Livestream prototype: endpoints are authorization-protected, but the transport (HTTP chunks over public broadcast channels) remains a dead end to replace in Phase 4.
+- EventProvider contract with a hardened Ticketmaster implementation; not yet wired into the UI, ready for local-first sources (venue calendars, scraping).
 
 ## Roadmap
 
-### 0. Make the prototype dependable
+### 0. Make the prototype dependable — COMPLETE (November 2026)
 
 **Goal:** Establish a trustworthy, secure baseline before inviting local artists and listeners.
 
-- Fix artist ownership and membership authorization: only an authorized artist member can edit, delete, or start/manage that artist's streams. Validate artist membership at stream creation and protect every state-changing endpoint.
-- Complete the artist profile lifecycle: show, edit, update, delete/archive, image upload, and public profile page. Make delete behavior explicit and avoid accidental deletion of other members' shared artist identities.
-- Repair feed persistence: fix the misspelled `contnet` field, remove debug `dd()`, validate and save posts, and return real feed data. Replace mock posts and local-only likes/comments with server-backed behavior or hide these controls until implemented.
-- Fix map correctness: return artist IDs and profile data, display clickable markers/cards, and filter to an explicit nearby radius. Do not silently plot failed geocodes at the same default coordinates.
-- Harden external API handling: add timeouts, status/error handling, configuration checks, and bounded caching. Remove `dd()` from Ticketmaster errors. Avoid one remote geocode request per artist during every map build; persist coordinates and geocode on profile save/update.
-- Add focused automated coverage for map output, artist authorization, feed creation, and stream authorization. Make external-service tests deterministic with fakes.
-- ~~Replace the stock Laravel README with Riff setup, environment variables, local development, and deployment guidance.~~ Done.
+- [x] Artist ownership and membership authorization via `ArtistPolicy`/`LiveStreamPolicy`; membership validated at stream creation; every state-changing endpoint protected and covered by tests.
+- [x] Artist profile lifecycle: show, edit, update, archive (soft delete so shared identities are recoverable), public profile page. **Deferred to Phase 1:** image upload (profiles currently accept no image; `image_url` is never client-settable).
+- [x] Feed persistence: validated, rate-limited posting with real paginated feed data; mock posts removed and like/comment controls hidden until Phase 3.
+- [x] Map correctness: markers carry artist id/genre/profile link, the client queries only the visible bounds (capped via `riff.map.max_markers`), failed geocodes stay off the map.
+- [x] External API hardening: timeouts, retries, config checks, bounded caching, null/empty failure modes; coordinates persisted and geocoded once on save via queued jobs.
+- [x] Automated coverage: 127 tests across auth, access control, mass assignment, rate limiting, artist/stream authorization, feed, map bounds, geocoding lifecycle, and event provider — all external services faked.
+- [x] Riff-specific README with setup, configuration, CI/deploy documentation.
+- [x] (Unplanned) Email verification actually enforced — the scaffold never implemented `MustVerifyEmail`, so the `verified` middleware was a no-op.
 
-**Done when:** A new user can create an account, make or manage an artist identity, find it on the map, and view a real profile; unauthorized edits are rejected and expected flows have automated coverage.
+**Done when:** A new user can create an account, make or manage an artist identity, find it on the map, and view a real profile; unauthorized edits are rejected and expected flows have automated coverage. ✅ Met, with image upload consciously moved into Phase 1's profile work.
 
 ### 1. Ship the local discovery MVP
 
@@ -93,7 +94,7 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 
 ## Recommended next milestone
 
-Complete **Phase 0** and then release **Phase 1** to a small pilot area. Keep the map, artist profile, playable music, and follow action as the narrow first release. Defer a full social timeline, donations, and remote live jams until real pilot behavior demonstrates they strengthen local discovery.
+Phase 0 is complete. Release **Phase 1** to a small pilot area. Keep the map, artist profile, playable music, and follow action as the narrow first release. Defer a full social timeline, donations, and remote live jams until real pilot behavior demonstrates they strengthen local discovery.
 
 ## Product questions to validate in the pilot
 

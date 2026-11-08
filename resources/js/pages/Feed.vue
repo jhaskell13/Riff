@@ -127,10 +127,10 @@ const timeAgo = (iso) => {
                     </q-card>
 
                     <!-- Pagination -->
-                    <div v-if="posts.prev_page_url || posts.next_page_url" class="row justify-between q-mb-xl">
+                    <div v-if="posts.links.prev || posts.links.next" class="row justify-between q-mb-xl">
                         <Link
-                            v-if="posts.prev_page_url"
-                            :href="posts.prev_page_url"
+                            v-if="posts.links.prev"
+                            :href="posts.links.prev"
                             class="text-primary text-caption"
                             preserve-scroll
                         >
@@ -138,8 +138,8 @@ const timeAgo = (iso) => {
                         </Link>
                         <q-space />
                         <Link
-                            v-if="posts.next_page_url"
-                            :href="posts.next_page_url"
+                            v-if="posts.links.next"
+                            :href="posts.links.next"
                             class="text-primary text-caption"
                             preserve-scroll
                         >

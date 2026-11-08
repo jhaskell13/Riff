@@ -125,6 +125,49 @@ class ArtistZoneTest extends TestCase
         $this->assertNotSoftDeleted($artist);
     }
 
+    public function test_a_member_can_restore_an_archived_artist(): void
+    {
+        $artist = Artist::factory()->create();
+        $member = $this->memberOf($artist);
+        $artist->delete();
+
+        $this->actingAs($member)
+            ->post(route('artists.restore', $artist))
+            ->assertRedirect(route('artists.show', $artist));
+
+        $this->assertNotSoftDeleted($artist);
+    }
+
+    public function test_a_non_member_cannot_restore_an_archived_artist(): void
+    {
+        $artist = Artist::factory()->create();
+        $this->memberOf($artist);
+        $artist->delete();
+
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider)
+            ->post(route('artists.restore', $artist))
+            ->assertForbidden();
+
+        $this->assertSoftDeleted($artist);
+    }
+
+    public function test_the_index_lists_a_members_archived_artists(): void
+    {
+        $artist = Artist::factory()->create(['name' => 'Shelved Band']);
+        $member = $this->memberOf($artist);
+        $artist->delete();
+
+        $this->actingAs($member)
+            ->get(route('artists.index'))
+            ->assertInertia(fn ($page) => $page
+                ->has('artists', 0)
+                ->has('archivedArtists', 1)
+                ->where('archivedArtists.0.name', 'Shelved Band')
+            );
+    }
+
     public function test_an_archived_artist_profile_is_not_accessible(): void
     {
         $artist = Artist::factory()->create();

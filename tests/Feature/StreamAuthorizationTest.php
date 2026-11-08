@@ -71,6 +71,24 @@ class StreamAuthorizationTest extends TestCase
         $this->assertSame('ended', $stream->fresh()->status);
     }
 
+    public function test_an_ended_stream_cannot_be_restarted(): void
+    {
+        $stream = LiveStream::factory()->create(['status' => 'ended']);
+        $member = $this->memberOf($stream->artist);
+
+        $this->actingAs($member)->post(route('stream.start', $stream))->assertConflict();
+        $this->assertSame('ended', $stream->fresh()->status);
+    }
+
+    public function test_a_scheduled_stream_cannot_be_ended(): void
+    {
+        $stream = LiveStream::factory()->create();
+        $member = $this->memberOf($stream->artist);
+
+        $this->actingAs($member)->post(route('stream.end', $stream))->assertConflict();
+        $this->assertSame('scheduled', $stream->fresh()->status);
+    }
+
     public function test_a_non_member_cannot_start_a_stream(): void
     {
         Event::fake([LiveStreamStarted::class]);

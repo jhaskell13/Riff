@@ -49,7 +49,11 @@ class Post extends Model
         return $this->belongsTo(Artist::class);
     }
 
-    public function likes(): BelongsToMany
+    /**
+     * Named likers, not likes: the posts table has an integer likes
+     * column, and a relation with the same name would be shadowed by it.
+     */
+    public function likers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'post_likes')->withTimestamps();
     }
@@ -63,16 +67,6 @@ class Post extends Model
 
     public function isLikedBy(User $user): bool
     {
-        return $this->likes()->whereKey($user->id)->exists();
-    }
-
-    public function incrementLikesCount(): void
-    {
-        $this->increment('likes');
-    }
-
-    public function decrementLikesCount(): void
-    {
-        $this->decrement('likes');
+        return $this->likers()->whereKey($user->id)->exists();
     }
 }

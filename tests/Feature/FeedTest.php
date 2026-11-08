@@ -65,7 +65,7 @@ class FeedTest extends TestCase
             ->get(route('feed.index'))
             ->assertInertia(fn ($page) => $page
                 ->has('posts.data', 15)
-                ->where('posts.total', 16)
+                ->where('posts.meta.total', 16)
             );
     }
 

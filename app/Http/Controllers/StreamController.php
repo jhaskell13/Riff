@@ -43,6 +43,8 @@ class StreamController extends Controller
     {
         $this->authorize('manage', $stream);
 
+        abort_unless($stream->status === 'scheduled', 409, 'Only a scheduled stream can be started.');
+
         $stream->update([
             'status' => 'live',
             'started_at' => now(),
@@ -58,6 +60,8 @@ class StreamController extends Controller
     public function end(Request $request, LiveStream $stream): JsonResponse
     {
         $this->authorize('manage', $stream);
+
+        abort_unless($stream->status === 'live', 409, 'Only a live stream can be ended.');
 
         $stream->update([
             'status' => 'ended',

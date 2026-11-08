@@ -32,12 +32,10 @@ class Artist extends Model implements Geocodable
     ];
 
     protected $casts = [
-        'formed_date' => 'datetime',
+        'formed_date' => 'date',
         'lat' => 'float',
         'lng' => 'float',
     ];
-
-    protected $appends = ['address'];
 
     /**
      * Get all of the members for the Artist

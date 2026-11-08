@@ -43,6 +43,41 @@ class GeocodingLifecycleTest extends TestCase
         Queue::assertPushed(GeocodeAddress::class, 1);
     }
 
+    public function test_an_address_change_immediately_invalidates_stale_coordinates(): void
+    {
+        $artist = Artist::factory()->create(['lat' => 41.5, 'lng' => -72.5]);
+
+        Queue::fake();
+        $artist->update(['hometown' => 'New Haven']);
+
+        // Off the map until the queued geocode succeeds; never shown at the old city.
+        $this->assertNull($artist->fresh()->lat);
+        $this->assertNull($artist->fresh()->lng);
+    }
+
+    public function test_the_job_skips_the_write_when_the_address_changed_mid_flight(): void
+    {
+        config(['services.google.maps.key' => 'test-key']);
+        Http::fake([
+            'maps.googleapis.com/*' => Http::response([
+                'status' => 'OK',
+                'results' => [
+                    ['geometry' => ['location' => ['lat' => 41.3082138, 'lng' => -72.9250518]]],
+                ],
+            ]),
+        ]);
+
+        $artist = Artist::factory()->create();
+        $job = new GeocodeAddress($artist);
+
+        // Address changes after the job captured its model but before it runs.
+        Artist::withoutEvents(fn () => $artist->fresh()->update(['hometown' => 'Somewhere Else', 'lat' => null, 'lng' => null]));
+
+        $job->handle(app(Geocoder::class));
+
+        $this->assertNull($artist->fresh()->lat);
+    }
+
     public function test_renaming_an_artist_does_not_requeue_geocoding(): void
     {
         $artist = Artist::factory()->create();

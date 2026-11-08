@@ -38,4 +38,13 @@ class ArtistPolicy
     {
         return $user->isMemberOf($artist);
     }
+
+    /**
+     * Only members may restore an archived artist. Queried with
+     * trashed artists included, since the subject is soft-deleted.
+     */
+    public function restore(User $user, Artist $artist): bool
+    {
+        return $user->artists()->withTrashed()->whereKey($artist->id)->exists();
+    }
 }
