@@ -211,6 +211,18 @@ class MapSearchTest extends TestCase
         $this->assertSame(['Snake_Case'], $this->names($this->map(['q' => 'e_c'])));
     }
 
+    public function test_a_search_with_an_origin_but_no_viewport_stays_global(): void
+    {
+        // This is what the map UI sends while searching: it drops the
+        // viewport so a search reaches artists off screen, keeping only
+        // the origin so results can still be ordered by distance.
+        Artist::factory()->inTown('Kingston')->create(['name' => 'Echo Far']);
+
+        $this->map(['q' => 'echo', ...self::HARTFORD])
+            ->assertJsonPath('meta.mode', 'search')
+            ->assertJsonPath('data.0.name', 'Echo Far');
+    }
+
     public function test_search_ranks_name_prefix_matches_first(): void
     {
         // Hollow Moss is nearer to the origin, but The Moss starts with

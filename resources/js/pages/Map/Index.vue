@@ -50,9 +50,23 @@ const unit = computed(() => meta.value?.unit ?? props.filterOptions.unit);
 /* Fetching                                                            */
 /* ------------------------------------------------------------------ */
 
+const searchTerm = () => (filters.q.trim().length >= 2 ? filters.q.trim() : null);
+
 const buildParams = () => {
     const bounds = map.getBounds();
     const params = { ...toQuery() };
+
+    // A name search looks everywhere. Confining it to the viewport would
+    // mean a listener searching for an artist they have heard of finds
+    // nothing unless they are already looking at the right town; the map
+    // is fitted to the results instead.
+    if (searchTerm() && !filters.radius) {
+        const centre = map.getCenter();
+        params.lat = centre.lat;
+        params.lng = centre.lng;
+
+        return params;
+    }
 
     if (filters.radius) {
         // Keep the circle where it was placed; default it to the current
@@ -170,9 +184,25 @@ const drawRadius = () => {
     }).addTo(map);
 };
 
+let fittedTerm = null;
+
 watch([markers, clusters], () => {
     drawMarkers();
     drawClusters();
+
+    // Move to the results of a new search, once. Re-fitting on every
+    // response would fight the listener for control of the viewport.
+    const term = searchTerm();
+
+    if (term && term !== fittedTerm && meta.value?.mode === 'search' && markers.value.length) {
+        fittedTerm = term;
+        const extent = L.latLngBounds(markers.value.map((artist) => [artist.lat, artist.lng]));
+        map.fitBounds(extent, { padding: [60, 60], maxZoom: 13, animate: !reduceMotion });
+    }
+
+    if (!term) {
+        fittedTerm = null;
+    }
 });
 
 watch(hoveredId, (id, previous) => {
@@ -335,7 +365,11 @@ onMounted(() => {
     }
 
     map.on('moveend zoomend', () => load());
+
+    // A radius carried in from the URL needs its circle drawn now;
+    // buildParams settles its origin on this first call.
     load({ immediate: true });
+    drawRadius();
 });
 
 onBeforeUnmount(() => {
