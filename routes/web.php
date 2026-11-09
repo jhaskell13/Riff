@@ -8,17 +8,14 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StreamController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 // Deployment infrastructure may probe /health; keep alongside Laravel's /up.
 Route::get('/health', fn () => response('OK'));
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-    ]);
-});
+// The map is Riff's front door for everyone. The stock Laravel welcome
+// page used to answer here; onboarding (Phase 1 Step 5) may add a proper
+// landing view later.
+Route::redirect('/', '/map')->name('home');
 
 // Map data is public so a first-time visitor can explore before signing up.
 // Rate-limited per user or IP; see the "map" limiter.

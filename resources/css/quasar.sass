@@ -1,0 +1,9 @@
+// Quasar's stylesheet, inside the "quasar" cascade layer ordered in
+// resources/css/app.css, so Tailwind utilities override it instead of
+// silently losing to it.
+//
+// The Quasar Vite plugin prepends resources/css/quasar-variables.sass to
+// every .sass file it processes, including this one, so the theme
+// variables are already defined when the nested import below runs.
+@layer quasar
+  @import 'quasar/src/css/index.sass'

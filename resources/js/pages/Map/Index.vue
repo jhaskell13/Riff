@@ -1,10 +1,10 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import * as L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-providers';
-import 'leaflet.markercluster';
+// One Leaflet instance with its plugins attached; see that module.
+import L from '@/Components/Map/leaflet';
+// Leaflet + markercluster styles, layered below the app's theme.
+import '../../../css/map-vendor.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import FilterBar from '@/Components/Map/FilterBar.vue';
 import ResultList from '@/Components/Map/ResultList.vue';
@@ -119,26 +119,77 @@ const setPinState = (id, state) => {
     element?.classList.toggle('riff-pin--hover', state === 'hover');
 };
 
-const drawMarkers = () => {
-    markerLayer.clearLayers();
-    markerById.clear();
+// Latest data per artist, read by marker handlers so a kept marker never
+// acts on a stale copy.
+const artistById = new Map();
 
-    markers.value.forEach((artist) => {
-        const marker = L.marker([artist.lat, artist.lng], {
-            icon: artistIcon(artist, { active: artist.id === selectedId.value }),
-            keyboard: true,
-            title: markerLabel(artist, unit.value),
-            alt: markerLabel(artist, unit.value),
-            riseOnHover: true,
-        });
-
-        marker.on('click', () => selectArtist(artist, { pan: false }));
-        marker.on('mouseover', () => (hoveredId.value = artist.id));
-        marker.on('mouseout', () => (hoveredId.value = null));
-
-        markerById.set(artist.id, marker);
-        markerLayer.addLayer(marker);
+const buildMarker = (artist) => {
+    const marker = L.marker([artist.lat, artist.lng], {
+        icon: artistIcon(artist, { active: artist.id === selectedId.value }),
+        keyboard: true,
+        title: markerLabel(artist, unit.value),
+        alt: markerLabel(artist, unit.value),
+        riseOnHover: true,
     });
+
+    marker.on('click', () => selectArtist(artistById.get(artist.id), { pan: false }));
+    marker.on('mouseover', () => (hoveredId.value = artist.id));
+    marker.on('mouseout', () => (hoveredId.value = null));
+
+    return marker;
+};
+
+/**
+ * Bring the pins in line with the latest results by difference, not by
+ * rebuilding. markercluster collapses an opened (spiderfied) cluster on
+ * any add or remove, and nearly every pan re-fetches -- usually returning
+ * the same artists -- so a full redraw snapped shut every cluster the
+ * listener had just opened.
+ */
+const drawMarkers = () => {
+    const next = new Map(markers.value.map((artist) => [artist.id, artist]));
+    next.forEach((artist, id) => artistById.set(id, artist));
+
+    const gone = [...markerById.keys()].filter((id) => !next.has(id));
+    const added = [...next.keys()].filter((id) => !markerById.has(id));
+
+    if (gone.length) {
+        markerLayer.removeLayers(gone.map((id) => markerById.get(id)));
+        gone.forEach((id) => {
+            markerById.delete(id);
+            artistById.delete(id);
+        });
+    }
+
+    if (added.length) {
+        const fresh = added.map((id) => {
+            const marker = buildMarker(next.get(id));
+            markerById.set(id, marker);
+
+            return marker;
+        });
+        markerLayer.addLayers(fresh);
+    }
+
+    // Distances follow the origin, so refresh labels on the pins we kept.
+    markerById.forEach((marker, id) => {
+        const label = markerLabel(next.get(id), unit.value);
+        marker.options.title = label;
+        marker.getElement()?.setAttribute('title', label);
+    });
+};
+
+/**
+ * Artists in one town share its exact centre, so no zoom level separates
+ * them: zooming in on such a cluster only ever showed the same bubble at
+ * street level. Those, and any cluster already at the closest useful zoom,
+ * fan out in place instead.
+ */
+const opensInPlace = (cluster) => {
+    const bounds = cluster.getBounds();
+
+    return bounds.getNorthEast().equals(bounds.getSouthWest())
+        || map.getBoundsZoom(bounds) <= map.getZoom();
 };
 
 const drawClusters = () => {
@@ -217,27 +268,28 @@ watch(hoveredId, (id, previous) => {
 });
 
 /**
- * Place (or move) the viewer's own marker. It is lifted far above the
- * artist pins: artists in a town share its exact centre, which is also
- * where this sits, and being underneath them made it invisible.
+ * Place (or move) the viewer's own marker: their profile area, or a
+ * location the browser shared this session.
  */
 const showYouAreHere = (lat, lng, label) => {
     if (youMarker) {
         youMarker.setLatLng([lat, lng]);
-        youMarker.setTooltipContent(label);
 
         return;
     }
 
+    // It sits on the town centre, exactly where that town's artists and
+    // their cluster are. Drawn beneath them (negative offset) as a halo
+    // wider than a cluster bubble, it frames them instead of hiding them;
+    // non-interactive, so Leaflet gives it pointer-events: none and every
+    // click falls through to the artists.
     youMarker = L.marker([lat, lng], {
         icon: youIcon(),
-        zIndexOffset: 10000,
-        interactive: true,
+        zIndexOffset: -10000,
+        interactive: false,
         keyboard: false,
         alt: label,
-    })
-        .bindTooltip(label, { direction: 'top', offset: [0, -12] })
-        .addTo(map);
+    }).addTo(map);
 };
 
 /* ------------------------------------------------------------------ */
@@ -266,15 +318,25 @@ const selectArtist = (artist, { pan = true } = {}) => {
 
     const marker = markerById.get(artist.id);
 
-    // The pin may be inside a cluster bubble, where panning to it would
-    // show the listener nothing; markercluster can open the group first.
-    if (marker && markerLayer.hasLayer(marker)) {
-        markerLayer.zoomToShowLayer(marker, () => setPinState(artist.id, 'active'));
+    if (!marker || !markerLayer.hasLayer(marker)) {
+        map.panTo([artist.lat, artist.lng], { animate: !reduceMotion });
 
         return;
     }
 
-    map.panTo([artist.lat, artist.lng], { animate: !reduceMotion });
+    // The pin may be inside a cluster bubble, where panning to it would
+    // show the listener nothing.
+    const parent = markerLayer.getVisibleParent(marker);
+
+    if (parent && parent !== marker && opensInPlace(parent)) {
+        markerLayer.once('spiderfied', () => setPinState(artist.id, 'active'));
+        map.panTo(parent.getLatLng(), { animate: !reduceMotion });
+        parent.spiderfy();
+
+        return;
+    }
+
+    markerLayer.zoomToShowLayer(marker, () => setPinState(artist.id, 'active'));
 };
 
 const closeCard = () => {
@@ -395,11 +457,24 @@ onMounted(() => {
     L.control.scale({ position: 'bottomleft', imperial: props.filterOptions.unit === 'mi', metric: props.filterOptions.unit === 'km' }).addTo(map);
 
     // leaflet-providers v4 folded the named Jawg styles into a single
-    // provider with a variant option.
-    L.tileLayer.provider('Jawg', {
-        variant: 'jawg-dark',
-        accessToken: import.meta.env.VITE_LEAFLET_JAWG_PROVIDER_KEY,
-    }).addTo(map);
+    // provider with a variant option. Without a key the provider throws
+    // on every tile -- inside onMounted, which aborted the rest of the
+    // map setup -- so a missing key now leaves the map tile-less but
+    // fully working, and says so.
+    const tileKey = import.meta.env.VITE_LEAFLET_JAWG_PROVIDER_KEY;
+
+    if (tileKey) {
+        L.tileLayer.provider('Jawg', {
+            variant: 'jawg-dark',
+            accessToken: tileKey,
+            // Hold more off-screen tiles so a pan reveals map, not
+            // background, while new tiles load.
+            keepBuffer: 4,
+        }).addTo(map);
+    } else {
+        console.warn('Riff map: VITE_LEAFLET_JAWG_PROVIDER_KEY is not set; map tiles are disabled.');
+        notice.value = 'Map tiles are unavailable (no tile key configured). Artists still load.';
+    }
 
     // Individual pins group in the browser when they overlap; the bubble
     // is drawn exactly like a server-side cluster so the two are one idea.
@@ -408,7 +483,19 @@ onMounted(() => {
         maxClusterRadius: 48,
         spiderfyDistanceMultiplier: 1.6,
         animate: !reduceMotion,
+        // Clicks are handled below so same-town clusters open in place.
+        zoomToBoundsOnClick: false,
+        spiderLegPolylineOptions: { weight: 1.5, color: '#9e9e9e', opacity: 0.7 },
         iconCreateFunction: (group) => clusterIcon(group.getChildCount()),
+    });
+    markerLayer.on('clusterclick', ({ layer: cluster }) => {
+        if (opensInPlace(cluster)) {
+            cluster.spiderfy();
+
+            return;
+        }
+
+        cluster.zoomToBounds({ padding: [48, 48] });
     });
     clusterLayer = L.layerGroup();
     map.addLayer(markerLayer);
@@ -489,7 +576,7 @@ onBeforeUnmount(() => {
                     <transition name="fade">
                         <div v-if="notice" class="map-notice" role="status">
                             {{ notice }}
-                            <q-btn flat dense round size="sm" icon="close" @click="notice = null" />
+                            <q-btn flat dense round size="sm" icon="close" aria-label="Dismiss" @click="notice = null" />
                         </div>
                     </transition>
 
@@ -566,37 +653,49 @@ onBeforeUnmount(() => {
     overflow: hidden;
 }
 
+/* Sits where the panel's own header row was, so closing and reopening
+   happens at the same spot. */
 .map-reopen {
     position: absolute;
-    top: 50%;
+    top: 0;
     left: 0;
     z-index: 1000;
     display: flex;
     align-items: center;
-    gap: 4px;
-    transform: translateY(-50%);
-    padding: 14px 6px 14px 4px;
+    gap: 6px;
+    height: 41px;
+    padding: 0 12px 0 6px;
     border: 1px solid var(--color-riff-line);
+    border-top: 0;
     border-left: 0;
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 0 10px 0;
     background: var(--color-riff-surface);
     color: var(--color-riff-text);
     font-size: 0.75rem;
+    white-space: nowrap;
     cursor: pointer;
+    box-shadow: 2px 2px 8px rgb(0 0 0 / 0.35);
 }
 
 .map-reopen:hover {
     background: var(--color-riff-surface-2);
 }
 
-.map-reopen__narrow,
-.map-reopen__word {
+.map-reopen:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+.map-reopen__narrow {
     display: none;
 }
 
 .map-reopen__count {
     font-weight: 600;
-    writing-mode: vertical-rl;
+}
+
+.map-reopen__word {
+    color: var(--color-riff-muted);
 }
 
 .map-notice,
@@ -666,20 +765,26 @@ onBeforeUnmount(() => {
         border-radius: 14px 14px 0 0;
         overflow: hidden;
         box-shadow: 0 -6px 20px rgb(0 0 0 / 0.45);
-        transition: transform 200ms ease;
+        transition: transform 200ms ease, box-shadow 200ms ease;
     }
 
+    /* Off screen it must not cast a shadow back up over the map. */
     .map-aside--closed {
         width: 100%;
         transform: translateY(100%);
+        box-shadow: none;
     }
 
+    /* Centred pill, clear of the attribution row. Leaflet keeps its own
+       corners: scale bottom-left, zoom and attribution bottom-right, the
+       attribution flush to the edge. */
     .map-reopen {
         top: auto;
-        bottom: 16px;
-        left: 16px;
-        transform: none;
-        padding: 7px 14px;
+        bottom: 30px;
+        left: 50%;
+        height: auto;
+        transform: translateX(-50%);
+        padding: 8px 16px 8px 12px;
         border: 0;
         border-radius: 9999px;
         background: var(--color-riff-primary);
@@ -695,18 +800,24 @@ onBeforeUnmount(() => {
         display: none;
     }
 
-    .map-reopen__narrow,
+    .map-reopen__narrow {
+        display: inline-flex;
+    }
+
     .map-reopen__word {
-        display: inline;
+        color: rgb(255 255 255 / 0.85);
     }
 
-    .map-reopen__count {
-        writing-mode: horizontal-tb;
+    /* The zoom hint would sit under the pill; lift it above. */
+    .map-hint {
+        bottom: 80px;
     }
 
-    /* Keep Leaflet's own controls clear of the sheet and the pill. */
-    .map-canvas :deep(.leaflet-bottom) {
-        bottom: 58px;
+    /* At phone width the full attribution wraps into the scale bar;
+       smaller type keeps it on one line in its corner. */
+    .map-canvas :deep(.leaflet-control-attribution) {
+        font-size: 10px;
+        line-height: 1.6;
     }
 }
 

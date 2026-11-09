@@ -145,15 +145,10 @@ watch(() => props.selectedId, (id) => {
                         </q-avatar>
 
                         <div class="min-w-0 flex-1">
-                            <div class="flex items-baseline gap-2">
-                                <span
-                                    class="line-clamp-2 min-w-0 flex-1 text-sm font-semibold break-words text-riff-text"
-                                    :title="artist.name"
-                                >{{ artist.name }}</span>
-                                <span v-if="artist.distance !== null" class="shrink-0 text-xs text-riff-muted">
-                                    {{ artist.distance }} {{ unit }}
-                                </span>
-                            </div>
+                            <div
+                                class="line-clamp-2 text-sm font-semibold break-words text-riff-text"
+                                :title="artist.name"
+                            >{{ artist.name }}</div>
                             <div class="line-clamp-1 text-xs break-words text-riff-muted">
                                 {{ [artist.typeLabel, ...(artist.genres ?? [])].filter(Boolean).join(' · ') }}
                             </div>
@@ -162,14 +157,16 @@ watch(() => props.selectedId, (id) => {
                             </div>
                         </div>
 
-                        <q-icon
-                            v-if="artist.hasMusic"
-                            name="play_circle"
-                            size="20px"
-                            class="shrink-0 text-riff-primary"
-                        >
-                            <q-tooltip>Has music to play</q-tooltip>
-                        </q-icon>
+                        <!-- Fixed column, so distances line up whether or not a
+                             row has music. -->
+                        <div class="flex w-12 shrink-0 flex-col items-end gap-1 self-start pt-0.5">
+                            <span v-if="artist.distance !== null" class="text-xs whitespace-nowrap text-riff-muted">
+                                {{ artist.distance }} {{ unit }}
+                            </span>
+                            <q-icon v-if="artist.hasMusic" name="play_circle" size="20px" class="text-riff-primary">
+                                <q-tooltip>Has music to play</q-tooltip>
+                            </q-icon>
+                        </div>
                     </button>
                 </li>
             </ul>

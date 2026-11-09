@@ -148,6 +148,7 @@ const archive = () => {
                                     <q-btn
                                         unelevated rounded color="primary"
                                         :label="artist.image_url ? 'Replace photo' : 'Upload photo'"
+                                        no-wrap
                                         padding="xs lg"
                                         :loading="photoForm.processing"
                                         class="no-pointer-events"

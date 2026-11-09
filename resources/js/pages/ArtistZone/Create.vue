@@ -95,14 +95,16 @@ const clearInputs = () => {
               <!-- CREATE MODE -->
               <div v-if="mode === 'create'">
                 <q-file
+                  dark
                   v-model="form.photo"
                   label="Photo (optional)"
                   accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   clearable
                   rounded
                   outlined
-                  bg-color="grey-8"
+                  bg-color="grey-9"
                   color="grey-4"
+                  label-color="grey-5"
                   hint="Location data and other metadata are removed before it is saved."
                   class="q-mb-md"
                   :error="!!form.errors.photo"

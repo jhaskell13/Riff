@@ -33,6 +33,26 @@ const radiusOptions = computed(() => [
 const genreOptions = computed(() => props.options.genres.map((g) => ({ label: g.name, value: g.slug })));
 const typeOptions = computed(() => props.options.types.map((t) => ({ label: t.label, value: t.value })));
 
+/**
+ * One line of text for a multi-select in the toolbar: the name when one
+ * is chosen, a count when several are. Chips would grow the field and
+ * push the toolbar onto two lines.
+ */
+const summarise = (values, options, noun) => {
+    if (!values.length) {
+        return '';
+    }
+
+    if (values.length === 1) {
+        return options.find((option) => option.value === values[0])?.label ?? '';
+    }
+
+    return `${values.length} ${noun}`;
+};
+
+const genreSummary = computed(() => summarise(props.filters.genres, genreOptions.value, 'genres'));
+const typeSummary = computed(() => summarise(props.filters.types, typeOptions.value, 'types'));
+
 const onSearchInput = (value) => {
     props.filters.q = value ?? '';
     searchPlaces(value);
@@ -46,8 +66,10 @@ const jumpTo = (place) => {
 };
 
 const selectProps = {
+    dark: true,
     dense: true,
     outlined: true,
+    'label-color': 'grey-5',
     'bg-color': 'grey-9',
     color: 'primary',
     'options-dense': true,
@@ -62,7 +84,7 @@ const selectProps = {
         <div class="relative min-w-0 flex-1 lg:max-w-xs lg:flex-none">
             <q-input
                 :model-value="filters.q"
-                dense outlined clearable
+                dark dense outlined clearable
                 bg-color="grey-9"
                 color="primary"
                 placeholder="Search artists or towns"
@@ -99,39 +121,63 @@ const selectProps = {
         </div>
 
         <!-- Inline controls on wide screens -->
-        <div class="wide-only items-center gap-2">
+        <div class="wide-only shrink-0 items-center gap-2">
             <q-select
                 v-model="filters.genres"
                 v-bind="selectProps"
                 :options="genreOptions"
-                multiple use-chips
+                :display-value="genreSummary"
+                multiple
                 label="Genres"
-                class="min-w-[150px]"
+                class="w-44"
+                popup-content-class="riff-select-menu"
                 aria-label="Filter by genre"
-            />
+            >
+                <template #option="{ itemProps, opt, selected, toggleOption }">
+                    <q-item v-bind="itemProps" dense>
+                        <q-item-section side>
+                            <q-checkbox :model-value="selected" dense color="primary" @update:model-value="toggleOption(opt)" />
+                        </q-item-section>
+                        <q-item-section>{{ opt.label }}</q-item-section>
+                    </q-item>
+                </template>
+            </q-select>
             <q-select
                 v-model="filters.types"
                 v-bind="selectProps"
                 :options="typeOptions"
+                :display-value="typeSummary"
                 multiple
                 label="Type"
-                class="min-w-[120px]"
+                class="w-40"
+                popup-content-class="riff-select-menu"
                 aria-label="Filter by artist type"
-            />
+            >
+                <template #option="{ itemProps, opt, selected, toggleOption }">
+                    <q-item v-bind="itemProps" dense>
+                        <q-item-section side>
+                            <q-checkbox :model-value="selected" dense color="primary" @update:model-value="toggleOption(opt)" />
+                        </q-item-section>
+                        <q-item-section>{{ opt.label }}</q-item-section>
+                    </q-item>
+                </template>
+            </q-select>
             <q-select
                 v-model="filters.radius"
                 v-bind="selectProps"
                 :options="radiusOptions"
                 label="Within"
-                class="min-w-[130px]"
+                class="w-36"
+                popup-content-class="riff-select-menu"
                 aria-label="Search radius"
             />
             <q-btn flat dense no-caps color="grey-4" icon="tune" label="More">
                 <q-menu>
                     <div class="min-w-[220px] bg-riff-surface-2 p-3">
-                        <q-toggle v-model="filters.has_music" dense color="primary" label="Has music to play" />
-                        <q-toggle v-model="filters.has_photo" dense color="primary" label="Has a photo" class="mt-2" />
+                        <q-toggle dark v-model="filters.has_music" dense color="primary" label="Has music to play" />
+                        <q-toggle dark v-model="filters.has_photo" dense color="primary" label="Has a photo" class="mt-2" />
                         <q-toggle
+                            dark
                             v-if="canFollow"
                             v-model="filters.followed"
                             dense color="primary" label="Artists I follow" class="mt-2"
@@ -167,30 +213,38 @@ const selectProps = {
 
         <div class="ml-auto flex shrink-0 items-center gap-1">
             <q-spinner v-if="busy" size="18px" color="primary" class="mr-1" />
-            <q-btn flat dense round icon="my_location" color="grey-4" @click="emit('locate')">
+            <q-btn flat dense round icon="my_location" color="grey-4" aria-label="Use my current location" @click="emit('locate')">
                 <q-tooltip>Use my current location</q-tooltip>
             </q-btn>
-            <q-btn flat dense round icon="home" color="grey-4" @click="emit('home')">
+            <q-btn flat dense round icon="home" color="grey-4" aria-label="Back to my area" @click="emit('home')">
                 <q-tooltip>Back to my area</q-tooltip>
             </q-btn>
         </div>
 
         <!-- Narrow-screen filters -->
         <q-dialog v-model="dialogOpen" position="bottom">
-            <q-card class="w-full bg-riff-surface">
+            <q-card dark class="w-full bg-riff-surface">
                 <q-card-section class="row items-center">
                     <div class="text-subtitle1 text-weight-medium text-grey-3">Filters</div>
                     <q-space />
-                    <q-btn v-close-popup flat dense round icon="close" color="grey-5" />
+                    <q-btn v-close-popup flat dense round icon="close" color="grey-5" aria-label="Close filters" />
                 </q-card-section>
                 <q-separator color="grey-9" />
                 <q-card-section class="q-gutter-md">
-                    <q-select v-model="filters.genres" v-bind="selectProps" :options="genreOptions" multiple use-chips label="Genres" />
-                    <q-select v-model="filters.types" v-bind="selectProps" :options="typeOptions" multiple label="Type" />
-                    <q-select v-model="filters.radius" v-bind="selectProps" :options="radiusOptions" label="Within" />
-                    <q-select v-model="filters.sort" v-bind="selectProps" :options="options.sorts" option-label="label" option-value="value" label="Sort by" />
-                    <q-toggle v-model="filters.has_music" dense color="primary" label="Has music to play" />
-                    <q-toggle v-model="filters.has_photo" dense color="primary" label="Has a photo" />
+                    <q-select v-model="filters.genres" v-bind="selectProps" :options="genreOptions" multiple use-chips label="Genres" popup-content-class="riff-select-menu">
+                        <template #selected-item="{ opt, index, removeAtIndex, tabindex }">
+                            <q-chip dense removable color="grey-8" text-color="grey-2" :tabindex="tabindex" :remove-aria-label="`Remove ${opt.label}`" @remove="removeAtIndex(index)">{{ opt.label }}</q-chip>
+                        </template>
+                    </q-select>
+                    <q-select v-model="filters.types" v-bind="selectProps" :options="typeOptions" multiple use-chips label="Type" popup-content-class="riff-select-menu">
+                        <template #selected-item="{ opt, index, removeAtIndex, tabindex }">
+                            <q-chip dense removable color="grey-8" text-color="grey-2" :tabindex="tabindex" :remove-aria-label="`Remove ${opt.label}`" @remove="removeAtIndex(index)">{{ opt.label }}</q-chip>
+                        </template>
+                    </q-select>
+                    <q-select v-model="filters.radius" v-bind="selectProps" :options="radiusOptions" label="Within" popup-content-class="riff-select-menu" />
+                    <q-select v-model="filters.sort" v-bind="selectProps" :options="options.sorts" option-label="label" option-value="value" label="Sort by" popup-content-class="riff-select-menu" />
+                    <q-toggle dark v-model="filters.has_music" dense color="primary" label="Has music to play" />
+                    <q-toggle dark v-model="filters.has_photo" dense color="primary" label="Has a photo" />
                     <q-toggle v-if="canFollow" v-model="filters.followed" dense color="primary" label="Artists I follow" />
                 </q-card-section>
                 <q-card-actions align="right" class="q-pb-md q-px-md">

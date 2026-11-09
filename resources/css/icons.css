@@ -1,0 +1,7 @@
+/*
+  Material Icons (Quasar's icon font), in the "quasar" layer with the rest
+  of Quasar. Left unlayered, its `.material-icons { display: inline-block }`
+  beat Quasar's own layered rules -- e.g. the one hiding QTabs' scroll
+  arrows -- because unlayered CSS outranks every layer.
+*/
+@import '@quasar/extras/material-icons/material-icons.css' layer(quasar);

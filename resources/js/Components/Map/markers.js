@@ -1,4 +1,4 @@
-import * as L from 'leaflet';
+import L from '@/Components/Map/leaflet';
 
 /**
  * Leaflet icon factories.
@@ -76,15 +76,11 @@ export function youIcon() {
     pulse.className = 'riff-you__pulse';
     wrapper.appendChild(pulse);
 
-    const dot = document.createElement('span');
-    dot.className = 'riff-you__dot';
-    wrapper.appendChild(dot);
-
     return L.divIcon({
         html: wrapper,
         className: '',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
     });
 }
 

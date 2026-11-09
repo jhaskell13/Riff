@@ -49,11 +49,16 @@ const musicHint = computed(() => {
 
 const genreHint = computed(() => `Pick up to ${props.maxGenres}. These drive the map's genre filter.`);
 
+// dark: Quasar's light-mode text and chips were dark grey on these dark
+// fields -- values were hard to read and selected genre chips rendered
+// white-on-white.
 const inputProps = {
+    dark: true,
     rounded: true,
     outlined: true,
-    'bg-color': 'grey-8',
+    'bg-color': 'grey-9',
     color: 'grey-4',
+    'label-color': 'grey-5',
 };
 </script>
 
@@ -95,7 +100,24 @@ const inputProps = {
             v-bind="inputProps"
             :error="!!form.errors.genres"
             :error-message="form.errors.genres"
-        />
+        >
+            <!-- Quasar's default chip took the field's text colour as its
+                 background and its text alike: a blank pill. -->
+            <template #selected-item="{ opt, index, removeAtIndex, tabindex }">
+                <q-chip
+                    dense
+                    removable
+                    color="grey-8"
+                    text-color="grey-2"
+                    :tabindex="tabindex"
+                    :remove-aria-label="`Remove ${opt.name}`"
+                    class="q-my-xs"
+                    @remove="removeAtIndex(index)"
+                >
+                    {{ opt.name }}
+                </q-chip>
+            </template>
+        </q-select>
 
         <q-input
             v-model="form.biography"
@@ -140,9 +162,13 @@ const inputProps = {
             :error-message="form.errors.country"
         />
 
+        <!-- text-grey-3: the label inherits the page's near-black body
+             text; Quasar's dark mode only recolours the switch itself. -->
         <q-toggle
+            dark
             v-model="form.show_on_map"
             color="primary"
+            class="text-grey-3"
             label="Show this artist on the discovery map"
         />
         <div class="text-caption text-grey-6 q-mt-none">

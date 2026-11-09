@@ -52,14 +52,14 @@ const emit = defineEmits(['close', 'followed', 'collapse']);
                         <q-icon v-else name="music_note" size="30px" />
                     </q-avatar>
                     <div class="min-w-0 flex-1">
-                        <h2 class="text-lg leading-tight font-bold break-words text-riff-text">{{ card.name }}</h2>
-                        <p class="text-xs break-words text-riff-muted">
+                        <h2 class="m-0 text-lg leading-tight font-bold break-words text-riff-text">{{ card.name }}</h2>
+                        <p class="m-0 text-xs break-words text-riff-muted">
                             {{ card.typeLabel }}
                             <template v-if="card.distance !== null">
                                 · {{ card.distance }} {{ card.unit }} away
                             </template>
                         </p>
-                        <p class="text-xs break-words text-riff-muted">{{ card.location }}</p>
+                        <p class="m-0 text-xs break-words text-riff-muted">{{ card.location }}</p>
                     </div>
                 </div>
 
