@@ -23,6 +23,9 @@ Route::get('/', function () {
 // Map data is public so a first-time visitor can explore before signing up.
 // Rate-limited per user or IP; see the "map" limiter.
 Route::middleware('throttle:map')->group(function () {
+    // The map shell itself is public: a first-time visitor should be able
+    // to explore local artists before deciding to sign up.
+    Route::get('map', [MapController::class, 'index'])->name('map.index');
     Route::get('map/artists', [MapController::class, 'artists'])->name('map.artists');
     Route::get('map/artists/{artist}', [MapController::class, 'card'])
         ->whereNumber('artist')
@@ -37,9 +40,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('feed', [FeedController::class, 'store'])
         ->middleware('throttle:posts')
         ->name('feed.store');
-
-    // Artist Map (the shell; its data endpoints are public, below)
-    Route::get('map', [MapController::class, 'index'])->name('map.index');
 
     // Artist Zone
     Route::post('artists/{artist}/restore', [ArtistZoneController::class, 'restore'])

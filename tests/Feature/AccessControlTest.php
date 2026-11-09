@@ -22,7 +22,6 @@ class AccessControlTest extends TestCase
     {
         return [
             'feed' => ['feed.index', []],
-            'map' => ['map.index', []],
             'artist index' => ['artists.index', []],
             'artist create' => ['artists.create', []],
             'artist show' => ['artists.show', ['artist' => 1]],

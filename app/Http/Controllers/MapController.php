@@ -33,6 +33,10 @@ class MapController extends Controller
                 : config('riff.map.default_center'),
             'hasOwnLocation' => $hasOwnLocation,
             'filterOptions' => $this->filterOptions($request),
+            // Guests browse the same map; actions needing an account
+            // become a prompt to sign in rather than a failed request.
+            'canFollow' => $user !== null,
+            'maxMarkers' => (int) config('riff.map.max_markers'),
         ]);
     }
 

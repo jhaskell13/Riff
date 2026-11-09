@@ -1,16 +1,22 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import '@quasar/extras/material-icons/material-icons.css';
 import 'quasar/src/css/index.sass';
 
-const navLinks = [
-    { name: 'feed.index', title: 'Feed', icon: 'home', },
-    { name: 'map.index', title: 'Map', icon: 'map'},
-    { name: 'artists.index', title: 'Artist Zone', icon: 'music' },
-];
+// The map is public, so this layout also renders for guests: everything
+// that needs an account is hidden rather than shown and then rejected.
+const user = computed(() => usePage().props.auth?.user ?? null);
 
-const activeTab = computed(() => navLinks.find(link => route().current(link.name))?.name);
+const navLinks = computed(() => user.value
+    ? [
+        { name: 'map.index', title: 'Map', icon: 'map' },
+        { name: 'feed.index', title: 'Feed', icon: 'home' },
+        { name: 'artists.index', title: 'Artist Zone', icon: 'music' },
+    ]
+    : [{ name: 'map.index', title: 'Map', icon: 'map' }]);
+
+const activeTab = computed(() => navLinks.value.find(link => route().current(link.name))?.name);
 </script>
 
 <template>
@@ -20,7 +26,7 @@ const activeTab = computed(() => navLinks.find(link => route().current(link.name
             <q-toolbar>
                 <q-toolbar-title class="text-h5 text-weight-bold">
                     <div class="row items-center no-wrap">
-                        <Link href="/feed" class="riff-logo mr-5">
+                        <Link :href="route('map.index')" class="riff-logo mr-5">
                             <q-icon name="music_note" size="28px" class="q-mr-xs" color="primary" />
                             <span class="text-primary">Riff</span>
                         </Link>
@@ -32,18 +38,22 @@ const activeTab = computed(() => navLinks.find(link => route().current(link.name
                     </div>
                 </q-toolbar-title>
 
-                <q-btn flat round dense icon="search" class="q-mr-xs" color="grey-4" />
+                <template v-if="!user">
+                    <q-btn flat no-caps dense padding="xs md" color="grey-4" label="Sign in" :href="route('login')" type="a" />
+                    <q-btn unelevated rounded no-caps dense padding="xs md" color="primary" label="Join Riff" class="q-ml-sm" :href="route('register')" type="a" />
+                </template>
+
+                <template v-else>
                 <q-btn flat round dense icon="notifications" color="grey-4">
                     <q-badge color="primary" floating rounded>3</q-badge>
                 </q-btn>
-                <!-- <q-btn flat round dense icon="person" color="grey-4" /> -->
                  <q-btn flat round dense icon="person" color="grey-4">
                     <q-menu anchor="bottom right" self="top right">
                         <q-list style="min-width: 200px">
                             <q-item
                                 clickable
                                 v-close-popup
-                                @click=""
+                                @click="router.visit(route('profile.edit'))"
                             >
                                 <q-item-section avatar>
                                     <q-icon name="person" />
@@ -74,6 +84,7 @@ const activeTab = computed(() => navLinks.find(link => route().current(link.name
                         </q-list>
                     </q-menu>
                 </q-btn>
+                </template>
             </q-toolbar>
         </q-header>
 
@@ -83,7 +94,7 @@ const activeTab = computed(() => navLinks.find(link => route().current(link.name
         </q-page-container>
 
         <!-- Bottom Navigation (Mobile) -->
-        <q-footer class="bg-dark q-py-xs lt-sm" bordered>
+        <q-footer v-if="user" class="bg-dark q-py-xs lt-sm" bordered>
             <q-tabs
                 v-model="activeTab"
                 dense

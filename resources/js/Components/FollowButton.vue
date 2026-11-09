@@ -13,6 +13,8 @@ const props = defineProps({
     dense: { type: Boolean, default: false },
 });
 
+const emit = defineEmits(['changed']);
+
 const pending = ref(false);
 const optimistic = ref(null);
 
@@ -42,6 +44,9 @@ const toggle = () => {
 
     const options = {
         preserveScroll: true,
+        // The map owns a Leaflet instance and a viewport; re-mounting it
+        // on every follow would throw both away.
+        preserveState: true,
         onFinish: () => {
             pending.value = false;
         },
@@ -50,6 +55,7 @@ const toggle = () => {
         },
         onSuccess: () => {
             optimistic.value = null;
+            emit('changed', props.artistId);
         },
     };
 

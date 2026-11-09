@@ -18,11 +18,16 @@ class MapTest extends TestCase
         'east' => -72.0,
     ];
 
-    public function test_the_map_shell_still_requires_login(): void
+    public function test_guests_can_open_the_map(): void
     {
-        // The guest map shell arrives with the Step 4 UI; its data is
-        // already public (see MapSearchTest).
-        $this->get(route('map.index'))->assertRedirect(route('login'));
+        $this->get(route('map.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Map/Index')
+                ->where('canFollow', false)
+                ->where('hasOwnLocation', false)
+                ->where('center.lat', config('riff.map.default_center.lat'))
+            );
     }
 
     public function test_the_map_centers_on_the_users_coordinates(): void
