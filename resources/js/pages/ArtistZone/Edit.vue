@@ -1,27 +1,34 @@
 <script setup>
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ArtistProfileFields from '@/Components/ArtistProfileFields.vue';
 
 const props = defineProps({
     artist: {
         type: Object,
         required: true,
     },
+    genreOptions: { type: Array, default: () => [] },
+    artistTypes: { type: Array, default: () => [] },
+    maxGenres: { type: Number, default: 3 },
 });
-
-const genres = [
-    'Rock', 'Indie', 'Alternative', 'Metal', 'Pop',
-    'Hip-Hop', 'Electronic', 'Jazz', 'Folk', 'Other',
-];
 
 const form = useForm({
     name: props.artist.name,
-    genre: props.artist.genre,
+    artist_type: props.artist.artist_type,
+    genres: props.artist.genres.map((genre) => genre.id),
     biography: props.artist.biography ?? '',
     hometown: props.artist.hometown,
     stateOrProvince: props.artist.stateOrProvince,
     country: props.artist.country,
+    show_on_map: props.artist.show_on_map,
+    music_url: props.artist.music_url ?? '',
     website: props.artist.website ?? '',
+    bandcamp_url: props.artist.bandcamp_url ?? '',
+    spotify_url: props.artist.spotify_url ?? '',
+    soundcloud_url: props.artist.soundcloud_url ?? '',
+    youtube_url: props.artist.youtube_url ?? '',
+    instagram_url: props.artist.instagram_url ?? '',
     email: props.artist.email ?? '',
 });
 
@@ -56,65 +63,12 @@ const archive = () => {
 
                         <q-separator color="grey-9" />
 
-                        <q-card-section class="q-gutter-md">
-                            <q-input
-                                v-model="form.name"
-                                label="Artist Name"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.name"
-                                :error-message="form.errors.name"
-                            />
-                            <q-select
-                                v-model="form.genre"
-                                :options="genres"
-                                label="Genre"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                emit-value map-options
-                                :error="!!form.errors.genre"
-                                :error-message="form.errors.genre"
-                            />
-                            <q-input
-                                v-model="form.hometown"
-                                label="Hometown"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.hometown"
-                                :error-message="form.errors.hometown"
-                            />
-                            <q-input
-                                v-model="form.stateOrProvince"
-                                label="State/Province"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.stateOrProvince"
-                                :error-message="form.errors.stateOrProvince"
-                            />
-                            <q-input
-                                v-model="form.country"
-                                label="Country"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.country"
-                                :error-message="form.errors.country"
-                            />
-                            <q-input
-                                v-model="form.biography"
-                                label="Artist biography"
-                                type="textarea" autogrow
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.biography"
-                                :error-message="form.errors.biography"
-                            />
-                            <q-input
-                                v-model="form.website"
-                                label="Website (optional)"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.website"
-                                :error-message="form.errors.website"
-                            />
-                            <q-input
-                                v-model="form.email"
-                                label="Contact email (optional)"
-                                rounded outlined bg-color="grey-8" color="grey-4"
-                                :error="!!form.errors.email"
-                                :error-message="form.errors.email"
+                        <q-card-section>
+                            <ArtistProfileFields
+                                :form="form"
+                                :genre-options="genreOptions"
+                                :artist-types="artistTypes"
+                                :max-genres="maxGenres"
                             />
                         </q-card-section>
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 #[ObservedBy([GeocodableObserver::class])]
 class User extends Authenticatable implements Geocodable, MustVerifyEmail
@@ -31,6 +32,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         'city',
         'state',
         'country',
+        'distance_unit',
         'lat',
         'lng',
     ];
@@ -81,6 +83,31 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     public function isMemberOf(Artist $artist): bool
     {
         return $this->artists()->whereKey($artist->id)->exists();
+    }
+
+    /**
+     * Artists this user follows. Following is a listener relationship and
+     * carries no permissions -- membership is what grants those.
+     */
+    public function followedArtists(): BelongsToMany
+    {
+        return $this->belongsToMany(Artist::class, 'artist_follows')->withTimestamps();
+    }
+
+    public function follows(Artist $artist): bool
+    {
+        return $this->followedArtists()->whereKey($artist->id)->exists();
+    }
+
+    /**
+     * Guess a distance unit from a stated country. Nearly everywhere uses
+     * kilometres, so the imperial list is the exception table.
+     */
+    public static function distanceUnitForCountry(?string $country): string
+    {
+        $needle = Str::lower(trim((string) $country));
+
+        return in_array($needle, config('riff.distance.imperial_countries', []), true) ? 'mi' : 'km';
     }
 
     /**

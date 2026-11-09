@@ -47,6 +47,8 @@ class RegisteredUserController extends Controller
             'city' => $request->city,
             'state' => $request->state,
             'country' => $request->country,
+            // Guessed from the stated country; changeable on the profile.
+            'distance_unit' => User::distanceUnitForCountry($request->country),
         ]);
 
         event(new Registered($user));

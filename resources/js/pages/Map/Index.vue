@@ -51,7 +51,7 @@ const popupFor = (artist) => {
     wrapper.appendChild(name);
 
     const detail = document.createElement('div');
-    detail.textContent = [artist.genre, artist.location].filter(Boolean).join(' • ');
+    detail.textContent = [(artist.genres ?? []).join(', '), artist.location].filter(Boolean).join(' • ');
     detail.className = 'artist-popup-detail';
     wrapper.appendChild(detail);
 

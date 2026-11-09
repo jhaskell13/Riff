@@ -81,10 +81,12 @@ class AccessControlTest extends TestCase
         $this->actingAs($user)
             ->post(route('artists.store'), [
                 'name' => 'Blocked Band',
-                'genre' => 'Rock',
+                'artist_type' => 'band',
+                'genres' => [1],
                 'hometown' => 'Hartford',
                 'stateOrProvince' => 'CT',
                 'country' => 'USA',
+                'show_on_map' => true,
             ])
             ->assertRedirect(route('verification.notice'));
 

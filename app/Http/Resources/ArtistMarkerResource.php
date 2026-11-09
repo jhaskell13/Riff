@@ -22,10 +22,16 @@ class ArtistMarkerResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'genre' => $this->genre,
+            'type' => $this->artist_type,
+            'typeLabel' => $this->type_label,
+            'genres' => $this->whenLoaded('genres', fn () => $this->genres->pluck('name'), []),
             'location' => $this->hometown.', '.$this->stateOrProvince,
             'lat' => $this->lat,
             'lng' => $this->lng,
+            'imageUrl' => $this->image_url,
+            // The embed itself is fetched per card; a marker only needs to
+            // know whether there is anything to play.
+            'hasMusic' => $this->music_provider !== null,
             'url' => route('artists.show', $this->resource),
         ];
     }

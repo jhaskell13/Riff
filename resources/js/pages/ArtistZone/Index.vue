@@ -14,6 +14,9 @@ const props = defineProps({
     },
 });
 
+// Artists carry a genre list now rather than a single string.
+const genreNames = (artist) => (artist.genres ?? []).map((genre) => genre.name).join(', ');
+
 const restore = (artist) => {
     if (confirm(`Restore ${artist.name}? The identity becomes visible on Riff again.`)) {
         router.post(route('artists.restore', artist.id));
@@ -69,7 +72,7 @@ const archive = (artist) => {
                                     <div class="text-subtitle1 text-weight-medium text-grey-2">{{ artist.name }}</div>
                                     <div class="text-caption text-grey-6">
                                         <span>
-                                            {{ artist.address }} • {{ artist.genre }} • Members:
+                                            {{ artist.address }} • {{ genreNames(artist) }} • Members:
                                         </span>
                                         <span
                                             v-for="(member, index) in artist.members"
@@ -143,7 +146,7 @@ const archive = (artist) => {
                             >
                                 <div class="col">
                                     <div class="text-subtitle2 text-grey-4">{{ artist.name }}</div>
-                                    <div class="text-caption text-grey-7">{{ artist.address }} • {{ artist.genre }}</div>
+                                    <div class="text-caption text-grey-7">{{ artist.address }} • {{ genreNames(artist) }}</div>
                                 </div>
                                 <q-btn
                                     round

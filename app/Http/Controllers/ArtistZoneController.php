@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
 use App\Models\Artist;
+use App\Models\Genre;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,21 +16,23 @@ class ArtistZoneController extends Controller
 {
     public function index(): Response
     {
-        $columns = ['artists.id', 'artists.name', 'artists.genre', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_url'];
+        $columns = ['artists.id', 'artists.name', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
 
         $artists = Auth::user()
             ->artists()
             ->select($columns)
-            ->with(['members:id,name'])
+            ->with(['members:id,name', 'genres:id,name'])
+            ->withCount('followers')
             ->get()
-            ->each->append('address');
+            ->each->append(['address', 'type_label']);
 
         $archivedArtists = Auth::user()
             ->artists()
             ->onlyTrashed()
             ->select($columns)
+            ->with('genres:id,name')
             ->get()
-            ->each->append('address');
+            ->each->append(['address', 'type_label']);
 
         return Inertia::render('ArtistZone/Index', [
             'artists' => $artists,
@@ -40,14 +44,17 @@ class ArtistZoneController extends Controller
     {
         $this->authorize('create', Artist::class);
 
-        return Inertia::render('ArtistZone/Create');
+        return Inertia::render('ArtistZone/Create', $this->formOptions());
     }
 
     public function store(ArtistStoreRequest $request): RedirectResponse
     {
         $this->authorize('create', Artist::class);
 
-        $artist = Artist::create($request->validated());
+        $validated = $request->validated();
+
+        $artist = Artist::create(Arr::except($validated, 'genres'));
+        $artist->genres()->sync($validated['genres']);
         $artist->members()->attach($request->user());
 
         return to_route('artists.show', $artist);
@@ -57,9 +64,15 @@ class ArtistZoneController extends Controller
     {
         $this->authorize('view', $artist);
 
+        $user = Auth::user();
+
         return Inertia::render('ArtistZone/Show', [
-            'artist' => $artist->load('members:id,name')->append('address'),
-            'canManage' => Auth::user()->can('update', $artist),
+            'artist' => $artist
+                ->load(['members:id,name', 'genres:id,name'])
+                ->loadCount('followers')
+                ->append(['address', 'type_label', 'music_embed']),
+            'canManage' => $user->can('update', $artist),
+            'isFollowing' => $user->follows($artist),
         ]);
     }
 
@@ -68,7 +81,8 @@ class ArtistZoneController extends Controller
         $this->authorize('update', $artist);
 
         return Inertia::render('ArtistZone/Edit', [
-            'artist' => $artist,
+            'artist' => $artist->load('genres:id,name')->append('music_embed'),
+            ...$this->formOptions(),
         ]);
     }
 
@@ -76,7 +90,10 @@ class ArtistZoneController extends Controller
     {
         $this->authorize('update', $artist);
 
-        $artist->update($request->validated());
+        $validated = $request->validated();
+
+        $artist->update(Arr::except($validated, 'genres'));
+        $artist->genres()->sync($validated['genres']);
 
         return to_route('artists.show', $artist);
     }
@@ -101,5 +118,22 @@ class ArtistZoneController extends Controller
         $artist->restore();
 
         return to_route('artists.show', $artist);
+    }
+
+    /**
+     * Vocabulary shared by the create and edit forms, so the options a user
+     * can pick always match what validation will accept.
+     *
+     * @return array<string, mixed>
+     */
+    private function formOptions(): array
+    {
+        return [
+            'genreOptions' => Genre::query()->curated()->orderBy('name')->get(['id', 'name']),
+            'artistTypes' => collect(config('riff.artist.types'))
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                ->values(),
+            'maxGenres' => config('riff.artist.max_genres'),
+        ];
     }
 }

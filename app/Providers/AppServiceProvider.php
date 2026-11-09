@@ -36,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Following is a one-tap action a listener may repeat while
+        // browsing the map, so the ceiling is high enough not to be felt
+        // while still bounding scripted follow/unfollow churn.
+        RateLimiter::for('follows', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }

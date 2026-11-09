@@ -44,8 +44,10 @@ class MapController extends Controller
 
         $artists = Artist::query()
             ->geolocated()
+            ->visibleOnMap()
             ->withinBounds($bounds['south'], $bounds['west'], $bounds['north'], $bounds['east'])
-            ->select(['id', 'name', 'genre', 'hometown', 'stateOrProvince', 'lat', 'lng'])
+            ->with('genres:id,name')
+            ->select(['id', 'name', 'artist_type', 'hometown', 'stateOrProvince', 'lat', 'lng', 'image_path', 'music_provider'])
             ->limit(config('riff.map.max_markers'))
             ->get();
 

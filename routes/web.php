@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\MapController;
@@ -34,6 +35,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('artists/{artist}/restore', [ArtistZoneController::class, 'restore'])
         ->withTrashed()
         ->name('artists.restore');
+    Route::post('artists/{artist}/follow', [ArtistFollowController::class, 'store'])
+        ->middleware('throttle:follows')
+        ->name('artists.follow');
+    Route::delete('artists/{artist}/follow', [ArtistFollowController::class, 'destroy'])
+        ->middleware('throttle:follows')
+        ->name('artists.unfollow');
     Route::resource('artists', ArtistZoneController::class);
 
     // Live Stream broadcast management

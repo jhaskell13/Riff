@@ -88,6 +88,37 @@ class MapTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_artists_who_opted_off_the_map_are_not_plotted(): void
+    {
+        $user = User::factory()->create();
+        Artist::factory()->hiddenFromMap()->create(['lat' => 41.5, 'lng' => -72.5]);
+
+        $this->actingAs($user)
+            ->getJson(route('map.artists', self::BOUNDS))
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_a_marker_carries_what_a_card_needs(): void
+    {
+        $user = User::factory()->create();
+        $artist = Artist::factory()
+            ->withGenres(['Punk', 'Folk'])
+            ->create([
+                'lat' => 41.5,
+                'lng' => -72.5,
+                'artist_type' => 'solo',
+                'music_url' => 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
+            ]);
+
+        $this->actingAs($user)
+            ->getJson(route('map.artists', self::BOUNDS))
+            ->assertJsonPath('data.0.type', 'solo')
+            ->assertJsonPath('data.0.typeLabel', 'Solo artist')
+            ->assertJsonPath('data.0.hasMusic', true)
+            ->assertJsonPath('data.0.location', $artist->hometown.', '.$artist->stateOrProvince)
+            ->assertJsonCount(2, 'data.0.genres');
+    }
+
     public function test_bounds_are_required_and_validated(): void
     {
         $user = User::factory()->create();

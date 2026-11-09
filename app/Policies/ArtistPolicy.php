@@ -24,6 +24,15 @@ class ArtistPolicy
     }
 
     /**
+     * Any authenticated user may follow a visible artist. Archived artists
+     * never reach here -- route binding resolves only untrashed records.
+     */
+    public function follow(User $user, Artist $artist): bool
+    {
+        return true;
+    }
+
+    /**
      * Only members may edit the artist.
      */
     public function update(User $user, Artist $artist): bool
