@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
 use Throwable;
 
@@ -81,9 +82,9 @@ class ArtistPhotos
         );
 
         return (string) $images
-            ->read($file->getRealPath())
+            ->decodePath($file->getRealPath())
             ->scaleDown($config['max_edge_pixels'], $config['max_edge_pixels'])
-            ->toJpeg(quality: $config['jpeg_quality'], strip: true);
+            ->encode(new JpegEncoder(quality: $config['jpeg_quality'], strip: true));
     }
 
     private function disk(): Filesystem

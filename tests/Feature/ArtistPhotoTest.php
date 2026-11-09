@@ -28,6 +28,22 @@ class ArtistPhotoTest extends TestCase
         return Storage::disk(config('riff.media.disk'));
     }
 
+    /**
+     * Upload and assert the request succeeded.
+     *
+     * Checking the redirect matters: a 500 leaves the session free of
+     * validation errors, so asserting only on those once let an exception
+     * inside the encoder look like a passing request, and the test failed
+     * later and elsewhere on a null image_path.
+     */
+    private function upload(User $user, Artist $artist, UploadedFile $photo): void
+    {
+        $this->actingAs($user)
+            ->post(route('artists.photo.store', $artist), ['photo' => $photo])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+    }
+
     private function memberOf(Artist $artist): User
     {
         $user = User::factory()->create();
@@ -63,11 +79,7 @@ class ArtistPhotoTest extends TestCase
         $artist = Artist::factory()->create();
         $member = $this->memberOf($artist);
 
-        $this->actingAs($member)
-            ->post(route('artists.photo.store', $artist), [
-                'photo' => UploadedFile::fake()->image('band.png', 400, 300),
-            ])
-            ->assertSessionHasNoErrors();
+        $this->upload($member, $artist, UploadedFile::fake()->image('band.png', 400, 300));
 
         $artist->refresh();
 
@@ -87,7 +99,7 @@ class ArtistPhotoTest extends TestCase
         // Sanity: the fixture really does carry the metadata.
         $this->assertStringContainsString(self::GPS_CANARY, file_get_contents($upload->getRealPath()));
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), ['photo' => $upload]);
+        $this->upload($member, $artist, $upload);
 
         $stored = $this->disk()->get($artist->fresh()->image_path);
 
@@ -101,9 +113,7 @@ class ArtistPhotoTest extends TestCase
         $artist = Artist::factory()->create();
         $member = $this->memberOf($artist);
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), [
-            'photo' => UploadedFile::fake()->image('wide.jpg', 2000, 1000),
-        ]);
+        $this->upload($member, $artist, UploadedFile::fake()->image('wide.jpg', 2000, 1000));
 
         [$width, $height] = getimagesizefromstring($this->disk()->get($artist->fresh()->image_path));
 
@@ -116,9 +126,7 @@ class ArtistPhotoTest extends TestCase
         $artist = Artist::factory()->create();
         $member = $this->memberOf($artist);
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), [
-            'photo' => UploadedFile::fake()->image('small.jpg', 300, 200),
-        ]);
+        $this->upload($member, $artist, UploadedFile::fake()->image('small.jpg', 300, 200));
 
         [$width] = getimagesizefromstring($this->disk()->get($artist->fresh()->image_path));
 
@@ -130,14 +138,10 @@ class ArtistPhotoTest extends TestCase
         $artist = Artist::factory()->create();
         $member = $this->memberOf($artist);
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), [
-            'photo' => UploadedFile::fake()->image('first.jpg', 300, 300),
-        ]);
+        $this->upload($member, $artist, UploadedFile::fake()->image('first.jpg', 300, 300));
         $first = $artist->fresh()->image_path;
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), [
-            'photo' => UploadedFile::fake()->image('second.jpg', 300, 300),
-        ]);
+        $this->upload($member, $artist, UploadedFile::fake()->image('second.jpg', 300, 300));
         $second = $artist->fresh()->image_path;
 
         $this->assertNotSame($first, $second);
@@ -150,9 +154,7 @@ class ArtistPhotoTest extends TestCase
         $artist = Artist::factory()->create();
         $member = $this->memberOf($artist);
 
-        $this->actingAs($member)->post(route('artists.photo.store', $artist), [
-            'photo' => UploadedFile::fake()->image('band.jpg', 300, 300),
-        ]);
+        $this->upload($member, $artist, UploadedFile::fake()->image('band.jpg', 300, 300));
         $path = $artist->fresh()->image_path;
 
         $this->actingAs($member)->delete(route('artists.photo.destroy', $artist));
