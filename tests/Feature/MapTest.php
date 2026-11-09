@@ -18,10 +18,11 @@ class MapTest extends TestCase
         'east' => -72.0,
     ];
 
-    public function test_guests_are_redirected_to_login(): void
+    public function test_the_map_shell_still_requires_login(): void
     {
+        // The guest map shell arrives with the Step 4 UI; its data is
+        // already public (see MapSearchTest).
         $this->get(route('map.index'))->assertRedirect(route('login'));
-        $this->get(route('map.artists', self::BOUNDS))->assertRedirect(route('login'));
     }
 
     public function test_the_map_centers_on_the_users_coordinates(): void
@@ -123,10 +124,17 @@ class MapTest extends TestCase
     {
         $user = User::factory()->create();
 
+        // No area, radius, or search term: nothing says where to look.
         $this->actingAs($user)
             ->getJson(route('map.artists'))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['south', 'north', 'west', 'east']);
+            ->assertJsonValidationErrors(['south']);
+
+        // A partial viewport is still rejected.
+        $this->actingAs($user)
+            ->getJson(route('map.artists', ['south' => 41, 'north' => 42]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['west', 'east']);
 
         $this->actingAs($user)
             ->getJson(route('map.artists', ['south' => 50, 'north' => 40, 'west' => -73, 'east' => -72]))

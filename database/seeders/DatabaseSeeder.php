@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Artist;
 use App\Models\Post;
 use App\Models\User;
+use Database\Factories\Support\Towns;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -32,10 +33,16 @@ class DatabaseSeeder extends Seeder
             $user->followedArtists()->sync($artists->random(rand(0, 8))->pluck('id'));
         });
 
+        $hartford = Towns::named('Hartford');
+
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
+            'city' => $hartford['city'],
+            'state' => $hartford['state'],
+            'lat' => $hartford['lat'],
+            'lng' => $hartford['lng'],
         ]);
 
         Post::factory()

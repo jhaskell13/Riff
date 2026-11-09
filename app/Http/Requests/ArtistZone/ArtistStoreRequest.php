@@ -75,6 +75,8 @@ class ArtistStoreRequest extends FormRequest
             'instagram_url' => ['nullable', 'url:http,https', 'max:255', new LinkOnHost(['instagram.com'])],
 
             'music_url' => ['nullable', 'string', 'max:2048', new PlayableMusicUrl],
+
+            'photo' => ['nullable', ...ArtistPhotoRequest::photoRules()],
         ];
     }
 

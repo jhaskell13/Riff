@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use Database\Factories\Support\Towns;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -24,14 +25,17 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        // Users, like artists, are only ever known to town precision.
+        $town = Towns::random();
+
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'city' => fake()->city,
-            'state' => fake()->stateAbbr,
+            'city' => $town['city'],
+            'state' => $town['state'],
             'country' => 'USA',
-            'lat' => fake()->latitude(40.9, 42.4),
-            'lng' => fake()->longitude(-73.7, -71.1),
+            'lat' => $town['lat'],
+            'lng' => $town['lng'],
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

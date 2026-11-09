@@ -8,9 +8,11 @@ use App\Models\User;
 class ArtistPolicy
 {
     /**
-     * Any authenticated user may view an artist profile.
+     * Anyone may view an artist, including guests: profiles and map cards
+     * are public. (The profile page itself is still behind auth middleware
+     * until the guest experience ships.)
      */
-    public function view(User $user, Artist $artist): bool
+    public function view(?User $user, Artist $artist): bool
     {
         return true;
     }

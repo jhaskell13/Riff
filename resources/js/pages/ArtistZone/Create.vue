@@ -32,6 +32,7 @@ const form = useForm({
   youtube_url: '',
   instagram_url: '',
   email: '',
+  photo: null,
 });
 
 // Join mode is still a stub: the join-request workflow is Phase 3 roadmap
@@ -92,13 +93,33 @@ const clearInputs = () => {
             <q-card-section>
 
               <!-- CREATE MODE -->
-              <ArtistProfileFields
-                v-if="mode === 'create'"
-                :form="form"
-                :genre-options="genreOptions"
-                :artist-types="artistTypes"
-                :max-genres="maxGenres"
-              />
+              <div v-if="mode === 'create'">
+                <q-file
+                  v-model="form.photo"
+                  label="Photo (optional)"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  clearable
+                  rounded
+                  outlined
+                  bg-color="grey-8"
+                  color="grey-4"
+                  hint="Location data and other metadata are removed before it is saved."
+                  class="q-mb-md"
+                  :error="!!form.errors.photo"
+                  :error-message="form.errors.photo"
+                >
+                  <template #prepend>
+                    <q-icon name="photo_camera" />
+                  </template>
+                </q-file>
+
+                <ArtistProfileFields
+                  :form="form"
+                  :genre-options="genreOptions"
+                  :artist-types="artistTypes"
+                  :max-genres="maxGenres"
+                />
+              </div>
 
               <!-- JOIN MODE -->
               <div v-else>

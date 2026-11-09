@@ -6,6 +6,7 @@ use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
 use App\Models\Artist;
 use App\Models\Genre;
+use App\Services\ArtistPhotos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -47,15 +48,19 @@ class ArtistZoneController extends Controller
         return Inertia::render('ArtistZone/Create', $this->formOptions());
     }
 
-    public function store(ArtistStoreRequest $request): RedirectResponse
+    public function store(ArtistStoreRequest $request, ArtistPhotos $photos): RedirectResponse
     {
         $this->authorize('create', Artist::class);
 
         $validated = $request->validated();
 
-        $artist = Artist::create(Arr::except($validated, 'genres'));
+        $artist = Artist::create(Arr::except($validated, ['genres', 'photo']));
         $artist->genres()->sync($validated['genres']);
         $artist->members()->attach($request->user());
+
+        if ($request->hasFile('photo')) {
+            $photos->store($artist, $request->file('photo'));
+        }
 
         return to_route('artists.show', $artist);
     }
@@ -92,8 +97,17 @@ class ArtistZoneController extends Controller
 
         $validated = $request->validated();
 
-        $artist->update(Arr::except($validated, 'genres'));
-        $artist->genres()->sync($validated['genres']);
+        $artist->fill(Arr::except($validated, 'genres'));
+        $genreChanges = $artist->genres()->sync($validated['genres']);
+
+        if ($artist->isDirty()) {
+            $artist->save();
+        } elseif (array_filter($genreChanges) !== []) {
+            // A genre-only edit leaves the row itself clean, so no model
+            // event would fire; touching keeps updated_at honest and lets
+            // the map cache see the change.
+            $artist->touch();
+        }
 
         return to_route('artists.show', $artist);
     }

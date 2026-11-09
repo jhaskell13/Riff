@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\GenreCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -17,6 +18,12 @@ class Genre extends Model
     protected $fillable = ['name', 'slug', 'is_curated', 'created_by'];
 
     protected $casts = ['is_curated' => 'boolean'];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => GenreCatalog::flush());
+        static::deleted(fn () => GenreCatalog::flush());
+    }
 
     public function artists(): BelongsToMany
     {

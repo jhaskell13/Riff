@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Artist;
 use App\Models\Genre;
+use Database\Factories\Support\Towns;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,20 +19,34 @@ class ArtistFactory extends Factory
      */
     public function definition(): array
     {
+        // A real town at its real center, matching what the geocoder would
+        // store, so a seeded map works without a geocoding API key and no
+        // pin lands in the water.
+        $town = Towns::random();
+
         return [
             'name' => fake()->company,
             'artist_type' => fake()->randomElement(array_keys(config('riff.artist.types'))),
-            'hometown' => fake()->city,
-            'stateOrProvince' => fake()->stateAbbr,
+            'hometown' => $town['city'],
+            'stateOrProvince' => $town['state'],
             'country' => 'USA',
             'biography' => fake()->paragraph,
-            // Southern New England spread, matching the default map center,
-            // so a seeded database puts visible markers on the map without
-            // needing a geocoding API key.
-            'lat' => fake()->latitude(40.9, 42.4),
-            'lng' => fake()->longitude(-73.7, -71.1),
+            'lat' => $town['lat'],
+            'lng' => $town['lng'],
             'show_on_map' => true,
         ];
+    }
+
+    public function inTown(string $city): static
+    {
+        $town = Towns::named($city);
+
+        return $this->state(fn () => [
+            'hometown' => $town['city'],
+            'stateOrProvince' => $town['state'],
+            'lat' => $town['lat'],
+            'lng' => $town['lng'],
+        ]);
     }
 
     /**

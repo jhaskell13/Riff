@@ -8,8 +8,15 @@ return [
     |--------------------------------------------------------------------------
     |
     | default_center is used when the viewer has no geocoded location yet.
-    | max_markers bounds a single viewport query so a zoomed-out map cannot
-    | pull the whole artists table.
+    |
+    | max_markers is the most individual artists one response may carry. When
+    | an area holds more, the API switches to server-side clusters (a grid of
+    | cluster_grid x cluster_grid cells) plus the list_limit nearest artists,
+    | so a zoomed-out view costs one aggregate query instead of hundreds of
+    | hydrated rows. search_limit bounds a name search with no area.
+    |
+    | cache_ttl_seconds caches non-personal results; any artist change
+    | invalidates them immediately regardless. 0 disables caching.
     |
     */
 
@@ -19,6 +26,14 @@ return [
             'lng' => (float) env('RIFF_MAP_DEFAULT_LNG', -72.6850932),
         ],
         'max_markers' => (int) env('RIFF_MAP_MAX_MARKERS', 500),
+        'list_limit' => (int) env('RIFF_MAP_LIST_LIMIT', 100),
+        'search_limit' => (int) env('RIFF_MAP_SEARCH_LIMIT', 50),
+        'cluster_grid' => (int) env('RIFF_MAP_CLUSTER_GRID', 16),
+        'max_radius_km' => (float) env('RIFF_MAP_MAX_RADIUS_KM', 400),
+        // Offered in the viewer's own unit.
+        'radius_options' => [5, 10, 25, 50, 100],
+        'cache_ttl_seconds' => (int) env('RIFF_MAP_CACHE_TTL', 60),
+        'rate_limit_per_minute' => (int) env('RIFF_MAP_RATE_LIMIT', 180),
     ],
 
     /*
@@ -92,8 +107,13 @@ return [
     'media' => [
         'disk' => env('RIFF_MEDIA_DISK', 'public'),
         'artist_photo' => [
-            'max_kilobytes' => (int) env('RIFF_ARTIST_PHOTO_MAX_KB', 4096),
+            'max_kilobytes' => (int) env('RIFF_ARTIST_PHOTO_MAX_KB', 8192),
+            // Largest stored edge; uploads are scaled down to fit.
             'max_edge_pixels' => (int) env('RIFF_ARTIST_PHOTO_MAX_EDGE', 1200),
+            // Largest accepted source edge. Decoding costs ~4 bytes per
+            // pixel, so this bounds memory before any decode happens.
+            'max_source_edge_pixels' => (int) env('RIFF_ARTIST_PHOTO_MAX_SOURCE_EDGE', 6000),
+            'jpeg_quality' => 85,
         ],
     ],
 

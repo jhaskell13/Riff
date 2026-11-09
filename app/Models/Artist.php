@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Contracts\Geocodable;
 use App\Observers\GeocodableObserver;
 use App\Services\MusicLink;
+use App\Support\MapCache;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -57,6 +58,18 @@ class Artist extends Model implements Geocodable
      * to read it keeps working.
      */
     protected $appends = ['image_url'];
+
+    /**
+     * Any change to an artist can change what a map viewport shows, so it
+     * invalidates every cached map result. Coordinates written by the
+     * geocoder bypass these events and bump the cache themselves.
+     */
+    protected static function booted(): void
+    {
+        foreach (['saved', 'deleted', 'restored'] as $event) {
+            static::$event(fn () => MapCache::bump());
+        }
+    }
 
     /**
      * Get all of the members for the Artist

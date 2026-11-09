@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ArtistFollowController;
+use App\Http\Controllers\ArtistPhotoController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\MapController;
@@ -19,6 +20,16 @@ Route::get('/', function () {
     ]);
 });
 
+// Map data is public so a first-time visitor can explore before signing up.
+// Rate-limited per user or IP; see the "map" limiter.
+Route::middleware('throttle:map')->group(function () {
+    Route::get('map/artists', [MapController::class, 'artists'])->name('map.artists');
+    Route::get('map/artists/{artist}', [MapController::class, 'card'])
+        ->whereNumber('artist')
+        ->name('map.artists.card');
+    Route::get('map/places', [MapController::class, 'places'])->name('map.places');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // Feed
@@ -27,14 +38,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:posts')
         ->name('feed.store');
 
-    // Artist Map
+    // Artist Map (the shell; its data endpoints are public, below)
     Route::get('map', [MapController::class, 'index'])->name('map.index');
-    Route::get('map/artists', [MapController::class, 'artists'])->name('map.artists');
 
     // Artist Zone
     Route::post('artists/{artist}/restore', [ArtistZoneController::class, 'restore'])
         ->withTrashed()
         ->name('artists.restore');
+    Route::post('artists/{artist}/photo', [ArtistPhotoController::class, 'store'])
+        ->middleware('throttle:uploads')
+        ->name('artists.photo.store');
+    Route::delete('artists/{artist}/photo', [ArtistPhotoController::class, 'destroy'])
+        ->name('artists.photo.destroy');
     Route::post('artists/{artist}/follow', [ArtistFollowController::class, 'store'])
         ->middleware('throttle:follows')
         ->name('artists.follow');

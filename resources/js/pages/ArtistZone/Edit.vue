@@ -36,6 +36,31 @@ const submit = () => {
     form.patch(route('artists.update', props.artist.id));
 };
 
+// The photo saves on its own the moment one is picked; it is not part of
+// the profile form above (multipart bodies cannot ride on a PATCH).
+const photoForm = useForm({ photo: null });
+
+const uploadPhoto = (file) => {
+    if (!file) {
+        return;
+    }
+
+    photoForm.photo = file;
+    photoForm.post(route('artists.photo.store', props.artist.id), {
+        forceFormData: true,
+        preserveScroll: true,
+        onFinish: () => {
+            photoForm.photo = null;
+        },
+    });
+};
+
+const removePhoto = () => {
+    if (confirm('Remove this photo?')) {
+        router.delete(route('artists.photo.destroy', props.artist.id), { preserveScroll: true });
+    }
+};
+
 const archive = () => {
     if (confirm(`Archive ${props.artist.name}? The identity is hidden from Riff but can be restored later.`)) {
         router.delete(route('artists.destroy', props.artist.id));
@@ -86,6 +111,52 @@ const archive = () => {
                         </q-card-actions>
                     </q-card>
 
+                    <q-card class="post-card q-pb-sm q-mb-md">
+                        <q-card-section class="row items-center no-wrap gap-5">
+                            <q-avatar size="72px" :color="artist.image_url ? '' : 'primary'" text-color="white">
+                                <img v-if="artist.image_url" :src="artist.image_url" :alt="`${artist.name} photo`" />
+                                <q-icon v-else name="groups" size="36px" />
+                            </q-avatar>
+                            <div class="col">
+                                <div class="text-subtitle1 text-weight-medium text-grey-3">Photo</div>
+                                <p class="text-grey-7 m-0 text-caption">
+                                    JPG, PNG or WebP. Location data and other metadata are removed from every photo
+                                    before it is saved.
+                                </p>
+                                <div v-if="photoForm.errors.photo" class="text-negative text-caption q-mt-xs">
+                                    {{ photoForm.errors.photo }}
+                                </div>
+                            </div>
+                        </q-card-section>
+                        <q-card-actions align="right" class="q-px-md q-pb-md">
+                            <q-btn
+                                v-if="artist.image_url"
+                                flat rounded color="grey-5"
+                                label="Remove"
+                                padding="xs md"
+                                @click="removePhoto"
+                            />
+                            <q-file
+                                :model-value="photoForm.photo"
+                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                dense borderless
+                                class="photo-picker"
+                                :loading="photoForm.processing"
+                                @update:model-value="uploadPhoto"
+                            >
+                                <template #default>
+                                    <q-btn
+                                        unelevated rounded color="primary"
+                                        :label="artist.image_url ? 'Replace photo' : 'Upload photo'"
+                                        padding="xs lg"
+                                        :loading="photoForm.processing"
+                                        class="no-pointer-events"
+                                    />
+                                </template>
+                            </q-file>
+                        </q-card-actions>
+                    </q-card>
+
                     <q-card class="post-card q-pb-sm q-mb-xl">
                         <q-card-section>
                             <div class="text-subtitle1 text-weight-medium text-grey-3">Archive this artist</div>
@@ -119,5 +190,10 @@ const archive = () => {
     background: #1e1e1e;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* q-file renders the button as its content; hide the field chrome. */
+.photo-picker :deep(.q-field__control) {
+    padding: 0;
 }
 </style>
