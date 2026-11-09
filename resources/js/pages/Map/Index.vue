@@ -9,7 +9,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import FilterBar from '@/Components/Map/FilterBar.vue';
 import ResultList from '@/Components/Map/ResultList.vue';
 import ArtistCardPanel from '@/Components/Map/ArtistCardPanel.vue';
-import { artistIcon, clusterIcon, markerLabel } from '@/Components/Map/markers';
+import { artistIcon, clusterIcon, markerLabel, youIcon } from '@/Components/Map/markers';
 import { useArtistCard, useMapArtists } from '@/Composables/useMapData';
 import { useMapFilters } from '@/Composables/useMapFilters';
 
@@ -27,8 +27,11 @@ const card = useArtistCard();
 
 const selectedId = ref(null);
 const hoveredId = ref(null);
-const mobilePanel = ref(false);
 const notice = ref(null);
+
+// The side panel starts open on a wide screen and closed on a phone,
+// where the map itself should be the first thing seen.
+const panelOpen = ref(typeof window === 'undefined' ? true : window.innerWidth >= 1024);
 
 // Distances are measured from the middle of what the listener is looking
 // at, unless a radius is set -- then the circle has a fixed centre and
@@ -39,7 +42,10 @@ let map = null;
 let markerLayer = null;
 let clusterLayer = null;
 let radiusCircle = null;
-let homeMarker = null;
+let youMarker = null;
+let resizeTimer = null;
+// A location the browser shared this session, held in memory only.
+let locatedPoint = null;
 const markerById = new Map();
 
 const reduceMotion = typeof window !== 'undefined'
@@ -210,6 +216,30 @@ watch(hoveredId, (id, previous) => {
     if (id && id !== selectedId.value) setPinState(id, 'hover');
 });
 
+/**
+ * Place (or move) the viewer's own marker. It is lifted far above the
+ * artist pins: artists in a town share its exact centre, which is also
+ * where this sits, and being underneath them made it invisible.
+ */
+const showYouAreHere = (lat, lng, label) => {
+    if (youMarker) {
+        youMarker.setLatLng([lat, lng]);
+        youMarker.setTooltipContent(label);
+
+        return;
+    }
+
+    youMarker = L.marker([lat, lng], {
+        icon: youIcon(),
+        zIndexOffset: 10000,
+        interactive: true,
+        keyboard: false,
+        alt: label,
+    })
+        .bindTooltip(label, { direction: 'top', offset: [0, -12] })
+        .addTo(map);
+};
+
 /* ------------------------------------------------------------------ */
 /* Selection                                                           */
 /* ------------------------------------------------------------------ */
@@ -221,7 +251,7 @@ const selectArtist = (artist, { pan = true } = {}) => {
 
     selectedId.value = artist.id;
     setPinState(artist.id, 'active');
-    mobilePanel.value = true;
+    panelOpen.value = true;
 
     const origin = map.getCenter();
     card.open(artist.id, {
@@ -230,9 +260,21 @@ const selectArtist = (artist, { pan = true } = {}) => {
         unit: props.filterOptions.unit,
     });
 
-    if (pan) {
-        map.panTo([artist.lat, artist.lng], { animate: !reduceMotion });
+    if (!pan) {
+        return;
     }
+
+    const marker = markerById.get(artist.id);
+
+    // The pin may be inside a cluster bubble, where panning to it would
+    // show the listener nothing; markercluster can open the group first.
+    if (marker && markerLayer.hasLayer(marker)) {
+        markerLayer.zoomToShowLayer(marker, () => setPinState(artist.id, 'active'));
+
+        return;
+    }
+
+    map.panTo([artist.lat, artist.lng], { animate: !reduceMotion });
 };
 
 const closeCard = () => {
@@ -252,6 +294,12 @@ const onFollowed = (id) => card.forget(id);
 /* ------------------------------------------------------------------ */
 
 const goHome = () => {
+    if (locatedPoint) {
+        map.setView(locatedPoint, 12, { animate: !reduceMotion });
+
+        return;
+    }
+
     map.setView([props.center.lat, props.center.lng], 11, { animate: !reduceMotion });
 
     if (!props.hasOwnLocation) {
@@ -275,7 +323,9 @@ const locate = () => {
             notice.value = null;
             // Used for this view only: never stored, and never sent
             // anywhere except as the origin of a map query.
-            map.setView([coords.latitude, coords.longitude], 12, { animate: !reduceMotion });
+            locatedPoint = L.latLng(coords.latitude, coords.longitude);
+            map.setView(locatedPoint, 12, { animate: !reduceMotion });
+            showYouAreHere(coords.latitude, coords.longitude, 'Your location');
 
             if (filters.radius) {
                 radiusOrigin.value = L.latLng(coords.latitude, coords.longitude);
@@ -314,6 +364,16 @@ watch(() => ({ ...filters, genres: [...filters.genres], types: [...filters.types
     drawRadius();
     load();
 }, { deep: true });
+
+// Collapsing the panel resizes the map's container; Leaflet only
+// recalculates on demand, and skipping this leaves grey tiles.
+watch(panelOpen, async () => {
+    await nextTick();
+    map?.invalidateSize({ animate: false });
+    // Again once the width transition has finished, or the map keeps the
+    // size it had partway through the animation.
+    resizeTimer = setTimeout(() => map?.invalidateSize({ animate: false }), 240);
+});
 
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                           */
@@ -355,13 +415,7 @@ onMounted(() => {
     map.addLayer(clusterLayer);
 
     if (props.hasOwnLocation) {
-        homeMarker = L.circleMarker([props.center.lat, props.center.lng], {
-            radius: 6,
-            color: '#fff',
-            weight: 2,
-            fillColor: '#d32f2f',
-            fillOpacity: 0.9,
-        }).bindTooltip('Your area').addTo(map);
+        showYouAreHere(props.center.lat, props.center.lng, 'Your area');
     }
 
     map.on('moveend zoomend', () => load());
@@ -373,6 +427,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+    clearTimeout(resizeTimer);
     cancel();
     map?.remove();
     map = null;
@@ -383,7 +438,7 @@ onBeforeUnmount(() => {
     <Head title="Map" />
 
     <AuthenticatedLayout>
-        <q-page class="map-page">
+        <q-page class="map-page" :style-fn="(offset) => ({ height: `calc(100dvh - ${offset}px)` })">
             <FilterBar
                 :filters="filters"
                 :options="filterOptions"
@@ -398,7 +453,7 @@ onBeforeUnmount(() => {
 
             <div class="map-body">
                 <!-- Side panel: list, or the selected artist -->
-                <aside class="map-aside" :class="{ 'map-aside--open': mobilePanel }">
+                <aside class="map-aside" :class="{ 'map-aside--closed': !panelOpen }" :inert="panelOpen ? undefined : true">
                     <ArtistCardPanel
                         v-if="selectedId"
                         :card="card.card.value"
@@ -407,6 +462,7 @@ onBeforeUnmount(() => {
                         :can-follow="canFollow"
                         @close="closeCard"
                         @followed="onFollowed"
+                        @collapse="panelOpen = false"
                     />
                     <ResultList
                         v-else
@@ -422,6 +478,7 @@ onBeforeUnmount(() => {
                         @hover="(id) => (hoveredId = id)"
                         @retry="retry"
                         @clear-filters="clearFilters"
+                        @collapse="panelOpen = false"
                     />
                 </aside>
 
@@ -450,14 +507,20 @@ onBeforeUnmount(() => {
                         Zoom in to see individual artists
                     </div>
 
-                    <!-- Phone: a handle back to the list -->
-                    <q-btn
-                        class="map-sheet-toggle lg:hidden"
-                        unelevated rounded no-caps color="primary"
-                        :icon="mobilePanel ? 'expand_more' : 'expand_less'"
-                        :label="mobilePanel ? 'Hide list' : `${meta?.returned ?? 0} nearby`"
-                        @click="mobilePanel = !mobilePanel"
-                    />
+                    <!-- Re-open the panel: a tab on the left edge of a wide
+                         screen, a pill above the map on a phone. -->
+                    <button
+                        v-show="!panelOpen"
+                        type="button"
+                        class="map-reopen"
+                        :aria-label="`Show the artist list (${meta?.returned ?? 0} here)`"
+                        @click="panelOpen = true"
+                    >
+                        <q-icon class="map-reopen__wide" name="chevron_right" size="20px" />
+                        <q-icon class="map-reopen__narrow" name="expand_less" size="18px" />
+                        <span class="map-reopen__count">{{ meta?.returned ?? 0 }}</span>
+                        <span class="map-reopen__word">nearby</span>
+                    </button>
                 </div>
             </div>
         </q-page>
@@ -468,8 +531,8 @@ onBeforeUnmount(() => {
 .map-page {
     display: flex;
     flex-direction: column;
-    /* Fill the viewport below the Quasar header. */
-    height: calc(100vh - 50px);
+    /* Height comes from the style-fn above, which knows the header and
+       footer offsets; this only stops the page scrolling as a whole. */
     overflow: hidden;
     background: var(--color-riff-bg);
 }
@@ -492,6 +555,48 @@ onBeforeUnmount(() => {
     flex-shrink: 0;
     border-right: 1px solid var(--color-riff-line);
     min-height: 0;
+    transition: width 200ms ease;
+}
+
+/* Wide screens: the panel collapses to nothing, leaving the map full
+   width and a tab on its edge to bring it back. */
+.map-aside--closed {
+    width: 0;
+    border-right: 0;
+    overflow: hidden;
+}
+
+.map-reopen {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transform: translateY(-50%);
+    padding: 14px 6px 14px 4px;
+    border: 1px solid var(--color-riff-line);
+    border-left: 0;
+    border-radius: 0 10px 10px 0;
+    background: var(--color-riff-surface);
+    color: var(--color-riff-text);
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.map-reopen:hover {
+    background: var(--color-riff-surface-2);
+}
+
+.map-reopen__narrow,
+.map-reopen__word {
+    display: none;
+}
+
+.map-reopen__count {
+    font-weight: 600;
+    writing-mode: vertical-rl;
 }
 
 .map-notice,
@@ -503,6 +608,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 4px;
+    max-width: calc(100% - 24px);
     transform: translateX(-50%);
     border-radius: 9999px;
     padding: 6px 8px 6px 16px;
@@ -525,6 +631,7 @@ onBeforeUnmount(() => {
     bottom: 16px;
     left: 50%;
     z-index: 1000;
+    max-width: calc(100% - 24px);
     transform: translateX(-50%);
     border-radius: 9999px;
     background: rgb(30 30 30 / 0.9);
@@ -532,13 +639,7 @@ onBeforeUnmount(() => {
     font-size: 0.75rem;
     color: var(--color-riff-muted);
     pointer-events: none;
-}
-
-.map-sheet-toggle {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    z-index: 1000;
+    text-align: center;
 }
 
 .fade-enter-active,
@@ -551,28 +652,61 @@ onBeforeUnmount(() => {
     opacity: 0;
 }
 
-/* Phone: the panel becomes a sheet over the map. */
+/* Phones: the panel is a sheet over the map, and the tab becomes a pill
+   sitting above the sheet's resting position. */
 @media (max-width: 1023px) {
     .map-aside {
         position: absolute;
         inset: auto 0 0 0;
         z-index: 1100;
         width: 100%;
-        height: 65%;
-        transform: translateY(100%);
+        height: 70%;
         border-right: 0;
         border-top: 1px solid var(--color-riff-line);
         border-radius: 14px 14px 0 0;
         overflow: hidden;
+        box-shadow: 0 -6px 20px rgb(0 0 0 / 0.45);
         transition: transform 200ms ease;
     }
 
-    .map-aside--open {
-        transform: translateY(0);
+    .map-aside--closed {
+        width: 100%;
+        transform: translateY(100%);
     }
 
-    .map-sheet-toggle {
+    .map-reopen {
+        top: auto;
         bottom: 16px;
+        left: 16px;
+        transform: none;
+        padding: 7px 14px;
+        border: 0;
+        border-radius: 9999px;
+        background: var(--color-riff-primary);
+        color: #fff;
+        box-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+    }
+
+    .map-reopen:hover {
+        background: var(--color-riff-primary);
+    }
+
+    .map-reopen__wide {
+        display: none;
+    }
+
+    .map-reopen__narrow,
+    .map-reopen__word {
+        display: inline;
+    }
+
+    .map-reopen__count {
+        writing-mode: horizontal-tb;
+    }
+
+    /* Keep Leaflet's own controls clear of the sheet and the pill. */
+    .map-canvas :deep(.leaflet-bottom) {
+        bottom: 58px;
     }
 }
 

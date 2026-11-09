@@ -65,6 +65,30 @@ export function clusterIcon(count) {
 }
 
 /**
+ * The viewer's own position: their profile area, or a location the
+ * browser shared for this session only.
+ */
+export function youIcon() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'riff-you';
+
+    const pulse = document.createElement('span');
+    pulse.className = 'riff-you__pulse';
+    wrapper.appendChild(pulse);
+
+    const dot = document.createElement('span');
+    dot.className = 'riff-you__dot';
+    wrapper.appendChild(dot);
+
+    return L.divIcon({
+        html: wrapper,
+        className: '',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+    });
+}
+
+/**
  * Accessible label for a marker, read by screen readers and shown as the
  * browser tooltip.
  */

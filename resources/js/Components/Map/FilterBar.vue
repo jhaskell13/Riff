@@ -57,9 +57,9 @@ const selectProps = {
 </script>
 
 <template>
-    <div class="flex items-center gap-2 border-b border-riff-line bg-riff-surface px-3 py-2">
+    <div class="flex flex-nowrap items-center gap-2 border-b border-riff-line bg-riff-surface px-2 py-2 sm:px-3">
         <!-- Search: filters artists, and offers towns to jump to -->
-        <div class="relative w-full max-w-xs">
+        <div class="relative min-w-0 flex-1 lg:max-w-xs lg:flex-none">
             <q-input
                 :model-value="filters.q"
                 dense outlined clearable
@@ -99,7 +99,7 @@ const selectProps = {
         </div>
 
         <!-- Inline controls on wide screens -->
-        <div class="hidden items-center gap-2 lg:flex">
+        <div class="wide-only items-center gap-2">
             <q-select
                 v-model="filters.genres"
                 v-bind="selectProps"
@@ -152,7 +152,7 @@ const selectProps = {
         <!-- One button on narrow screens -->
         <q-btn
             flat dense no-caps color="grey-4" icon="tune" label="Filters"
-            class="lg:hidden"
+            class="narrow-only shrink-0"
             @click="dialogOpen = true"
         >
             <q-badge v-if="activeCount" color="primary" floating rounded>{{ activeCount }}</q-badge>
@@ -161,11 +161,11 @@ const selectProps = {
         <q-btn
             v-if="activeCount"
             flat dense no-caps color="grey-5" icon="close" label="Clear"
-            class="hidden lg:flex"
+            class="wide-only"
             @click="emit('reset')"
         />
 
-        <div class="ml-auto flex items-center gap-1">
+        <div class="ml-auto flex shrink-0 items-center gap-1">
             <q-spinner v-if="busy" size="18px" color="primary" class="mr-1" />
             <q-btn flat dense round icon="my_location" color="grey-4" @click="emit('locate')">
                 <q-tooltip>Use my current location</q-tooltip>
@@ -201,3 +201,24 @@ const selectProps = {
         </q-dialog>
     </div>
 </template>
+
+<style scoped>
+/* Breakpoint matches the map page's own 1024px switch. */
+.wide-only {
+    display: none;
+}
+
+.narrow-only {
+    display: inline-flex;
+}
+
+@media (min-width: 1024px) {
+    .wide-only {
+        display: flex;
+    }
+
+    .narrow-only {
+        display: none;
+    }
+}
+</style>

@@ -14,15 +14,22 @@ defineProps({
     canFollow: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['close', 'followed']);
+const emit = defineEmits(['close', 'followed', 'collapse']);
 </script>
 
 <template>
     <div class="flex h-full flex-col bg-riff-surface">
-        <div class="flex items-center justify-between border-b border-riff-line px-2 py-2">
+        <div class="flex items-center justify-between gap-1 border-b border-riff-line px-2 py-2">
             <q-btn flat dense no-caps icon="arrow_back" label="Back to list" color="grey-5" @click="emit('close')" />
-            <q-btn v-if="card" flat dense round icon="open_in_full" color="grey-5" :href="card.url" type="a">
-                <q-tooltip>Open full profile</q-tooltip>
+            <q-btn
+                flat dense round size="sm" color="grey-5"
+                class="collapse-btn"
+                aria-label="Hide the artist panel"
+                @click="emit('collapse')"
+            >
+                <q-icon class="collapse-btn__wide" name="chevron_left" size="20px" />
+                <q-icon class="collapse-btn__narrow" name="expand_more" size="20px" />
+                <q-tooltip>Hide panel</q-tooltip>
             </q-btn>
         </div>
 
@@ -39,20 +46,20 @@ const emit = defineEmits(['close', 'followed']);
             </div>
 
             <div v-else-if="card" class="p-4">
-                <div class="flex items-center gap-3">
-                    <q-avatar size="64px" :color="card.imageUrl ? '' : 'grey-9'" text-color="grey-5">
+                <div class="flex items-start gap-3">
+                    <q-avatar size="64px" class="shrink-0" :color="card.imageUrl ? '' : 'grey-9'" text-color="grey-5">
                         <img v-if="card.imageUrl" :src="card.imageUrl" :alt="`${card.name} photo`" />
                         <q-icon v-else name="music_note" size="30px" />
                     </q-avatar>
-                    <div class="min-w-0">
-                        <h2 class="truncate text-lg leading-tight font-bold text-riff-text">{{ card.name }}</h2>
-                        <p class="text-xs text-riff-muted">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-lg leading-tight font-bold break-words text-riff-text">{{ card.name }}</h2>
+                        <p class="text-xs break-words text-riff-muted">
                             {{ card.typeLabel }}
                             <template v-if="card.distance !== null">
                                 · {{ card.distance }} {{ card.unit }} away
                             </template>
                         </p>
-                        <p class="text-xs text-riff-muted">{{ card.location }}</p>
+                        <p class="text-xs break-words text-riff-muted">{{ card.location }}</p>
                     </div>
                 </div>
 
@@ -106,3 +113,19 @@ const emit = defineEmits(['close', 'followed']);
         </div>
     </div>
 </template>
+
+<style scoped>
+.collapse-btn__narrow {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .collapse-btn__wide {
+        display: none;
+    }
+
+    .collapse-btn__narrow {
+        display: inline-flex;
+    }
+}
+</style>

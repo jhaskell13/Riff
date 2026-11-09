@@ -21,7 +21,7 @@ const props = defineProps({
     canFollow: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['select', 'hover', 'retry', 'clear-filters']);
+const emit = defineEmits(['select', 'hover', 'retry', 'clear-filters', 'collapse']);
 
 const unit = computed(() => props.meta?.unit ?? 'mi');
 const isEmpty = computed(() => !props.loading && !props.failed && !props.pristine && props.artists.length === 0);
@@ -60,9 +60,21 @@ watch(() => props.selectedId, (id) => {
 <template>
     <div class="flex h-full flex-col bg-riff-surface">
         <!-- Summary -->
-        <div class="flex items-center gap-2 border-b border-riff-line px-4 py-2 text-xs text-riff-muted">
+        <div class="flex items-center gap-2 border-b border-riff-line py-2 pr-1 pl-4 text-xs text-riff-muted">
             <q-spinner v-if="loading" size="14px" color="primary" />
-            <span aria-live="polite">{{ loading && pristine ? 'Finding artists…' : summary }}</span>
+            <span aria-live="polite" class="min-w-0 flex-1">
+                {{ loading && pristine ? 'Finding artists…' : summary }}
+            </span>
+            <q-btn
+                flat dense round size="sm" color="grey-5"
+                class="collapse-btn"
+                aria-label="Hide the artist list"
+                @click="emit('collapse')"
+            >
+                <q-icon class="collapse-btn__wide" name="chevron_left" size="20px" />
+                <q-icon class="collapse-btn__narrow" name="expand_more" size="20px" />
+                <q-tooltip>Hide list</q-tooltip>
+            </q-btn>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto">
@@ -134,15 +146,20 @@ watch(() => props.selectedId, (id) => {
 
                         <div class="min-w-0 flex-1">
                             <div class="flex items-baseline gap-2">
-                                <span class="truncate text-sm font-semibold text-riff-text">{{ artist.name }}</span>
+                                <span
+                                    class="line-clamp-2 min-w-0 flex-1 text-sm font-semibold break-words text-riff-text"
+                                    :title="artist.name"
+                                >{{ artist.name }}</span>
                                 <span v-if="artist.distance !== null" class="shrink-0 text-xs text-riff-muted">
                                     {{ artist.distance }} {{ unit }}
                                 </span>
                             </div>
-                            <div class="truncate text-xs text-riff-muted">
+                            <div class="line-clamp-1 text-xs break-words text-riff-muted">
                                 {{ [artist.typeLabel, ...(artist.genres ?? [])].filter(Boolean).join(' · ') }}
                             </div>
-                            <div class="truncate text-xs text-riff-muted">{{ artist.location }}</div>
+                            <div class="line-clamp-1 text-xs break-words text-riff-muted" :title="artist.location">
+                                {{ artist.location }}
+                            </div>
                         </div>
 
                         <q-icon
@@ -159,3 +176,19 @@ watch(() => props.selectedId, (id) => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.collapse-btn__narrow {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .collapse-btn__wide {
+        display: none;
+    }
+
+    .collapse-btn__narrow {
+        display: inline-flex;
+    }
+}
+</style>
