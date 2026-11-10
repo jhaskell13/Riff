@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Contracts\Geocodable;
 use App\Observers\GeocodableObserver;
+use App\Support\OnboardingIntent;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -33,6 +34,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         'state',
         'country',
         'distance_unit',
+        'onboarding_intent',
         'lat',
         'lng',
     ];
@@ -57,6 +59,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'onboarding_intent' => OnboardingIntent::class,
             'lat' => 'float',
             'lng' => 'float',
         ];

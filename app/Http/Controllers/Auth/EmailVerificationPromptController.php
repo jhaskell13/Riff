@@ -17,6 +17,11 @@ class EmailVerificationPromptController extends Controller
     {
         return $request->user()->hasVerifiedEmail()
                     ? redirect()->intended(route('map.index', absolute: false))
-                    : Inertia::render('Auth/VerifyEmail', ['status' => session('status')]);
+                    : Inertia::render('Auth/VerifyEmail', [
+                        'status' => session('status'),
+                        // So the page can say what verifying leads to: an
+                        // artist is mid-way through getting on the map.
+                        'intent' => $request->user()->onboarding_intent?->value,
+                    ]);
     }
 }

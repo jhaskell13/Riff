@@ -9,6 +9,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import FilterBar from '@/Components/Map/FilterBar.vue';
 import ResultList from '@/Components/Map/ResultList.vue';
 import ArtistCardPanel from '@/Components/Map/ArtistCardPanel.vue';
+import WelcomeOverlay from '@/Components/Map/WelcomeOverlay.vue';
 import { artistIcon, clusterIcon, markerLabel, youIcon } from '@/Components/Map/markers';
 import { useArtistCard, useMapArtists } from '@/Composables/useMapData';
 import { useMapFilters } from '@/Composables/useMapFilters';
@@ -51,6 +52,36 @@ const markerById = new Map();
 const reduceMotion = typeof window !== 'undefined'
     && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 const unit = computed(() => meta.value?.unit ?? props.filterOptions.unit);
+
+/* ------------------------------------------------------------------ */
+/* Welcome                                                             */
+/* ------------------------------------------------------------------ */
+
+const WELCOME_KEY = 'riff.onboarding.seen';
+const welcomeOpen = ref(false);
+
+/**
+ * Some private-browsing modes make localStorage throw on read or write.
+ * A visitor who cannot be remembered is treated as one who has already
+ * seen this, rather than being shown it on every single visit.
+ */
+const welcomeSeen = () => {
+    try {
+        return window.localStorage.getItem(WELCOME_KEY) === '1';
+    } catch {
+        return true;
+    }
+};
+
+const rememberWelcome = () => {
+    try {
+        window.localStorage.setItem(WELCOME_KEY, '1');
+    } catch {
+        // Nothing to do; it just will not be remembered.
+    }
+};
+
+const openWelcome = () => (welcomeOpen.value = true);
 
 /* ------------------------------------------------------------------ */
 /* Fetching                                                            */
@@ -511,6 +542,16 @@ onMounted(() => {
     // buildParams settles its origin on this first call.
     load({ immediate: true });
     drawRadius();
+
+    // A first-time guest gets the introduction. Someone following a shared
+    // link, or landing with filters already applied, asked for a particular
+    // view -- an overlay on top of it would be in the way. Recorded the
+    // moment it opens, so a reload or a trip to registration and back does
+    // not bring it round again.
+    if (!props.canFollow && !initialView && !isFiltered.value && !welcomeSeen()) {
+        welcomeOpen.value = true;
+        rememberWelcome();
+    }
 });
 
 onBeforeUnmount(() => {
@@ -536,6 +577,13 @@ onBeforeUnmount(() => {
                 @jump="jumpToPlace"
                 @locate="locate"
                 @home="goHome"
+                @help="openWelcome"
+            />
+
+            <WelcomeOverlay
+                v-model="welcomeOpen"
+                :signed-in="canFollow"
+                :reduce-motion="reduceMotion"
             />
 
             <div class="map-body">

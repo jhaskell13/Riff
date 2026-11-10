@@ -41,12 +41,12 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 
 **Goal:** Make the map valuable even for a first-time visitor.
 
-- Design an onboarding path for listeners and artists; collect only the location fields needed for local discovery and explain public visibility.
-- Create a useful artist profile: name, artist type, genres, short bio, location, photo, links, and at least one playable music link or track embed.
-- Make map markers open a compact artist card with distance/area, genre, music preview, profile link, and follow action. Add a synchronized list view and clear empty/loading/error states.
-- Add search and filters for genre, artist type, and radius; support map movement/re-centering and mobile layouts.
-- Seed a pilot area with consented artist profiles and make the empty-map state invite artists to add themselves.
-- Add basic reporting, blocking, profile editing, and moderation workflow before public growth.
+- [x] Create a useful artist profile: name, artist type, genres, short bio, location, photo, links, and at least one playable music link or track embed.
+- [x] Make map markers open a compact artist card with distance/area, genre, music preview, profile link, and follow action. Add a synchronized list view and clear empty/loading/error states.
+- [x] Add search and filters for genre, artist type, and radius; support map movement/re-centering and mobile layouts.
+- [x] Design an onboarding path for listeners and artists; collect only the location fields needed for local discovery and explain public visibility. The map explains itself to a first-time guest and splits into two paths — find local music, or be found making it — each carried through registration and the verification that follows it.
+- [ ] Seed a pilot area with consented artist profiles and make the empty-map state invite artists to add themselves. *(The empty state already invites; pilot seeding is outstanding.)*
+- [ ] Add basic reporting, blocking, profile editing, and moderation workflow before public growth.
 
 **Success signals:** Visitors reach an artist profile from the map; profiles have playable music; listeners follow artists; artists complete profiles; users return to the map. Establish pilot baselines before setting numeric targets.
 

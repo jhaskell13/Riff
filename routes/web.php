@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', fn () => response('OK'));
 
 // The map is Riff's front door for everyone. The stock Laravel welcome
-// page used to answer here; onboarding (Phase 1 Step 5) may add a proper
-// landing view later.
+// page used to answer here; the introduction a first-time visitor needs is
+// an overlay on the map itself (Components/Map/WelcomeOverlay.vue), so
+// there is no separate landing page to pass through.
 Route::redirect('/', '/map')->name('home');
 
 // Map data is public so a first-time visitor can explore before signing up.

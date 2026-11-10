@@ -119,7 +119,7 @@ watch(() => props.selectedId, (id) => {
                     <q-btn
                         unelevated rounded no-caps color="primary" padding="xs lg" class="mt-3"
                         :label="canFollow ? 'Put yourself on the map' : 'Join Riff and add yourself'"
-                        :href="canFollow ? route('artists.create') : route('register')"
+                        :href="canFollow ? route('artists.create') : route('register', { intent: 'artist' })"
                         type="a"
                     />
                 </template>

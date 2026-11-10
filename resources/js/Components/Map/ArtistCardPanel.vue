@@ -87,9 +87,13 @@ const emit = defineEmits(['close', 'followed', 'collapse']);
                         <q-btn
                             unelevated rounded no-caps dense color="primary" padding="xs md"
                             icon="add" label="Follow"
-                            :href="route('login')" type="a"
+                            :href="route('register', { intent: 'fan' })" type="a"
                         >
-                            <q-tooltip>Sign in to follow {{ card.name }}</q-tooltip>
+                            <!-- Guests land on registration rather than sign-in:
+                                 following is the first thing most visitors want
+                                 an account for. The form links to sign-in for
+                                 anyone who already has one. -->
+                            <q-tooltip>Join Riff to follow {{ card.name }}</q-tooltip>
                         </q-btn>
                         <span class="text-xs text-riff-muted">
                             {{ card.followersCount }} {{ card.followersCount === 1 ? 'follower' : 'followers' }}

@@ -18,7 +18,7 @@ const props = defineProps({
     busy: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['reset', 'jump', 'locate', 'home']);
+const emit = defineEmits(['reset', 'jump', 'locate', 'home', 'help']);
 
 const { places, search: searchPlaces, clear: clearPlaces } = usePlaceSearch();
 
@@ -218,6 +218,10 @@ const selectProps = {
             </q-btn>
             <q-btn flat dense round icon="home" color="grey-4" aria-label="Back to my area" @click="emit('home')">
                 <q-tooltip>Back to my area</q-tooltip>
+            </q-btn>
+            <!-- Brings back the welcome overlay, which otherwise shows once. -->
+            <q-btn flat dense round icon="help_outline" color="grey-4" aria-label="How Riff works" @click="emit('help')">
+                <q-tooltip>How Riff works</q-tooltip>
             </q-btn>
         </div>
 

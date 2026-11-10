@@ -39,6 +39,8 @@ Local default is SQLite; queue/cache/session use the database drivers. Test user
 
 Leaflet popups, where still used, are built with DOM nodes (`textContent`), never HTML strings.
 
+**Onboarding:** there is no landing page — `/` redirects to the map, and a first-time *guest* meets `Components/Map/WelcomeOverlay.vue` over it (auto-opened once from `Map/Index.vue`, remembered in `localStorage` under `riff.onboarding.seen`, reopenable from the FilterBar's help button; suppressed when the URL carries a view or filters, so a shared link is never covered). It offers the two paths Riff has: listener and artist. Each links to `register?intent=fan|artist`, normalised by `App\Support\OnboardingIntent` and stored on `users.onboarding_intent`. It lives on the user, not the session, because artist creation sits behind email verification and the verification link is routinely opened in another browser: `VerifyEmailController` resumes the artist path (sending them to `artists.create` when they still have no identity) instead of dropping them on the map. Keep both guest call-to-actions — the empty-map invitation and the card's Follow button — pointed at registration with the matching intent.
+
 **Events:** `App\Contracts\EventProvider` → `App\Services\Events\TicketmasterEvents` (bound in AppServiceProvider), returning provider-agnostic `App\DTO\LocalEvent`s. Not wired to the UI yet; new sources implement the contract.
 
 **Known prototype (do not polish):** livestreaming transport — HTTP POSTed base64 chunks re-broadcast over *public* channels — is a dead end slated for a managed provider in Phase 4. Its endpoints are policy-protected; leave the transport alone. Feed like/comment schema exists but UI is hidden until Phase 3.
