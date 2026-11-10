@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\ArtistBlockController;
 use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistPhotoController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StreamController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +41,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('feed', [FeedController::class, 'store'])
         ->middleware('throttle:posts')
         ->name('feed.store');
+
+    // Safety: reporting something, and hiding an artist from your own Riff
+    Route::post('reports', [ReportController::class, 'store'])
+        ->middleware('throttle:reports')
+        ->name('reports.store');
+
+    Route::post('artists/{artist}/block', [ArtistBlockController::class, 'store'])
+        ->middleware('throttle:blocks')
+        ->name('artists.block');
+    Route::delete('artists/{artist}/block', [ArtistBlockController::class, 'destroy'])
+        ->middleware('throttle:blocks')
+        ->name('artists.unblock');
+
+    // Moderation. Both actions authorize through ReportPolicy, which is the
+    // only reader of users.is_moderator.
+    Route::prefix('moderation')->group(function () {
+        Route::get('/', [ModerationController::class, 'index'])->name('moderation.index');
+        Route::post('reports/{report}/resolve', [ModerationController::class, 'resolve'])
+            ->name('moderation.resolve');
+    });
 
     // Artist Zone
     Route::post('artists/{artist}/restore', [ArtistZoneController::class, 'restore'])

@@ -18,6 +18,10 @@ const navLinks = computed(() => user.value
     ]
     : [{ name: 'map.index', title: 'Map', icon: 'map' }]);
 
+// Moderators reach the report queue from the account menu rather than the
+// main nav: it is not part of using Riff, and most accounts never see it.
+const isModerator = computed(() => Boolean(user.value?.is_moderator));
+
 // The phone footer adds the account page, which the header reaches
 // through its menu instead.
 const footerLinks = computed(() => [
@@ -72,6 +76,10 @@ const activeTab = computed(() => footerLinks.value.find(isCurrent)?.name);
                             <q-item v-close-popup clickable @click="router.visit(route('profile.edit'))">
                                 <q-item-section avatar><q-icon name="person" /></q-item-section>
                                 <q-item-section>Profile &amp; settings</q-item-section>
+                            </q-item>
+                            <q-item v-if="isModerator" v-close-popup clickable @click="router.visit(route('moderation.index'))">
+                                <q-item-section avatar><q-icon name="flag" /></q-item-section>
+                                <q-item-section>Reports</q-item-section>
                             </q-item>
                             <q-item v-close-popup clickable @click="router.post(route('logout'))">
                                 <q-item-section avatar><q-icon name="logout" /></q-item-section>

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -86,6 +87,23 @@ class Artist extends Model implements Geocodable
     public function followers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
+    }
+
+    /**
+     * Listeners who have hidden this artist from their own map. Not shown
+     * to the artist, and not a moderation signal in itself.
+     */
+    public function blockers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'artist_blocks')->withTimestamps();
+    }
+
+    /**
+     * Complaints filed about this artist, open or settled.
+     */
+    public function reports(): MorphMany
+    {
+        return $this->morphMany(Report::class, 'reportable');
     }
 
     public function genres(): BelongsToMany

@@ -78,6 +78,8 @@ class ArtistZoneController extends Controller
                 ->append(['address', 'type_label', 'music_embed']),
             'canManage' => $user->can('update', $artist),
             'isFollowing' => $user->follows($artist),
+            'isBlocked' => $user->blocks($artist),
+            'canBlock' => $user->can('block', $artist),
         ]);
     }
 

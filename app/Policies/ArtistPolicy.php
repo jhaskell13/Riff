@@ -35,6 +35,16 @@ class ArtistPolicy
     }
 
     /**
+     * Blocking hides an artist from the blocker's own map and feed. Members
+     * are excluded: hiding your own identity from yourself would look like
+     * a bug rather than a choice, and members have show_on_map for that.
+     */
+    public function block(User $user, Artist $artist): bool
+    {
+        return ! $user->isMemberOf($artist);
+    }
+
+    /**
      * Only members may edit the artist.
      */
     public function update(User $user, Artist $artist): bool

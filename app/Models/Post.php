@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Post extends Model
 {
@@ -47,6 +48,15 @@ class Post extends Model
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
+    }
+
+    /**
+     * Complaints filed about this post. A removed post keeps its row, so a
+     * moderator can still see what they acted on.
+     */
+    public function reports(): MorphMany
+    {
+        return $this->morphMany(Report::class, 'reportable');
     }
 
     /**

@@ -49,6 +49,18 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
         });
 
+        // A flood of reports is itself an abuse vector -- it buries the
+        // real ones -- so reporting is the tightest limit in the app.
+        RateLimiter::for('reports', function (Request $request) {
+            return Limit::perMinute(config('riff.moderation.rate_limit_per_minute'))
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Blocking is as repeatable as following and costs about as little.
+        RateLimiter::for('blocks', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         // The map's data endpoints are public. Panning fires a request
         // only when movement settles, so this ceiling is far above real
         // browsing while still bounding a scraper.

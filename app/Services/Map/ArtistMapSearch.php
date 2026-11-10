@@ -256,6 +256,17 @@ class ArtistMapSearch
                 ->where('user_id', $filters->followedBy));
         }
 
+        if ($filters->hiddenFor !== null) {
+            // Artists this viewer has blocked, gone from every shape of the
+            // result: markers, the nearest list, and the counts inside
+            // server-side clusters alike. A subquery on the pivot's unique
+            // index, so nothing has to be loaded to build the request.
+            $query->whereNotIn('id', fn ($blocks) => $blocks
+                ->select('artist_id')
+                ->from('artist_blocks')
+                ->where('user_id', $filters->hiddenFor));
+        }
+
         if ($filters->query !== null) {
             $this->applySearch($query, $filters->query);
         }

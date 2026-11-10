@@ -58,6 +58,13 @@ class ArtistCardResource extends JsonResource
             // Null for guests: there is no follow state to show, and the
             // client offers "sign in to follow" instead.
             'isFollowing' => $request->user()?->follows($this->resource),
+            // Also null for guests, who have nothing to block with. A card
+            // can still be opened for a blocked artist by id, so the panel
+            // needs to know to offer "unblock" rather than "block".
+            'isBlocked' => $request->user()?->blocks($this->resource),
+            // Members manage visibility through show_on_map; the policy
+            // refuses to let them block their own identity.
+            'canBlock' => $request->user()?->can('block', $this->resource) ?? false,
             'distance' => $distance,
             'unit' => $this->unit,
             'url' => route('artists.show', $this->resource),

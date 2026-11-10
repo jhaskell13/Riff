@@ -382,6 +382,30 @@ const closeCard = () => {
 // Following changes the card's own state, so its cached copy is stale.
 const onFollowed = (id) => card.forget(id);
 
+/**
+ * A blocked artist is gone from this viewer's map, so the card they were
+ * just looking at has nothing behind it: close it and fetch the area again
+ * without them.
+ */
+const onBlocked = (id) => {
+    card.forget(id);
+    closeCard();
+    notice.value = 'Blocked. They won\'t appear on your map or in your feed.';
+    load({ immediate: true });
+};
+
+// Unblocking puts them back; the card stays open, now showing a Block
+// option again.
+const onUnblocked = (id) => {
+    card.forget(id);
+    card.open(id, {
+        lat: map.getCenter().lat.toFixed(4),
+        lng: map.getCenter().lng.toFixed(4),
+        unit: props.filterOptions.unit,
+    });
+    load({ immediate: true });
+};
+
 /* ------------------------------------------------------------------ */
 /* Moving the map                                                      */
 /* ------------------------------------------------------------------ */
@@ -597,6 +621,8 @@ onBeforeUnmount(() => {
                         :can-follow="canFollow"
                         @close="closeCard"
                         @followed="onFollowed"
+                        @blocked="onBlocked"
+                        @unblocked="onUnblocked"
                         @collapse="panelOpen = false"
                     />
                     <ResultList

@@ -60,6 +60,9 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'onboarding_intent' => OnboardingIntent::class,
+            // Absent from $fillable on purpose: no request may grant it.
+            // See the riff:moderator command.
+            'is_moderator' => 'boolean',
             'lat' => 'float',
             'lng' => 'float',
         ];
@@ -100,6 +103,39 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     public function follows(Artist $artist): bool
     {
         return $this->followedArtists()->whereKey($artist->id)->exists();
+    }
+
+    /**
+     * Artists this listener has chosen not to see. One person's own view of
+     * Riff: the artist stays on everyone else's map, and is told nothing.
+     */
+    public function blockedArtists(): BelongsToMany
+    {
+        return $this->belongsToMany(Artist::class, 'artist_blocks')->withTimestamps();
+    }
+
+    public function blocks(Artist $artist): bool
+    {
+        return $this->blockedArtists()->whereKey($artist->id)->exists();
+    }
+
+    /**
+     * Whether this listener hides anything at all. The map asks before it
+     * decides whether their results can come from the shared cache, so it
+     * stays one indexed lookup rather than a list of ids.
+     */
+    public function hasBlocks(): bool
+    {
+        return $this->blockedArtists()->exists();
+    }
+
+    /**
+     * Reports this user has filed. Kept for the duplicate check, not shown
+     * anywhere: a reporter has no standing in the outcome.
+     */
+    public function filedReports(): HasMany
+    {
+        return $this->hasMany(Report::class, 'reporter_id');
     }
 
     /**

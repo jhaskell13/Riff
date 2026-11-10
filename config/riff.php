@@ -119,6 +119,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Moderation
+    |--------------------------------------------------------------------------
+    |
+    | reasons are what a report may claim. The keys are persisted in
+    | reports.reason, so renaming one needs a migration; the labels are what
+    | the report form offers, and the order here is the order shown.
+    |
+    | Reporting is deliberately cheap for the reporter and bounded by the
+    | "reports" limiter, since a flood of reports is itself an abuse vector.
+    |
+    */
+
+    'moderation' => [
+        'reasons' => [
+            'spam' => 'Spam or a scam',
+            'impersonation' => 'Pretending to be someone else',
+            'hate' => 'Hateful or abusive content',
+            'sexual' => 'Sexual or explicit content',
+            'violence' => 'Violence or threats',
+            'infringement' => "Someone else's music, photos, or name",
+            'not_music' => 'Not a music artist',
+            'wrong_location' => 'In the wrong place on the map',
+            'other' => 'Something else',
+        ],
+        'max_details' => (int) env('RIFF_REPORT_MAX_DETAILS', 1000),
+        'rate_limit_per_minute' => (int) env('RIFF_REPORT_RATE_LIMIT', 5),
+        'queue_page_size' => (int) env('RIFF_MODERATION_PAGE_SIZE', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Distance
     |--------------------------------------------------------------------------
     |

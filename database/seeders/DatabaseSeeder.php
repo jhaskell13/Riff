@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Artist;
 use App\Models\Post;
+use App\Models\Report;
 use App\Models\User;
 use Database\Factories\Support\Towns;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -35,7 +36,10 @@ class DatabaseSeeder extends Seeder
 
         $hartford = Towns::named('Hartford');
 
-        User::factory()->create([
+        // The development login, and the one account that can work the
+        // report queue locally. In production the flag is not fillable and
+        // riff:moderator is the only way to set it.
+        User::factory()->moderator()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
@@ -45,9 +49,26 @@ class DatabaseSeeder extends Seeder
             'lng' => $hartford['lng'],
         ]);
 
-        Post::factory()
+        $posts = Post::factory()
             ->count(40)
             ->recycle(User::all())
             ->create();
+
+        // A queue with something in it: a few open complaints about artists
+        // and posts, and some already settled, so the moderation page can
+        // be seen in both of its states.
+        Report::factory()->count(6)
+            ->recycle($users)
+            ->sequence(fn ($sequence) => $sequence->index % 2 === 0
+                ? ['reportable_type' => Artist::class, 'reportable_id' => $artists->random()->id]
+                : ['reportable_type' => Post::class, 'reportable_id' => $posts->random()->id])
+            ->create(['reporter_id' => $users->random()->id]);
+
+        Report::factory()->count(3)->resolved()->create([
+            'reportable_type' => Artist::class,
+            'reportable_id' => $artists->random()->id,
+            'reporter_id' => $users->random()->id,
+            'resolved_by_id' => User::firstWhere('email', 'test@example.com')->id,
+        ]);
     }
 }

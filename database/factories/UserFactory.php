@@ -43,6 +43,18 @@ class UserFactory extends Factory
     }
 
     /**
+     * Someone who may work the report queue. In production this flag is set
+     * only by the riff:moderator command; nothing reachable from a request
+     * can grant it.
+     */
+    public function moderator(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_moderator' => true,
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

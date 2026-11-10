@@ -46,7 +46,7 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 - [x] Add search and filters for genre, artist type, and radius; support map movement/re-centering and mobile layouts.
 - [x] Design an onboarding path for listeners and artists; collect only the location fields needed for local discovery and explain public visibility. The map explains itself to a first-time guest and splits into two paths — find local music, or be found making it — each carried through registration and the verification that follows it.
 - [ ] Seed a pilot area with consented artist profiles and make the empty-map state invite artists to add themselves. *(The empty state already invites; pilot seeding is outstanding.)*
-- [ ] Add basic reporting, blocking, profile editing, and moderation workflow before public growth.
+- [x] Add basic reporting, blocking, profile editing, and moderation workflow before public growth. Reporting from the map, profiles, and the feed; per-listener blocking that hides an artist from their own map and feed; and a moderator-only report queue whose four decisions (hide, archive, remove a post, dismiss) are all recoverable and all recorded.
 
 **Success signals:** Visitors reach an artist profile from the map; profiles have playable music; listeners follow artists; artists complete profiles; users return to the map. Establish pilot baselines before setting numeric targets.
 

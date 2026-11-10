@@ -1,6 +1,8 @@
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { router, useForm, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ReportDialog from '@/Components/ReportDialog.vue';
 
 const props = defineProps({
     posts: {
@@ -21,6 +23,15 @@ const submit = () => {
 };
 
 const authorName = (post) => post.artist?.name ?? post.user?.name ?? 'Unknown';
+
+// One dialog for the whole feed, pointed at whichever post raised it.
+const reportingPost = ref(null);
+const reportOpen = ref(false);
+
+const report = (post) => {
+    reportingPost.value = post;
+    reportOpen.value = true;
+};
 
 const initials = (post) => authorName(post)
     .split(' ')
@@ -111,6 +122,31 @@ const timeAgo = (iso) => {
                                         {{ timeAgo(post.published_at) }}
                                     </div>
                                 </div>
+                                <q-btn
+                                    flat dense round size="sm" icon="more_vert" color="grey-6"
+                                    :aria-label="`More options for this post by ${authorName(post)}`"
+                                >
+                                    <q-menu dark anchor="bottom right" self="top right" class="bg-riff-surface-2">
+                                        <q-list dark style="min-width: 180px">
+                                            <q-item v-close-popup clickable @click="report(post)">
+                                                <q-item-section avatar><q-icon name="flag" size="20px" /></q-item-section>
+                                                <q-item-section>Report post</q-item-section>
+                                            </q-item>
+                                            <!-- Blocking lives on the artist, not the
+                                                 post: it is the identity a listener
+                                                 wants out of their feed. -->
+                                            <q-item
+                                                v-if="post.artist"
+                                                v-close-popup
+                                                clickable
+                                                @click="router.visit(route('artists.show', post.artist.id))"
+                                            >
+                                                <q-item-section avatar><q-icon name="person" size="20px" /></q-item-section>
+                                                <q-item-section>Go to {{ post.artist.name }}</q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </q-menu>
+                                </q-btn>
                             </div>
                         </q-card-section>
 
@@ -149,6 +185,14 @@ const timeAgo = (iso) => {
 
                 </div>
             </div>
+
+            <ReportDialog
+                v-if="reportingPost"
+                v-model="reportOpen"
+                type="post"
+                :id="reportingPost.id"
+                :subject-name="`this post by ${authorName(reportingPost)}`"
+            />
         </q-page>
     </AuthenticatedLayout>
 </template>

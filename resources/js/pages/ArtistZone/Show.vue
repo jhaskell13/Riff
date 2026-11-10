@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
+import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
 
 const props = defineProps({
     artist: {
@@ -15,6 +16,14 @@ const props = defineProps({
         default: false,
     },
     isFollowing: {
+        type: Boolean,
+        default: false,
+    },
+    isBlocked: {
+        type: Boolean,
+        default: false,
+    },
+    canBlock: {
         type: Boolean,
         default: false,
     },
@@ -50,14 +59,25 @@ const links = computed(() => [
                                     <q-icon name="visibility_off" size="14px" /> Hidden from the map
                                 </div>
                             </div>
-                            <q-card-actions v-if="canManage" class="ml-auto">
+                            <q-card-actions class="ml-auto items-center">
                                 <q-btn
+                                    v-if="canManage"
                                     unelevated
                                     rounded
                                     color="primary"
                                     label="Edit"
                                     padding="xs lg"
                                     @click="router.visit(route('artists.edit', artist.id))"
+                                />
+                                <!-- Members get this too: reporting an
+                                     identity you share is how a band deals
+                                     with a member who has gone rogue. -->
+                                <ArtistSafetyMenu
+                                    :artist-id="artist.id"
+                                    :artist-name="artist.name"
+                                    :is-blocked="isBlocked"
+                                    :can-block="canBlock"
+                                    color="grey-6"
                                 />
                             </q-card-actions>
                         </q-card-section>

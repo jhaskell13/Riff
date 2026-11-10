@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
+import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
 
 /**
  * The expanded card for the selected artist: enough to decide whether to
@@ -14,13 +15,27 @@ defineProps({
     canFollow: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['close', 'followed', 'collapse']);
+// 'followed' asks the page to forget its cached copy of this card, since
+// the state shown on it has changed. Blocking and unblocking change the map
+// itself -- the artist leaves it or comes back -- so those are separate
+// events the page answers with a refetch.
+const emit = defineEmits(['close', 'followed', 'blocked', 'unblocked', 'collapse']);
 </script>
 
 <template>
     <div class="flex h-full flex-col bg-riff-surface">
         <div class="flex items-center justify-between gap-1 border-b border-riff-line px-2 py-2">
             <q-btn flat dense no-caps icon="arrow_back" label="Back to list" color="grey-5" @click="emit('close')" />
+            <ArtistSafetyMenu
+                v-if="canFollow && card"
+                class="ml-auto"
+                :artist-id="card.id"
+                :artist-name="card.name"
+                :is-blocked="Boolean(card.isBlocked)"
+                :can-block="Boolean(card.canBlock)"
+                @blocked="emit('blocked', card.id)"
+                @unblocked="emit('unblocked', card.id)"
+            />
             <q-btn
                 flat dense round size="sm" color="grey-5"
                 class="collapse-btn"

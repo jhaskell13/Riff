@@ -31,6 +31,11 @@ class MapFilters
         public ?int $followedBy = null,
         public string $sort = 'distance',
         public int $limit = 500,
+        /**
+         * The viewer whose blocked artists are excluded, set only when they
+         * actually block someone. Everyone else keeps the shared cache.
+         */
+        public ?int $hiddenFor = null,
     ) {}
 
     /**
@@ -47,7 +52,7 @@ class MapFilters
      */
     public function isPersonal(): bool
     {
-        return $this->followedBy !== null;
+        return $this->followedBy !== null || $this->hiddenFor !== null;
     }
 
     public function cacheKey(): ?string

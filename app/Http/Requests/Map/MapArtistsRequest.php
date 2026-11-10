@@ -140,6 +140,10 @@ class MapArtistsRequest extends FormRequest
             followedBy: $this->boolean('followed') ? $this->user()?->id : null,
             sort: $this->input('sort', 'distance'),
             limit: (int) $this->input('limit', config('riff.map.max_markers')),
+            // Asked once per request, and only of signed-in viewers: a
+            // listener who blocks nobody -- nearly all of them -- keeps
+            // shared, cacheable results.
+            hiddenFor: $this->user()?->hasBlocks() ? $this->user()->id : null,
         );
     }
 
