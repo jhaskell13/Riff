@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Riff is a local music discovery platform (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 4, Vite 8, Leaflet). The map of nearby artists is the core feature. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. See ROADMAP.md for phased product direction — Phase 0 (dependable prototype) is complete; Phase 1 (local discovery MVP) is next.
+Riff is a local music discovery platform (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 4, Vite 8, Leaflet). The map of nearby artists is the core feature. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. See ROADMAP.md for phased product direction — Phases 0 (dependable prototype) and 1 (local discovery MVP) are complete; Phase 2 (local participation: follows feed, events, notifications) is next.
 
 ## Commands
 
@@ -15,12 +15,15 @@ php artisan test --filter test_name_or_class   # single test
 ./vendor/bin/pint         # format PHP (CI enforces pint --test)
 npm run build             # Vite build (client + SSR); REQUIRED before php artisan test
                           # if you added/renamed a page component (manifest check)
-php artisan migrate:fresh --seed   # rebuild DB with 100 artists, 30 users, 40 posts
+php artisan migrate:fresh --seed   # rebuild DB: pilot scene + ~75 scattered artists
+php artisan riff:seed-pilot        # add just the pilot scene to an existing DB (idempotent)
 php artisan riff:geocode-missing   # queue geocoding for records without lat/lng
 php artisan riff:moderator a@b.com [--revoke]   # the only way to grant moderator access
 ```
 
-Local default is SQLite; queue/cache/session use the database drivers. Test user from the seeder: `test@example.com` / `password`.
+Local default is SQLite; queue/cache/session use the database drivers. Test user from the seeder: `test@example.com` / `password` (a moderator locally). Cover art is written to the media disk, so `php artisan storage:link` is needed once or seeded photos 404.
+
+**Seeded data** is the product demo, so it is built to look real. `PilotSeeder` is the centrepiece: ~25 *invented* acts across Greater Hartford (several per town, so same-town clustering has something to cluster), each with curated genres, a written bio, generated cover art, mostly playable links, plus local listeners following them, posts, and a report queue in both states. Two acts are hidden from the map and one is archived, to show those states exist. `DatabaseSeeder` runs the moderator account, then the pilot, then ~75 scattered artists for the rest of the region. Names and bios for scattered artists come from `Database\Factories\Support\ActNames`/`ActBios` (Faker's company names read as a business directory). Every seeded act is fictional on purpose — a real pilot import must carry neither invented profiles nor the placeholder music links, which are public tracks and not the acts' own work.
 
 ## Architecture
 

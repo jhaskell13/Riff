@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\Models\Artist;
 use App\Models\Genre;
+use Database\Factories\Support\ActBios;
+use Database\Factories\Support\ActNames;
 use Database\Factories\Support\Towns;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -23,14 +25,18 @@ class ArtistFactory extends Factory
         // store, so a seeded map works without a geocoding API key and no
         // pin lands in the water.
         $town = Towns::random();
+        $type = fake()->randomElement(array_keys(config('riff.artist.types')));
 
         return [
-            'name' => fake()->company,
-            'artist_type' => fake()->randomElement(array_keys(config('riff.artist.types'))),
+            // Names and bios that read like a local scene rather than a
+            // business directory; the seeded map is what Riff is shown
+            // with, so it has to look like the real thing.
+            'name' => ActNames::for($type),
+            'artist_type' => $type,
             'hometown' => $town['city'],
             'stateOrProvince' => $town['state'],
             'country' => 'USA',
-            'biography' => fake()->paragraph,
+            'biography' => ActBios::for($type, $town['city']),
             'lat' => $town['lat'],
             'lng' => $town['lng'],
             'show_on_map' => true,

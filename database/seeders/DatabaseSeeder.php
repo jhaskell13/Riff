@@ -4,35 +4,26 @@ namespace Database\Seeders;
 
 use App\Models\Artist;
 use App\Models\Post;
-use App\Models\Report;
 use App\Models\User;
 use Database\Factories\Support\Towns;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * The development dataset, in the order it has to be built.
+ *
+ * The moderator account comes first because PilotSeeder settles one report
+ * against whoever can work the queue, and the pilot scene comes before the
+ * wider region so that Hartford -- where the map opens -- is the part that
+ * looks inhabited. The rest is scatter: enough artists across four states
+ * to exercise clustering, panning, and the search when the viewport leaves
+ * the pilot area.
+ */
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         $this->call(GenreSeeder::class);
-
-        // A slice carries a real playable link so the development map has
-        // profiles whose preview actually loads.
-        $artists = Artist::factory()->count(60)->create()
-            ->merge(Artist::factory()->count(40)->withMusic()->create());
-
-        $users = User::factory()
-            ->count(30)
-            ->hasAttached($artists->random(rand(5, 10)))
-            ->create();
-
-        // Follows, so counts and the follow button have something to show.
-        $users->each(function (User $user) use ($artists) {
-            $user->followedArtists()->sync($artists->random(rand(0, 8))->pluck('id'));
-        });
 
         $hartford = Towns::named('Hartford');
 
@@ -49,26 +40,29 @@ class DatabaseSeeder extends Seeder
             'lng' => $hartford['lng'],
         ]);
 
-        $posts = Post::factory()
-            ->count(40)
-            ->recycle(User::all())
+        // Greater Hartford: the pilot area, dense enough to demonstrate.
+        $this->call(PilotSeeder::class);
+
+        // The wider region, so the map is not empty the moment it is panned
+        // and the cluster/marker switch has something to switch over. A
+        // slice carries a real playable link.
+        $scattered = Artist::factory()->count(45)->create()
+            ->merge(Artist::factory()->count(30)->withMusic()->create());
+
+        $users = User::factory()
+            ->count(20)
+            ->hasAttached($scattered->random(rand(2, 5)))
             ->create();
 
-        // A queue with something in it: a few open complaints about artists
-        // and posts, and some already settled, so the moderation page can
-        // be seen in both of its states.
-        Report::factory()->count(6)
-            ->recycle($users)
-            ->sequence(fn ($sequence) => $sequence->index % 2 === 0
-                ? ['reportable_type' => Artist::class, 'reportable_id' => $artists->random()->id]
-                : ['reportable_type' => Post::class, 'reportable_id' => $posts->random()->id])
-            ->create(['reporter_id' => $users->random()->id]);
+        // Follows, so counts and the follow button have something to show
+        // outside the pilot area too.
+        $users->each(function (User $user) use ($scattered) {
+            $user->followedArtists()->sync($scattered->random(rand(0, 6))->pluck('id'));
+        });
 
-        Report::factory()->count(3)->resolved()->create([
-            'reportable_type' => Artist::class,
-            'reportable_id' => $artists->random()->id,
-            'reporter_id' => $users->random()->id,
-            'resolved_by_id' => User::firstWhere('email', 'test@example.com')->id,
-        ]);
+        Post::factory()
+            ->count(25)
+            ->recycle($users)
+            ->create();
     }
 }
