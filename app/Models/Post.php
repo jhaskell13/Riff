@@ -9,7 +9,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int|null $artist_id
+ * @property string $content
+ * @property string $status
+ * @property Carbon|null $published_at
+ * @property-read User|null $user
+ * @property-read Artist|null $artist
+ */
 class Post extends Model
 {
     use HasFactory;
@@ -50,6 +60,7 @@ class Post extends Model
         return $this->belongsTo(Artist::class);
     }
 
+    /** @return MorphMany<Report, $this> */
     public function reports(): MorphMany
     {
         return $this->morphMany(Report::class, 'reportable');
@@ -64,7 +75,7 @@ class Post extends Model
         return $this->belongsToMany(User::class, 'post_likes')->withTimestamps();
     }
 
-    public function scopePublished($query): Builder
+    public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', 'published')
             ->whereNotNull('published_at')

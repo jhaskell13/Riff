@@ -15,6 +15,19 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $city
+ * @property string $state
+ * @property string $country
+ * @property string $distance_unit
+ * @property OnboardingIntent|null $onboarding_intent
+ * @property bool $is_moderator
+ * @property float|null $lat
+ * @property float|null $lng
+ */
 #[ObservedBy([GeocodableObserver::class])]
 class User extends Authenticatable implements Geocodable, MustVerifyEmail
 {
@@ -71,6 +84,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     /**
      * Get the artist that owns the User
      */
+    /** @return BelongsToMany<Artist, $this> */
     public function artists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class);
@@ -95,6 +109,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
      * Artists this user follows. Following is a listener relationship and
      * carries no permissions -- membership is what grants those.
      */
+    /** @return BelongsToMany<Artist, $this> */
     public function followedArtists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'artist_follows')->withTimestamps();
@@ -106,6 +121,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /** Artists this listener has hidden from their own map and feed. */
+    /** @return BelongsToMany<Artist, $this> */
     public function blockedArtists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'artist_blocks')->withTimestamps();
@@ -166,17 +182,17 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         return $this->hasMany(Comment::class);
     }
 
-    public function commentLikes()
+    public function commentLikes(): BelongsToMany
     {
         return $this->belongsToMany(Comment::class, 'comment_likes')->withTimestamps();
     }
 
-    public function hasLikedPost(Post $post)
+    public function hasLikedPost(Post $post): bool
     {
         return $this->postLikes()->where('post_id', $post->id)->exists();
     }
 
-    public function hasLikedComment(Comment $comment)
+    public function hasLikedComment(Comment $comment): bool
     {
         return $this->commentLikes()->where('comment_id', $comment->id)->exists();
     }

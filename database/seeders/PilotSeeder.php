@@ -14,6 +14,7 @@ use Database\Factories\Support\Towns;
 use Database\Seeders\Support\PlaceholderPhoto;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 /**
  * One local scene, dense enough to demonstrate Riff with: Greater Hartford,
@@ -166,8 +167,12 @@ class PilotSeeder extends Seeder
         ]);
     }
 
-    /** Local listeners whose follows make the cards feel inhabited. */
-    private function listeners($artists): void
+    /**
+     * Local listeners whose follows make the cards feel inhabited.
+     *
+     * @param  Collection<int, Artist>  $artists
+     */
+    private function listeners(Collection $artists): void
     {
         if ($artists->isEmpty() || User::where('onboarding_intent', OnboardingIntent::Fan)->exists()) {
             return;
@@ -191,8 +196,12 @@ class PilotSeeder extends Seeder
         }
     }
 
-    /** Posts by the acts themselves: a member posting as the artist. */
-    private function posts($artists): void
+    /**
+     * Posts by the acts themselves: a member posting as the artist.
+     *
+     * @param  Collection<int, Artist>  $artists
+     */
+    private function posts(Collection $artists): void
     {
         $lines = [
             'New single is up. Thanks to everyone who came out to the release show.',
@@ -215,7 +224,7 @@ class PilotSeeder extends Seeder
             }
 
             Post::factory()->create([
-                'user_id' => $member->id,
+                'user_id' => $member->getKey(),
                 'artist_id' => $artist->id,
                 'content' => $lines[$index % count($lines)],
                 'published_at' => now()->subDays(rand(0, 21))->subHours(rand(0, 23)),
@@ -223,8 +232,12 @@ class PilotSeeder extends Seeder
         }
     }
 
-    /** Open complaints and one settled, anchored on pilot acts. */
-    private function reports($artists): void
+    /**
+     * Open complaints and one settled, anchored on pilot acts.
+     *
+     * @param  Collection<int, Artist>  $artists
+     */
+    private function reports(Collection $artists): void
     {
         if ($artists->count() < 3 || Report::query()->exists()) {
             return;

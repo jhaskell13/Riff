@@ -195,6 +195,7 @@ class ArtistMapSearch
     }
 
     /**
+     * @param  Builder<Artist>  $query
      * @return Collection<int, Artist>
      */
     private function rows(Builder $query, int $limit)
@@ -210,6 +211,7 @@ class ArtistMapSearch
      * degrees), used by nearest().
      *
      * @param  array{south: float, west: float, north: float, east: float}|null  $area
+     * @return Builder<Artist>
      */
     private function matching(MapFilters $filters, ?array $area, ?float $withinDegrees = null): Builder
     {

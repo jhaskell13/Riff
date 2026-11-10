@@ -146,7 +146,7 @@ class ArtistZoneController extends Controller
     {
         return [
             'genreOptions' => Genre::query()->curated()->orderBy('name')->get(['id', 'name']),
-            'artistTypes' => collect(config('riff.artist.types'))
+            'artistTypes' => collect((array) config('riff.artist.types'))
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values(),
             'maxGenres' => config('riff.artist.max_genres'),

@@ -474,7 +474,9 @@ class MapSearchTest extends TestCase
         DB::flushQueryLog();
         DB::enableQueryLog();
         $callback();
-        $count = collect(DB::getQueryLog())->filter(fn ($query) => str_contains($query['query'], '"artists"'))->count();
+        // Identifier quoting differs per driver: "artists" on SQLite and
+        // Postgres, `artists` on MySQL.
+        $count = collect(DB::getQueryLog())->filter(fn ($query) => preg_match('/["`]artists["`]/', $query['query']))->count();
         DB::disableQueryLog();
 
         return $count;

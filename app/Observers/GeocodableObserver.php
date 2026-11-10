@@ -16,8 +16,8 @@ class GeocodableObserver
     public function updating(Model&Geocodable $model): void
     {
         if ($model->isDirty($model->geocodableAttributes())) {
-            $model->lat = null;
-            $model->lng = null;
+            $model->setAttribute('lat', null);
+            $model->setAttribute('lng', null);
         }
     }
 
@@ -27,7 +27,7 @@ class GeocodableObserver
      */
     public function created(Model&Geocodable $model): void
     {
-        if ($model->lat === null || $model->lng === null) {
+        if ($model->getAttribute('lat') === null || $model->getAttribute('lng') === null) {
             GeocodeAddress::dispatch($model);
         }
     }

@@ -25,7 +25,7 @@ class MapController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $hasOwnLocation = $user?->lat !== null && $user?->lng !== null;
+        $hasOwnLocation = $user !== null && $user->lat !== null && $user->lng !== null;
 
         return Inertia::render('Map/Index', [
             'center' => $hasOwnLocation
@@ -144,7 +144,7 @@ class MapController extends Controller
 
         return [
             'genres' => GenreCatalog::curatedOptions(),
-            'types' => collect(config('riff.artist.types'))
+            'types' => collect((array) config('riff.artist.types'))
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values(),
             'radiusOptions' => config('riff.map.radius_options'),

@@ -10,11 +10,29 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One complaint about one artist or post. Only what the reporter wrote is
  * fillable: a request that could mass-assign `status` or `resolved_by_id`
  * would let a reporter close their own report.
+ */
+/**
+ * @property int $id
+ * @property string $reportable_type
+ * @property int $reportable_id
+ * @property int|null $reporter_id
+ * @property string $reason
+ * @property string|null $details
+ * @property ReportStatus $status
+ * @property ModerationAction|null $resolution
+ * @property int|null $resolved_by_id
+ * @property Carbon|null $resolved_at
+ * @property string|null $moderator_note
+ * @property Carbon|null $created_at
+ * @property-read Artist|Post|null $reportable
+ * @property-read User|null $reporter
+ * @property-read User|null $resolvedBy
  */
 class Report extends Model
 {

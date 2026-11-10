@@ -39,7 +39,7 @@ class HandleInertiaRequests extends Middleware
             // form always offers exactly what validation accepts.
             'reportReasons' => $request->user() === null
                 ? []
-                : collect(config('riff.moderation.reasons'))
+                : collect((array) config('riff.moderation.reasons'))
                     ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                     ->values()
                     ->all(),

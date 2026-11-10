@@ -16,6 +16,25 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $artist_type
+ * @property string $hometown
+ * @property string $stateOrProvince
+ * @property string $country
+ * @property string|null $biography
+ * @property string|null $music_url
+ * @property string|null $music_provider
+ * @property string|null $image_path
+ * @property bool $show_on_map
+ * @property float|null $lat
+ * @property float|null $lng
+ * @property-read string|null $image_url
+ * @property-read string|null $type_label
+ * @property-read array<string, mixed>|null $music_embed
+ * @property-read string $address
+ */
 #[ObservedBy([GeocodableObserver::class])]
 class Artist extends Model implements Geocodable
 {
@@ -95,6 +114,7 @@ class Artist extends Model implements Geocodable
         return $this->belongsToMany(User::class, 'artist_blocks')->withTimestamps();
     }
 
+    /** @return MorphMany<Report, $this> */
     public function reports(): MorphMany
     {
         return $this->morphMany(Report::class, 'reportable');

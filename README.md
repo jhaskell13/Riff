@@ -126,6 +126,18 @@ Run the PHPUnit suite with:
 composer test
 ```
 
+Run static analysis (Larastan/PHPStan, level 6):
+
+```bash
+composer analyse
+```
+
+Run everything CI's quality gate runs — formatting check, static analysis, and the suite:
+
+```bash
+composer check
+```
+
 Format PHP files with Laravel Pint:
 
 ```bash
@@ -144,7 +156,12 @@ Check formatting without changing files:
 
 ## Continuous integration and deployment
 
-`.github/workflows/ci.yml` runs Pint, the Vite production build, and the PHPUnit suite on every pull request and on pushes to non-`main` branches. `.github/workflows/deploy.yml` runs the same checks and then deploys to EC2 via AWS CodeDeploy on pushes to `main`; a failing check blocks the deploy. The CodeDeploy install script in `code-deploy/scripts` builds the production `.env` from `.env.example`, overriding the database settings from AWS Secrets Manager plus `APP_ENV`, `APP_DEBUG`, and `APP_URL`.
+`.github/workflows/ci.yml` runs two gates on every pull request and on pushes to non-`main` branches:
+
+- **Quality** — Pint formatting check, PHPStan static analysis, `composer validate --strict`, and dependency advisories (`composer audit`, `npm audit` for runtime dependencies).
+- **Tests** — the Vite production build plus the full PHPUnit suite on a database matrix: SQLite (the development default), MySQL 8.4, and PostgreSQL 16 as service containers. Each matrix row also migrates and seeds from scratch and re-runs the pilot seeder to prove it is idempotent. The matrix exists because the app may ship on MySQL or Postgres: SQLite silently accepts mistakes (unknown columns become string literals; enum constraints go unenforced) that are hard failures on the real drivers.
+
+`.github/workflows/deploy.yml` requires CI, then builds a production bundle (no dev dependencies, tests, or VCS metadata), uploads it to S3 under a per-commit key (`releases/release-<sha>.zip`, so old bundles remain available for rollback), triggers AWS CodeDeploy, and waits for the deployment to succeed so a failed deploy fails the workflow. Deploys are serialised by a concurrency group. The install script in `code-deploy/scripts` builds the production `.env` from `.env.example` plus AWS Secrets Manager: database settings come from the secret, `APP_KEY` is preserved across deploys (set `app_key` in the secret, or the previous release's key is reused), `app_url` in the secret is required, and the script links storage, rebuilds caches, migrates, and restarts queue workers.
 
 ## Product direction
 
