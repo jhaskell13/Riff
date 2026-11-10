@@ -10,14 +10,9 @@ use Database\Factories\Support\Towns;
 use Illuminate\Database\Seeder;
 
 /**
- * The development dataset, in the order it has to be built.
- *
- * The moderator account comes first because PilotSeeder settles one report
- * against whoever can work the queue, and the pilot scene comes before the
- * wider region so that Hartford -- where the map opens -- is the part that
- * looks inhabited. The rest is scatter: enough artists across four states
- * to exercise clustering, panning, and the search when the viewport leaves
- * the pilot area.
+ * The development dataset. Order matters: the moderator exists before
+ * PilotSeeder settles a report against them, and the pilot scene fills
+ * Hartford -- where the map opens -- before the regional scatter.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -43,9 +38,8 @@ class DatabaseSeeder extends Seeder
         // Greater Hartford: the pilot area, dense enough to demonstrate.
         $this->call(PilotSeeder::class);
 
-        // The wider region, so the map is not empty the moment it is panned
-        // and the cluster/marker switch has something to switch over. A
-        // slice carries a real playable link.
+        // The wider region, so panning away from the pilot still shows a
+        // populated map. A slice carries a real playable link.
         $scattered = Artist::factory()->count(45)->create()
             ->merge(Artist::factory()->count(30)->withMusic()->create());
 
@@ -54,8 +48,6 @@ class DatabaseSeeder extends Seeder
             ->hasAttached($scattered->random(rand(2, 5)))
             ->create();
 
-        // Follows, so counts and the follow button have something to show
-        // outside the pilot area too.
         $users->each(function (User $user) use ($scattered) {
             $user->followedArtists()->sync($scattered->random(rand(0, 6))->pluck('id'));
         });

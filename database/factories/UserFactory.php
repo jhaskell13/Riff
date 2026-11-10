@@ -42,11 +42,7 @@ class UserFactory extends Factory
         ];
     }
 
-    /**
-     * Someone who may work the report queue. In production this flag is set
-     * only by the riff:moderator command; nothing reachable from a request
-     * can grant it.
-     */
+    /** May work the report queue; in production only riff:moderator grants this. */
     public function moderator(): static
     {
         return $this->state(fn (array $attributes) => [

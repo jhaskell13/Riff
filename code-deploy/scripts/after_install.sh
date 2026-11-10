@@ -25,7 +25,7 @@ fi
 
 sed -i "s|^#\?\s*APP_ENV=.*|APP_ENV=$APP_ENV|" .env
 sed -i "s|^#\?\s*APP_DEBUG=.*|APP_DEBUG=false|" .env
-sed -i "s|^#\?\s*APP_URL=.*|APP_URL=https://haskellsolutions.com|" .env
+sed -i "s|^#\?\s*APP_URL=.*|APP_URL=http://127.0.0.1:8000|" .env
 sed -i "s|^#\?\s*DB_HOST=.*|DB_HOST=$DB_HOST|" .env
 sed -i "s|^#\?\s*DB_PORT=.*|DB_PORT=$DB_PORT|" .env
 sed -i "s|^#\?\s*DB_DATABASE=.*|DB_DATABASE=$DB_DATABASE|" .env
@@ -47,6 +47,10 @@ php artisan view:cache
 # Run migrations and Laravel dependencies
 php artisan migrate --force
 php artisan reverb:install
+
+# Artist photos live in storage/app/public and are served through
+# public/storage; without this link every image URL 403s.
+php artisan storage:link --force
 
 # Set directory permissions
 mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache

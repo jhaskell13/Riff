@@ -4,11 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 /**
- * The report queue. Everything a moderator can do to a report is on this
- * page: read what was complained about, see the subject itself, and take
- * one of the actions the server says apply to it.
- *
- * The actions offered per report come from the server
+ * The report queue. The actions offered per report come from the server
  * (ModerationAction::optionsFor), so this page cannot offer a decision the
  * request would refuse.
  */
@@ -19,8 +15,7 @@ defineProps({
     openCount: { type: Number, default: 0 },
 });
 
-// Per-report note, keyed by id: a decision is worth a sentence of
-// explanation, and it is the only part of the audit trail written by hand.
+// Per-report note: the hand-written part of the audit trail.
 const notes = ref({});
 const pendingId = ref(null);
 
@@ -172,12 +167,14 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : null);
 
                 <!-- Pagination -->
                 <div v-if="reports.links.prev || reports.links.next" class="flex justify-between py-4">
+                    <!-- Neutral labels: the open queue is oldest-first,
+                         the settled tabs newest-first. -->
                     <Link v-if="reports.links.prev" :href="reports.links.prev" class="text-sm text-riff-primary" preserve-scroll>
-                        &larr; Newer
+                        &larr; Previous
                     </Link>
                     <span v-else></span>
                     <Link v-if="reports.links.next" :href="reports.links.next" class="text-sm text-riff-primary" preserve-scroll>
-                        Older &rarr;
+                        Next &rarr;
                     </Link>
                 </div>
             </div>

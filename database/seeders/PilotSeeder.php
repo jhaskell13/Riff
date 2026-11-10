@@ -16,33 +16,19 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 
 /**
- * One local scene, dense enough to demonstrate Riff with.
+ * One local scene, dense enough to demonstrate Riff with: Greater Hartford,
+ * several acts per town, plus listeners, posts, and a report queue in both
+ * states. Idempotent -- an act that already exists by name is left alone.
  *
- * Phase 1's pilot is a single populated area, and the rest of the seeded
- * data -- artists scattered over four states -- cannot show what that looks
- * like: every town holds one or two acts, so there is nothing to scroll,
- * nothing to cluster, and no reason to use a genre filter. This fills
- * Greater Hartford instead: several acts per town, a spread of types and
- * genres, playable links on most, covers on all, real-looking bios,
- * listeners who follow them, posts, and a report queue with something in
- * it.
- *
- * Every act here is invented. Seeding the names of real local bands would
- * put a profile in Riff for people who never agreed to be in it -- the
- * opposite of the consent the pilot is supposed to be built on -- and the
- * music links are the same public placeholders the factory uses, not these
- * acts' own work. A real pilot import must carry neither.
- *
- * Idempotent: an act that already exists by name is left exactly as it is,
- * so this can be re-run against a database that is already demonstrable.
+ * Every act is invented on purpose. Real local bands never agreed to be
+ * listed, and the music links are public placeholders, not these acts' own
+ * work; a real pilot import must carry neither.
  */
 class PilotSeeder extends Seeder
 {
     /**
-     * name, type, town, genres, bio, and whether the act has a playable
-     * link. Several acts share a town on purpose: artists in one town sit
-     * on the same coordinates, which is what the map's same-town clusters
-     * and spiderfy behaviour exist for.
+     * name, type, town, genres, bio, has playable link. Several acts share
+     * a town on purpose -- same-town clustering needs something to cluster.
      *
      * @var list<array{0: string, 1: string, 2: string, 3: list<string>, 4: string, 5: bool}>
      */
@@ -118,8 +104,6 @@ class PilotSeeder extends Seeder
 
     public function run(): void
     {
-        // Genres are a pivot against a curated vocabulary; this is
-        // idempotent and the acts below reference it by name.
         $this->call(GenreSeeder::class);
 
         $genreIds = Genre::pluck('id', 'name');
@@ -150,8 +134,6 @@ class PilotSeeder extends Seeder
                     'show_on_map' => ! in_array($name, self::HIDDEN_FROM_MAP, true),
                 ]);
 
-            // Only curated names, so a genre filter in the UI matches what
-            // these acts actually carry.
             $artist->genres()->sync($genreIds->only($genres)->values()->all());
 
             PlaceholderPhoto::attach($artist);
@@ -172,11 +154,7 @@ class PilotSeeder extends Seeder
         $this->reports($onMap);
     }
 
-    /**
-     * The account behind an act. Every artist identity has at least one
-     * member in production -- creating one is how it comes into being -- so
-     * seeded acts have one too, local to the same town.
-     */
+    /** The member account behind an act, local to the same town. */
     private function memberFor(Artist $artist, array $town): User
     {
         return User::factory()->create([
@@ -188,11 +166,7 @@ class PilotSeeder extends Seeder
         ]);
     }
 
-    /**
-     * Listeners around the pilot area who follow some of it. Follower
-     * counts are what make a card feel inhabited, and the "artists I
-     * follow" filter needs somebody doing the following.
-     */
+    /** Local listeners whose follows make the cards feel inhabited. */
     private function listeners($artists): void
     {
         if ($artists->isEmpty() || User::where('onboarding_intent', OnboardingIntent::Fan)->exists()) {
@@ -217,10 +191,7 @@ class PilotSeeder extends Seeder
         }
     }
 
-    /**
-     * Posts written by the acts themselves, which is what the feed is for
-     * in Phase 2. Posted by a member, attributed to the artist.
-     */
+    /** Posts by the acts themselves: a member posting as the artist. */
     private function posts($artists): void
     {
         $lines = [
@@ -252,12 +223,7 @@ class PilotSeeder extends Seeder
         }
     }
 
-    /**
-     * A queue with work in it, and some history behind it, so the
-     * moderation page can be seen in both of its states. Anchored on pilot
-     * acts rather than random records, so the complaints read as if they
-     * were about something.
-     */
+    /** Open complaints and one settled, anchored on pilot acts. */
     private function reports($artists): void
     {
         if ($artists->count() < 3 || Report::query()->exists()) {
@@ -299,8 +265,6 @@ class PilotSeeder extends Seeder
             ]);
         }
 
-        // One settled complaint, so the history tab and the audit trail are
-        // not empty either.
         $moderator = User::where('is_moderator', true)->first();
 
         if ($moderator !== null) {

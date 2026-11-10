@@ -3,12 +3,8 @@
 namespace Database\Factories\Support;
 
 /**
- * Short, plausible biographies for seeded acts.
- *
- * A map full of lorem ipsum cannot show whether a profile is worth stopping
- * on, which is the one question the map exists to answer. These read like
- * something a local act would actually write about itself, and they mention
- * the town, because that is what a listener is scanning for.
+ * Short, plausible bios for seeded acts: what a local act might write about
+ * itself, naming the town, because that is what a listener scans for.
  */
 class ActBios
 {

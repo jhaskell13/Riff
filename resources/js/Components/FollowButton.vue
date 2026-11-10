@@ -1,6 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 // Shared by the artist profile and (from Step 4) the map card, so the two
 // behave identically. The server is the source of truth; this only keeps
@@ -19,6 +19,15 @@ const pending = ref(false);
 const optimistic = ref(null);
 
 const isFollowing = computed(() => optimistic.value ?? props.following);
+
+// The optimistic value stands until the server's own answer arrives as a
+// fresh prop. On the map the card JSON is not refetched after a follow, so
+// clearing it on success snapped the button back to the stale prop.
+watch(() => props.following, () => (optimistic.value = null));
+
+// The map card reuses this instance across artists; a held optimistic
+// value must never carry over to a different artist.
+watch(() => props.artistId, () => (optimistic.value = null));
 
 const displayCount = computed(() => {
     if (props.followersCount === null) {
@@ -54,7 +63,6 @@ const toggle = () => {
             optimistic.value = null;
         },
         onSuccess: () => {
-            optimistic.value = null;
             emit('changed', props.artistId);
         },
     };

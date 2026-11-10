@@ -4,13 +4,8 @@ import { router } from '@inertiajs/vue3';
 import ReportDialog from '@/Components/ReportDialog.vue';
 
 /**
- * The quiet menu beside an artist: report them to moderators, or block them
- * so they leave your own map and feed. Two different things, deliberately
- * in one place -- someone who wants rid of an artist should not have to
- * decide which lever is the right one before finding either.
- *
- * Rendered only for signed-in viewers: an anonymous report is not worth
- * acting on, and there is no "your Riff" to hide an artist from.
+ * Report (to moderators) and block (for yourself), deliberately in one menu.
+ * Rendered only for signed-in viewers -- guests can do neither.
  */
 const props = defineProps({
     artistId: { type: Number, required: true },
@@ -36,7 +31,7 @@ const block = () => {
 
     router.post(route('artists.block', props.artistId), {}, {
         preserveScroll: true,
-        // Leaflet lives on the page that most often hosts this menu.
+        // Or the map page would tear down its Leaflet instance.
         preserveState: true,
         onSuccess: () => emit('blocked', props.artistId),
         onFinish: () => {
@@ -103,8 +98,6 @@ const unblock = () => {
             :subject-name="artistName"
         />
 
-        <!-- Blocking is reversible but changes what the map shows, so it is
-             worth one sentence of explanation before it happens. -->
         <q-dialog v-model="confirmBlock">
             <q-card dark class="riff-confirm bg-riff-surface">
                 <q-card-section>

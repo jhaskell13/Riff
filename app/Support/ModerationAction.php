@@ -6,15 +6,9 @@ use App\Models\Artist;
 use App\Models\Post;
 
 /**
- * What a moderator can do about a report. Each case knows which kind of
- * subject it applies to, so the request can reject "archive this post"
- * before the controller has to think about it, and the moderation page can
- * offer only the buttons that mean something.
- *
- * Deliberately short of anything irreversible: hiding takes a pin off the
- * map, archiving is the same recoverable soft delete members already use,
- * and a removed post keeps its row. A pilot moderator should not be able to
- * destroy an artist's work with one click.
+ * What a moderator can do about a report. Each case knows which subjects it
+ * applies to, and none is irreversible: a pilot moderator should not be
+ * able to destroy an artist's work with one click.
  */
 enum ModerationAction: string
 {
@@ -38,10 +32,7 @@ enum ModerationAction: string
         return $this === self::Dismiss ? ReportStatus::Dismissed : ReportStatus::Resolved;
     }
 
-    /**
-     * Whether this action can be taken on the given subject. Dismissing
-     * applies to anything; everything else is specific to what it changes.
-     */
+    /** Whether this action can be taken on the given subject. */
     public function appliesTo(object $subject): bool
     {
         return match ($this) {
@@ -52,9 +43,8 @@ enum ModerationAction: string
     }
 
     /**
-     * Carry out the action. Hiding and archiving both fire Artist model
-     * events, which rotate the map cache; nothing here needs to do that by
-     * hand.
+     * Carry out the action. The artist changes fire model events, which is
+     * what rotates the map cache.
      */
     public function apply(object $subject): void
     {
@@ -62,8 +52,7 @@ enum ModerationAction: string
             self::Dismiss => null,
             self::HideArtist => $subject->forceFill(['show_on_map' => false])->save(),
             self::ArchiveArtist => $subject->delete(),
-            // The row stays for the audit trail; scopePublished stops
-            // showing it the moment the status changes.
+            // The row stays for the audit trail; the feed filters on status.
             self::RemovePost => $subject->forceFill(['status' => 'removed'])->save(),
         };
     }

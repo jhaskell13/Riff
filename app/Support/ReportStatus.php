@@ -3,9 +3,8 @@
 namespace App\Support;
 
 /**
- * Where a report stands. Open is the queue; the other two are both "a
- * moderator has looked at this", kept apart so the audit trail shows
- * whether the complaint was acted on or found groundless.
+ * Open is the queue; Resolved and Dismissed both mean "a moderator looked",
+ * kept apart so the record shows whether the complaint was acted on.
  */
 enum ReportStatus: string
 {

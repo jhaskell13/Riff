@@ -3,12 +3,8 @@ import { computed, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 
 /**
- * The report form, shared by every surface that can raise one: a map card,
- * an artist profile, a feed post. The subject is named by kind and id, the
- * same way the endpoint takes it.
- *
- * Reasons come from the server (shared as reportReasons) so the list here
- * is always the list validation accepts.
+ * The report form shared by every surface that can raise one. Reasons come
+ * from the server (reportReasons), so the form offers what validation accepts.
  */
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
@@ -28,8 +24,7 @@ const sending = ref(false);
 const sent = ref(false);
 const error = ref(null);
 
-// Every open starts clean: a dialog that remembered the last complaint
-// would invite sending it again by accident.
+// Every open starts clean.
 watch(() => props.modelValue, (open) => {
     if (open) {
         reason.value = null;
@@ -55,8 +50,7 @@ const submit = () => {
         { type: props.type, id: props.id, reason: reason.value, details: details.value },
         {
             preserveScroll: true,
-            // The map owns a Leaflet instance; a plain visit would throw it
-            // away and rebuild the whole viewport behind the dialog.
+            // Or the map page would tear down its Leaflet instance.
             preserveState: true,
             onError: (errors) => {
                 error.value = Object.values(errors)[0] ?? 'Something went wrong. Try again.';

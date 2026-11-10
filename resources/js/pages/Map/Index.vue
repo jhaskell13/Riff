@@ -60,11 +60,8 @@ const unit = computed(() => meta.value?.unit ?? props.filterOptions.unit);
 const WELCOME_KEY = 'riff.onboarding.seen';
 const welcomeOpen = ref(false);
 
-/**
- * Some private-browsing modes make localStorage throw on read or write.
- * A visitor who cannot be remembered is treated as one who has already
- * seen this, rather than being shown it on every single visit.
- */
+// Storage can throw in private browsing; treat "cannot remember" as "seen"
+// rather than greeting the same visitor every visit.
 const welcomeSeen = () => {
     try {
         return window.localStorage.getItem(WELCOME_KEY) === '1';
@@ -77,7 +74,7 @@ const rememberWelcome = () => {
     try {
         window.localStorage.setItem(WELCOME_KEY, '1');
     } catch {
-        // Nothing to do; it just will not be remembered.
+        // Private browsing; it just will not be remembered.
     }
 };
 
@@ -382,11 +379,7 @@ const closeCard = () => {
 // Following changes the card's own state, so its cached copy is stale.
 const onFollowed = (id) => card.forget(id);
 
-/**
- * A blocked artist is gone from this viewer's map, so the card they were
- * just looking at has nothing behind it: close it and fetch the area again
- * without them.
- */
+// A blocked artist leaves this viewer's map: close the card and refetch.
 const onBlocked = (id) => {
     card.forget(id);
     closeCard();
@@ -394,8 +387,7 @@ const onBlocked = (id) => {
     load({ immediate: true });
 };
 
-// Unblocking puts them back; the card stays open, now showing a Block
-// option again.
+// Unblocking puts them back; the card stays open, refreshed.
 const onUnblocked = (id) => {
     card.forget(id);
     card.open(id, {
@@ -567,11 +559,8 @@ onMounted(() => {
     load({ immediate: true });
     drawRadius();
 
-    // A first-time guest gets the introduction. Someone following a shared
-    // link, or landing with filters already applied, asked for a particular
-    // view -- an overlay on top of it would be in the way. Recorded the
-    // moment it opens, so a reload or a trip to registration and back does
-    // not bring it round again.
+    // First-time guests only, and never over a shared link or filtered
+    // view; recorded on open so it shows exactly once.
     if (!props.canFollow && !initialView && !isFiltered.value && !welcomeSeen()) {
         welcomeOpen.value = true;
         rememberWelcome();

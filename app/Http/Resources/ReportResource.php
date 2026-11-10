@@ -11,11 +11,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 
 /**
- * One row of the report queue: enough for a moderator to judge the
- * complaint without leaving the page, and nothing more. The subject is
- * summarised rather than serialised whole -- the queue has no business
- * carrying an artist's whole record, and a post's author is shown because
- * repeat offenders are the point of a queue.
+ * One row of the report queue: enough to judge the complaint without
+ * leaving the page. The subject is summarised, never serialised whole.
  *
  * @mixin Report
  */
@@ -48,9 +45,8 @@ class ReportResource extends JsonResource
     }
 
     /**
-     * What was reported, in the few fields that let a moderator recognise
-     * it. `gone` covers a subject deleted outright rather than archived:
-     * the complaint still has to be closeable.
+     * The subject in the few fields that identify it; the fallback covers
+     * one deleted outright, whose report still has to be closeable.
      *
      * @return array<string, mixed>
      */

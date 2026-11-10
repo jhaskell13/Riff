@@ -89,18 +89,12 @@ class Artist extends Model implements Geocodable
         return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
     }
 
-    /**
-     * Listeners who have hidden this artist from their own map. Not shown
-     * to the artist, and not a moderation signal in itself.
-     */
+    /** Listeners who hid this artist from their own map; never shown to them. */
     public function blockers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'artist_blocks')->withTimestamps();
     }
 
-    /**
-     * Complaints filed about this artist, open or settled.
-     */
     public function reports(): MorphMany
     {
         return $this->morphMany(Report::class, 'reportable');

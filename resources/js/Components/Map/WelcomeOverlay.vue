@@ -1,17 +1,12 @@
 <script setup>
 /**
  * The first thing a visitor sees over the map: what Riff is, and the two
- * reasons anyone is here -- to find music made nearby, or to be found
- * making it. Each path ends at the registration it needs.
- *
- * It is deliberately dismissible and not a gate. The map behind it works
- * without an account, and someone who would rather just look around should
- * be able to; the page reopens this from the toolbar's help button.
+ * paths in -- find music nearby, or be found making it. Dismissible, never
+ * a gate; the toolbar's help button reopens it.
  */
 defineProps({
     modelValue: { type: Boolean, default: false },
-    // Signed-in viewers see the same explanation with their own next
-    // steps: they have no registration left to do.
+    // Signed-in viewers get their own next steps instead of registration.
     signedIn: { type: Boolean, default: false },
     reduceMotion: { type: Boolean, default: false },
 });

@@ -24,7 +24,6 @@ const submit = () => {
 
 const authorName = (post) => post.artist?.name ?? post.user?.name ?? 'Unknown';
 
-// One dialog for the whole feed, pointed at whichever post raised it.
 const reportingPost = ref(null);
 const reportOpen = ref(false);
 

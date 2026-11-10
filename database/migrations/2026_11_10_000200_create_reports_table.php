@@ -7,14 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * What a listener told us about an artist or a post, and what a
-     * moderator did about it. Polymorphic because the two subjects Riff has
-     * today will not be the last, and the queue reads the same either way.
-     *
-     * Nothing is deleted here: the resolution columns are the audit trail,
-     * so a dismissed report stays readable next to the action it did not
-     * cause. A reporter leaving Riff nulls their id rather than erasing the
-     * report, which would take the record of the decision with it.
+     * What a listener reported and what a moderator did about it. Nothing
+     * is deleted: the resolution columns are the audit trail, and a
+     * departing reporter nulls their id rather than erasing the record.
      */
     public function up(): void
     {
@@ -26,17 +21,14 @@ return new class extends Migration
             $table->text('details')->nullable();
             $table->string('status', 16)->default('open');
 
-            // What the moderator did, who they were, and why. Set together
-            // when a report leaves the queue; null for everything still in it.
+            // Set together when a report leaves the queue.
             $table->string('resolution', 32)->nullable();
             $table->foreignId('resolved_by_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('resolved_at')->nullable();
             $table->text('moderator_note')->nullable();
             $table->timestamps();
 
-            // The queue is "open reports, oldest first". morphs() already
-            // indexes the subject, which is how resolving one report closes
-            // the others about the same artist.
+            // The queue reads "open, oldest first"; morphs() indexed the subject.
             $table->index(['status', 'created_at']);
         });
     }

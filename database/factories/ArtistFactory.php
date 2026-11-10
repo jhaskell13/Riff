@@ -28,9 +28,6 @@ class ArtistFactory extends Factory
         $type = fake()->randomElement(array_keys(config('riff.artist.types')));
 
         return [
-            // Names and bios that read like a local scene rather than a
-            // business directory; the seeded map is what Riff is shown
-            // with, so it has to look like the real thing.
             'name' => ActNames::for($type),
             'artist_type' => $type,
             'hometown' => $town['city'],

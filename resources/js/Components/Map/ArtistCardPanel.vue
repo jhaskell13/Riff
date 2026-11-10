@@ -15,10 +15,8 @@ defineProps({
     canFollow: { type: Boolean, default: false },
 });
 
-// 'followed' asks the page to forget its cached copy of this card, since
-// the state shown on it has changed. Blocking and unblocking change the map
-// itself -- the artist leaves it or comes back -- so those are separate
-// events the page answers with a refetch.
+// 'followed' invalidates the page's cached card; block/unblock change the
+// map itself, so the page answers those with a refetch.
 const emit = defineEmits(['close', 'followed', 'blocked', 'unblocked', 'collapse']);
 </script>
 
@@ -104,10 +102,6 @@ const emit = defineEmits(['close', 'followed', 'blocked', 'unblocked', 'collapse
                             icon="add" label="Follow"
                             :href="route('register', { intent: 'fan' })" type="a"
                         >
-                            <!-- Guests land on registration rather than sign-in:
-                                 following is the first thing most visitors want
-                                 an account for. The form links to sign-in for
-                                 anyone who already has one. -->
                             <q-tooltip>Join Riff to follow {{ card.name }}</q-tooltip>
                         </q-btn>
                         <span class="text-xs text-riff-muted">

@@ -29,9 +29,7 @@ class ReportFactory extends Factory
         ];
     }
 
-    /**
-     * Already settled, as the history tab shows it.
-     */
+    /** Already settled, as the history tab shows it. */
     public function resolved(ModerationAction $action = ModerationAction::HideArtist): static
     {
         return $this->state(fn () => [
@@ -43,9 +41,7 @@ class ReportFactory extends Factory
         ]);
     }
 
-    /**
-     * About the given artist or post instead of a fresh artist.
-     */
+    /** About the given artist or post instead of a fresh artist. */
     public function about(object $subject): static
     {
         return $this->state(fn () => [

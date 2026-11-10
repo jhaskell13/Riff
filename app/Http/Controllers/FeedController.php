@@ -16,10 +16,8 @@ class FeedController extends Controller
     {
         $posts = Post::query()
             ->published()
-            // Posts from an artist this listener has blocked are gone from
-            // their feed. A post with no artist behind it belongs to nobody
-            // blockable, and `NOT IN` would quietly drop those rows, since
-            // a comparison with NULL is never true.
+            // Hide blocked artists' posts. The whereNull keeps artist-less
+            // posts: NOT IN drops NULL rows, since NULL compares to nothing.
             ->when($request->user()?->hasBlocks(), fn ($query) => $query
                 ->where(fn ($scope) => $scope
                     ->whereNull('artist_id')
@@ -27,7 +25,8 @@ class FeedController extends Controller
                         ->select('artist_id')
                         ->from('artist_blocks')
                         ->where('user_id', $request->user()->id))))
-            ->with(['user:id,name', 'artist:id,name,image_url'])
+            // image_path, not image_url: the latter is an accessor over it.
+            ->with(['user:id,name', 'artist:id,name,image_path'])
             ->latest('published_at')
             ->latest('id')
             ->paginate(15);

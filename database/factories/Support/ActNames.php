@@ -3,15 +3,9 @@
 namespace Database\Factories\Support;
 
 /**
- * Invented names for seeded acts.
- *
- * Faker's company names ("Smith, Johnson and Sons") read as businesses, and
- * a map covered in them looks like a directory rather than a local scene --
- * which matters, because the seeded dataset is what Riff is demonstrated
- * with. These are assembled from word lists instead, so they read like
- * bands, and they are deliberately invented: seeding the names of real
- * local acts would put words in the mouths of people who never agreed to
- * be here.
+ * Invented names for seeded acts. Faker's company names read as businesses;
+ * these read as bands -- and they are deliberately made up, never the names
+ * of real local acts.
  */
 class ActNames
 {
@@ -35,10 +29,7 @@ class ActNames
         'Sidecar', 'Tapehead', 'Undertow', 'Vantage', 'Wavelength',
     ];
 
-    /**
-     * A name that suits the kind of act. A band reads as a band, a solo
-     * singer as a person, a producer or DJ as an alias.
-     */
+    /** A band reads as a band, a solo act as a person, a DJ as an alias. */
     public static function for(string $artistType): string
     {
         return match ($artistType) {

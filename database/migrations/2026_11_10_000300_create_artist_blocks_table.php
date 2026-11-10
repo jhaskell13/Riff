@@ -7,14 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Artists a listener does not want to see. The mirror image of
-     * artist_follows, and shaped like it: the unique pair makes blocking
-     * idempotent, and the artist_id index serves the map's exclusion
-     * subquery.
-     *
-     * A block is one listener's own view of Riff, not a judgement on the
-     * artist -- the pin stays on everyone else's map. Reporting is the
-     * channel for "this should not be here at all".
+     * Artists a listener does not want to see; shaped like artist_follows.
+     * A block changes only the blocker's own map and feed -- reporting is
+     * the channel for "this should not be here at all".
      */
     public function up(): void
     {

@@ -2,11 +2,7 @@
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 
-/**
- * Where a block is undone. Blocking happens out on the map, in a menu the
- * listener may never open again, so without this list it would have no way
- * back.
- */
+/** The only place a block can be undone. */
 defineProps({
     artists: { type: Array, default: () => [] },
 });

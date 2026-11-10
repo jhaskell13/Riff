@@ -35,11 +35,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            // The report form is raised from the map, a profile, and the
-            // feed, so the reasons it offers are shared once here rather
-            // than threaded through three controllers -- and they come from
-            // the server, so what the form offers is always what validation
-            // accepts. Guests cannot report, and get nothing.
+            // Shared once for every surface that raises a report, so the
+            // form always offers exactly what validation accepts.
             'reportReasons' => $request->user() === null
                 ? []
                 : collect(config('riff.moderation.reasons'))

@@ -15,9 +15,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * The report queue: the whole of Riff's moderation surface. Small on
- * purpose -- a pilot needs one trusted person to see what was reported and
- * do one of four things about it, with a record of who decided what.
+ * The report queue: the whole of Riff's moderation surface, sized for a
+ * pilot with one trusted moderator.
  */
 class ModerationController extends Controller
 {
@@ -31,11 +30,8 @@ class ModerationController extends Controller
 
         $reports = Report::query()
             ->where('status', $status)
-            // Oldest first while open: a complaint should not wait behind
-            // newer ones. Settled reports read as history, newest first.
+            // Open reads as a queue (oldest first), settled as history.
             ->orderBy('created_at', $status === ReportStatus::Open ? 'asc' : 'desc')
-            // A reported post is recognised by who posted it, so the morph
-            // carries those two names rather than fetching them per row.
             ->with([
                 'reportable' => fn (MorphTo $morphTo) => $morphTo->morphWith([
                     Post::class => ['artist:id,name', 'user:id,name'],
@@ -60,9 +56,8 @@ class ModerationController extends Controller
     }
 
     /**
-     * Carry out a decision and close the complaint. Every other open report
-     * about the same subject closes with it: ten people reporting one
-     * artist is one decision, not ten.
+     * Carry out a decision. Every other open report about the same subject
+     * closes with it: ten reports on one artist are one decision, not ten.
      */
     public function resolve(ReportResolveRequest $request, Report $report): RedirectResponse
     {
@@ -75,8 +70,8 @@ class ModerationController extends Controller
             $action->apply($subject);
         }
 
-        // Stored as the backed values: this array is used for a mass update
-        // as well as for the model, and only the model has casts.
+        // Backed values: this array also feeds a mass update, which has no
+        // casts.
         $resolution = [
             'status' => $action->status()->value,
             'resolution' => $action->value,
@@ -91,8 +86,7 @@ class ModerationController extends Controller
             ->where('reportable_id', $report->reportable_id)
             ->update($resolution);
 
-        // The report being acted on may already have been settled by an
-        // earlier decision; record this one against it regardless.
+        // Recorded even if an earlier decision already settled this one.
         $report->forceFill($resolution)->save();
 
         return back();

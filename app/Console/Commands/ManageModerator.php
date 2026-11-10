@@ -6,9 +6,8 @@ use App\Models\User;
 use Illuminate\Console\Command;
 
 /**
- * The only way to grant moderator access. There is deliberately no form and
- * no self-service: users.is_moderator is not fillable, so nothing reachable
- * from a request can set it.
+ * The only way to grant moderator access: no form, no self-service, and the
+ * column is not fillable, so no request can set it.
  */
 class ManageModerator extends Command
 {

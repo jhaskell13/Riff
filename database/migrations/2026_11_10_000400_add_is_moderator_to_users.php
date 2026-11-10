@@ -7,13 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Who may work the report queue. Deliberately a single flag rather than
-     * a role system: the pilot needs one trusted person, and an unused
-     * permission model is its own kind of risk.
-     *
-     * The column is not fillable on the model and has no form behind it --
-     * `php artisan riff:moderator` is the only way in, so no request can
-     * ever grant it.
+     * Who may work the report queue: a single flag, not a role system. Not
+     * fillable and with no form behind it -- riff:moderator is the only way
+     * in, so no request can ever grant it.
      */
     public function up(): void
     {

@@ -7,11 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Whether someone joined to listen or to be heard (App\Support\
-     * OnboardingIntent). Kept on the user because registration and the
-     * email-verification hop that follows it are separate requests, often
-     * from different browsers, and the artist path has to resume after it.
-     * Null for everyone who registered before the two paths existed.
+     * Whether someone joined to listen or to be heard (OnboardingIntent).
+     * On the user, not the session, so the artist path survives the
+     * email-verification hop. Null for accounts that predate the paths.
      */
     public function up(): void
     {

@@ -50,10 +50,6 @@ class Post extends Model
         return $this->belongsTo(Artist::class);
     }
 
-    /**
-     * Complaints filed about this post. A removed post keeps its row, so a
-     * moderator can still see what they acted on.
-     */
     public function reports(): MorphMany
     {
         return $this->morphMany(Report::class, 'reportable');

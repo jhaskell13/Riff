@@ -10,12 +10,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 /**
- * Drops the pilot scene into an existing database, without the full rebuild
- * that `migrate:fresh --seed` does. That matters on a demo box, where the
- * accounts someone has already made are worth keeping.
- *
- * Refuses to run in production: it writes invented artist profiles, and a
- * production database is the one place those must never appear.
+ * Drops the pilot scene into an existing database without a full rebuild.
+ * Refuses to run in production, where invented profiles must never appear.
  */
 class SeedPilotArea extends Command
 {
@@ -46,9 +42,7 @@ class SeedPilotArea extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * What the seeded data still needs from the environment to look right.
-     */
+    /** What the seeded data still needs from the environment to look right. */
     private function notes(): void
     {
         if (! PlaceholderPhoto::available()) {

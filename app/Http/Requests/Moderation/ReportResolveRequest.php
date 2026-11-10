@@ -6,10 +6,7 @@ use App\Support\ModerationAction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * A moderator's decision. Authorization lives in ReportPolicy::resolve,
- * checked by the controller.
- */
+/** A moderator's decision; the controller authorizes via ReportPolicy. */
 class ReportResolveRequest extends FormRequest
 {
     public function authorize(): bool
@@ -29,8 +26,7 @@ class ReportResolveRequest extends FormRequest
     }
 
     /**
-     * An action has to make sense for what was reported: a post cannot be
-     * taken off the map, and an artist is not a post to remove.
+     * The action has to fit the subject: a post cannot be taken off the map.
      *
      * @return array<int, callable>
      */

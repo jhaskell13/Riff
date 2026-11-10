@@ -105,10 +105,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         return $this->followedArtists()->whereKey($artist->id)->exists();
     }
 
-    /**
-     * Artists this listener has chosen not to see. One person's own view of
-     * Riff: the artist stays on everyone else's map, and is told nothing.
-     */
+    /** Artists this listener has hidden from their own map and feed. */
     public function blockedArtists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'artist_blocks')->withTimestamps();
@@ -120,19 +117,15 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /**
-     * Whether this listener hides anything at all. The map asks before it
-     * decides whether their results can come from the shared cache, so it
-     * stays one indexed lookup rather than a list of ids.
+     * Whether this listener hides anything at all -- the map asks before
+     * deciding if their results can come from the shared cache.
      */
     public function hasBlocks(): bool
     {
         return $this->blockedArtists()->exists();
     }
 
-    /**
-     * Reports this user has filed. Kept for the duplicate check, not shown
-     * anywhere: a reporter has no standing in the outcome.
-     */
+    /** Reports this user has filed; used only for the duplicate check. */
     public function filedReports(): HasMany
     {
         return $this->hasMany(Report::class, 'reporter_id');
