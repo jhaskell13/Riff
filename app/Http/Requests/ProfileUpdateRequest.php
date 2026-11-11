@@ -29,6 +29,7 @@ class ProfileUpdateRequest extends FormRequest
             'city' => ['required', 'string', 'max:255'],
             'state' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
+            'distance_unit' => ['sometimes', 'required', Rule::in(['mi', 'km'])],
         ];
     }
 }

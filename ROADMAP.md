@@ -10,13 +10,16 @@ Build a reliable local discovery loop before expanding into a broad social netwo
 
 Treat artist identity as a profile for a band, solo act, rapper, producer, or other music maker. Build first for a useful experience in one populated area, then broaden geography as artist density grows. Use approximate, artist-chosen public locations; never reveal a person's live or home location.
 
-## Current foundation (updated November 2026, post-Phase 0)
+## Current foundation (updated November 2026, post-Phase 1)
 
 - Laravel 13, Inertia 3, and Vue 3 app with enforced email verification, Pint formatting, and CI (lint + build + tests) gating the deploy.
-- Artist identities with full lifecycle: create, public profile, edit, archive (soft delete), all behind membership policies.
-- Viewport-driven Leaflet map: artists store geocoded coordinates, the client fetches only markers inside the visible bounds (capped), markers link to profiles.
+- Artist identities with full lifecycle: create, public profile, edit, archive (soft delete), restore, all behind membership policies. Profiles carry genres (a curated pivot vocabulary), a re-encoded photo, and a playable music link rebuilt into an embed on read.
+- A public, rate-limited map as the front door: viewport or radius queries, server-side clustering past the marker cap, text search across names, towns, and genres, genre/type/music/photo filters, a synchronised result list, and compact artist cards with distance, preview, and follow.
+- Onboarding splits a first-time guest into listener and artist paths, carried through registration and email verification into either the map or artist creation.
+- Safety tooling for public growth: reporting from every surface, per-listener blocking that hides an artist from their own map and feed, and a moderator-only report queue with recoverable actions and an audit trail.
 - Geocoding runs once per address change through a queued job; failures leave records off the map instead of plotting fake locations. `riff:geocode-missing` backfills.
 - Server-backed paginated feed with validated, rate-limited posting. Likes/comments schema exists but the UI is hidden until the feature ships properly (Phase 3).
+- A seeded pilot scene (`riff:seed-pilot`) dense enough to demonstrate the product; every seeded act is invented, so real pilot recruitment is still ahead.
 - Livestream prototype: endpoints are authorization-protected, but the transport (HTTP chunks over public broadcast channels) remains a dead end to replace in Phase 4.
 - EventProvider contract with a hardened Ticketmaster implementation; not yet wired into the UI, ready for local-first sources (venue calendars, scraping).
 
@@ -37,18 +40,22 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 
 **Done when:** A new user can create an account, make or manage an artist identity, find it on the map, and view a real profile; unauthorized edits are rejected and expected flows have automated coverage. ✅ Met, with image upload consciously moved into Phase 1's profile work.
 
-### 1. Ship the local discovery MVP
+### 1. Ship the local discovery MVP — COMPLETE (November 2026)
 
 **Goal:** Make the map valuable even for a first-time visitor.
 
-- Design an onboarding path for listeners and artists; collect only the location fields needed for local discovery and explain public visibility.
-- Create a useful artist profile: name, artist type, genres, short bio, location, photo, links, and at least one playable music link or track embed.
-- Make map markers open a compact artist card with distance/area, genre, music preview, profile link, and follow action. Add a synchronized list view and clear empty/loading/error states.
-- Add search and filters for genre, artist type, and radius; support map movement/re-centering and mobile layouts.
-- Seed a pilot area with consented artist profiles and make the empty-map state invite artists to add themselves.
-- Add basic reporting, blocking, profile editing, and moderation workflow before public growth.
+- [x] Create a useful artist profile: name, artist type, genres, short bio, location, photo, links, and at least one playable music link or track embed.
+- [x] Make map markers open a compact artist card with distance/area, genre, music preview, profile link, and follow action. Add a synchronized list view and clear empty/loading/error states.
+- [x] Add search and filters for genre, artist type, and radius; support map movement/re-centering and mobile layouts.
+- [x] Design an onboarding path for listeners and artists; collect only the location fields needed for local discovery and explain public visibility. The map explains itself to a first-time guest and splits into two paths — find local music, or be found making it — each carried through registration and the verification that follows it.
+- [x] Seed a pilot area with consented artist profiles and make the empty-map state invite artists to add themselves. A dense Greater Hartford scene (`PilotSeeder`, `riff:seed-pilot`) makes the product demonstrable; the empty map invites the viewer to add themselves. **Still outstanding for a real pilot:** recruiting actual local artists. Everything seeded is invented on purpose — a profile for someone who never agreed to be listed is the opposite of what this phase is built on.
+- [x] Add basic reporting, blocking, profile editing, and moderation workflow before public growth. Reporting from the map, profiles, and the feed; per-listener blocking that hides an artist from their own map and feed; and a moderator-only report queue whose four decisions (hide, archive, remove a post, dismiss) are all recoverable and all recorded.
+
+**Done when:** A first-time visitor lands on the map, understands what Riff is, browses real local profiles, hears music, and can act — follow, report, block, or add themselves — with moderators able to answer anything raised. ✅ Met against the seeded pilot scene; the untested part is real artists, which is what a pilot is for.
 
 **Success signals:** Visitors reach an artist profile from the map; profiles have playable music; listeners follow artists; artists complete profiles; users return to the map. Establish pilot baselines before setting numeric targets.
+
+**Carried into the pilot:** recruit consented local artists; watch where the onboarding paths lose people; see whether reports arrive at a volume one moderator can hold.
 
 ### 2. Turn discovery into local participation
 
@@ -90,11 +97,13 @@ Treat artist identity as a profile for a band, solo act, rapper, producer, or ot
 - **Reliability:** Queue slow imports/geocoding, observe provider errors, track failed jobs, and keep discovery usable during external API outages.
 - **Performance:** Paginate feeds, bound map queries to visible/radius areas, index location/filter fields appropriately, and avoid loading every artist globally.
 - **Security and abuse:** Authorization policies, request validation, upload limits/scanning, rate limits, CSRF-safe actions, moderation tools, and dependency/security updates.
-- **Operations:** CI for formatting and automated tests, environment/configuration documentation, backups, error monitoring, and a lightweight release checklist.
+- **Operations:** CI for formatting and automated tests, environment/configuration documentation, backups, error monitoring, and a lightweight release checklist. **Known issue:** the CodeDeploy script regenerates `APP_KEY` on every deploy, which invalidates existing sessions and anything else encrypted with it — fix before real users depend on staying signed in.
 
 ## Recommended next milestone
 
-Phase 0 is complete. Release **Phase 1** to a small pilot area. Keep the map, artist profile, playable music, and follow action as the narrow first release. Defer a full social timeline, donations, and remote live jams until real pilot behavior demonstrates they strengthen local discovery.
+Phase 1 is built. The next milestone is not more software: it is **putting it in front of real local artists**. Recruit a first handful in one area, let them build their own profiles, and watch what the map does for them before starting Phase 2 — the follows feed, events, and notifications are all bets on behaviour that a pilot can confirm or refute cheaply. Defer a full social timeline, donations, and remote live jams until pilot behaviour shows they strengthen local discovery.
+
+Before inviting anyone, the operational gaps worth closing are small and known: the deploy regenerates `APP_KEY` on every release (see below), moderation is one flag rather than a role model, and nobody is watching failed queue jobs.
 
 ## Product questions to validate in the pilot
 

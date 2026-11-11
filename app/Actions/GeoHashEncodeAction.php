@@ -4,7 +4,7 @@ namespace App\Actions;
 
 class GeoHashEncodeAction
 {
-    private static $base32Chars = '0123456789bcdefghjkmnpqrstuvwxyz';
+    private static string $base32Chars = '0123456789bcdefghjkmnpqrstuvwxyz';
 
     public function handle(float $latitude, float $longitude, int $precision = 9): string
     {

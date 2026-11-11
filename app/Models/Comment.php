@@ -48,7 +48,7 @@ class Comment extends Model
         return $this->belongsToMany(User::class, 'comment_likes')->withTimestamps();
     }
 
-    public function scopeTopLevel($query): Builder
+    public function scopeTopLevel(Builder $query): Builder
     {
         return $query->whereNull('parent_id');
     }

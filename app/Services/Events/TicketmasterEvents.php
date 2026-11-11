@@ -75,7 +75,7 @@ class TicketmasterEvents implements EventProvider
             return collect();
         }
 
-        return collect($response->json('_embedded.events', []))
+        return collect((array) $response->json('_embedded.events', []))
             ->map(fn (array $event) => $this->toLocalEvent($event))
             ->filter()
             ->values();

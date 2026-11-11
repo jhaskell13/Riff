@@ -8,6 +8,12 @@ const props = defineProps({
     status: {
         type: String,
     },
+    // Set when registration started on one of the map's two paths; the
+    // artist path has a step waiting on the other side of verification.
+    intent: {
+        type: String,
+        default: null,
+    },
 });
 
 const form = useForm({});
@@ -29,6 +35,11 @@ const verificationLinkSent = computed(
             Thanks for signing up! Before getting started, could you verify your
             email address by clicking on the link we just emailed to you? If you
             didn't receive the email, we will gladly send you another.
+        </div>
+
+        <div v-if="intent === 'artist'" class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            As soon as you've verified, we'll take you straight to creating your
+            artist profile.
         </div>
 
         <div

@@ -21,6 +21,17 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            // The only place a block can be undone.
+            'blockedArtists' => $request->user()
+                ->blockedArtists()
+                ->select(['artists.id', 'artists.name', 'artists.hometown', 'artists.stateOrProvince'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($artist) => [
+                    'id' => $artist->id,
+                    'name' => $artist->name,
+                    'location' => $artist->hometown.', '.$artist->stateOrProvince,
+                ]),
         ]);
     }
 

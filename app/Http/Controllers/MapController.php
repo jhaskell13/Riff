@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\ArtistMarkerResource;
+use App\DTO\MapPoint;
+use App\Http\Requests\Map\MapArtistsRequest;
+use App\Http\Resources\ArtistCardResource;
 use App\Models\Artist;
+use App\Services\Map\ArtistMapSearch;
+use App\Support\GenreCatalog;
+use App\Support\MapCache;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,37 +25,135 @@ class MapController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-
-        $center = ($user->lat !== null && $user->lng !== null)
-            ? ['lat' => $user->lat, 'lng' => $user->lng]
-            : config('riff.map.default_center');
+        $hasOwnLocation = $user !== null && $user->lat !== null && $user->lng !== null;
 
         return Inertia::render('Map/Index', [
-            'center' => $center,
-            'hasOwnLocation' => $user->lat !== null && $user->lng !== null,
+            'center' => $hasOwnLocation
+                ? ['lat' => $user->lat, 'lng' => $user->lng]
+                : config('riff.map.default_center'),
+            'hasOwnLocation' => $hasOwnLocation,
+            'filterOptions' => $this->filterOptions($request),
+            // Guests browse the same map; actions needing an account
+            // become a prompt to sign in rather than a failed request.
+            'canFollow' => $user !== null,
+            'maxMarkers' => (int) config('riff.map.max_markers'),
         ]);
     }
 
     /**
-     * Artists inside the given viewport, capped so a zoomed-out view
-     * cannot pull the entire table.
+     * Artists matching the given area and filters. See MapArtistsRequest
+     * for parameters and ArtistMapSearch for the response shape.
      */
-    public function artists(Request $request): AnonymousResourceCollection
+    public function artists(MapArtistsRequest $request, ArtistMapSearch $search): JsonResponse
     {
-        $bounds = $request->validate([
-            'south' => ['required', 'numeric', 'between:-90,90'],
-            'north' => ['required', 'numeric', 'between:-90,90', 'gte:south'],
-            'west' => ['required', 'numeric', 'between:-180,180'],
-            'east' => ['required', 'numeric', 'between:-180,180', 'gte:west'],
+        $filters = $request->filters();
+
+        return response()
+            ->json($search->search($filters))
+            // A short private cache lets the browser reuse a response when a
+            // listener toggles a filter off and back on, or pans back.
+            ->header('Cache-Control', $filters->isPersonal() ? 'private, no-store' : 'private, max-age=30');
+    }
+
+    /**
+     * The compact card for one artist, opened from a marker or list row.
+     * Hidden artists 404 here exactly as they are absent from artists().
+     */
+    public function card(Request $request, Artist $artist): ArtistCardResource
+    {
+        $this->authorize('view', $artist);
+
+        abort_unless($artist->show_on_map && $artist->lat !== null && $artist->lng !== null, 404);
+
+        $origin = $request->validate([
+            'lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:lng'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:lat'],
+            'unit' => ['nullable', Rule::in(['mi', 'km'])],
         ]);
 
-        $artists = Artist::query()
-            ->geolocated()
-            ->withinBounds($bounds['south'], $bounds['west'], $bounds['north'], $bounds['east'])
-            ->select(['id', 'name', 'genre', 'hometown', 'stateOrProvince', 'lat', 'lng'])
-            ->limit(config('riff.map.max_markers'))
-            ->get();
+        $point = isset($origin['lat'])
+            ? new MapPoint(round((float) $origin['lat'], 3), round((float) $origin['lng'], 3))
+            : null;
 
-        return ArtistMarkerResource::collection($artists);
+        $artist->load('genres:id,name')->loadCount('followers');
+
+        return (new ArtistCardResource($artist))->withDistanceFrom(
+            $point,
+            $origin['unit'] ?? $request->user()?->distance_unit ?? config('riff.distance.default_unit'),
+        );
+    }
+
+    /**
+     * Towns that have artists on the map, matched by prefix. This is how a
+     * guest -- or anyone -- moves the map to a place by name without the
+     * request path ever calling a geocoder: the coordinates are the ones
+     * already stored for artists there. Only towns with visible artists
+     * are offered, which is also the only kind worth jumping to.
+     */
+    public function places(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:60'],
+        ]);
+
+        $term = mb_strtolower(trim($validated['q']));
+        $ttl = max(1, (int) config('riff.map.cache_ttl_seconds'));
+
+        $places = Cache::remember(
+            'riff.map.places:'.MapCache::version().':'.sha1($term),
+            $ttl,
+            fn () => Artist::query()
+                ->geolocated()
+                ->visibleOnMap()
+                ->whereRaw("lower(hometown) like ? escape '!'", [ArtistMapSearch::escapeLike($term).'%'])
+                ->toBase()
+                // Aliased through the builder so the grammar quotes the
+                // camel-cased column correctly on every driver.
+                ->select(['hometown as name', 'stateOrProvince as region', 'country'])
+                ->selectRaw('avg(lat) as lat, avg(lng) as lng, count(*) as artist_count')
+                ->groupBy('hometown', 'stateOrProvince', 'country')
+                ->orderByDesc('artist_count')
+                ->orderBy('hometown')
+                ->limit(8)
+                ->get()
+                ->map(fn ($row) => [
+                    'name' => $row->name,
+                    'region' => $row->region,
+                    'country' => $row->country,
+                    'lat' => round((float) $row->lat, 5),
+                    'lng' => round((float) $row->lng, 5),
+                    'artistCount' => (int) $row->artist_count,
+                ])
+                ->all(),
+        );
+
+        return response()
+            ->json(['data' => $places])
+            ->header('Cache-Control', 'private, max-age=60');
+    }
+
+    /**
+     * Everything the map's filter controls offer, so the client never
+     * hard-codes a list that validation might disagree with.
+     *
+     * @return array<string, mixed>
+     */
+    private function filterOptions(Request $request): array
+    {
+        $unit = $request->user()?->distance_unit ?? config('riff.distance.default_unit');
+
+        return [
+            'genres' => GenreCatalog::curatedOptions(),
+            'types' => collect((array) config('riff.artist.types'))
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                ->values(),
+            'radiusOptions' => config('riff.map.radius_options'),
+            'unit' => $unit,
+            'sorts' => [
+                ['value' => 'distance', 'label' => 'Nearest'],
+                ['value' => 'name', 'label' => 'Name'],
+                ['value' => 'newest', 'label' => 'Newest'],
+            ],
+        ];
     }
 }

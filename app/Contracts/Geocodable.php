@@ -2,6 +2,10 @@
 
 namespace App\Contracts;
 
+/**
+ * @property float|null $lat
+ * @property float|null $lng
+ */
 interface Geocodable
 {
     /**

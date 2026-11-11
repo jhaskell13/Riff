@@ -41,7 +41,11 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL').'/storage',
+            // Host-relative: these files are served by the same origin as
+            // the page, and an absolute URL built from APP_URL breaks the
+            // moment the two differ (a dev .env pointing at the production
+            // domain sent every image there).
+            'url' => '/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

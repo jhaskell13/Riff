@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Artist;
+use App\Models\Genre;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,16 +23,21 @@ class MassAssignmentTest extends TestCase
 
         $this->actingAs($user)->post(route('artists.store'), [
             'name' => 'Honest Band',
-            'genre' => 'Rock',
+            'artist_type' => 'band',
+            'genres' => [Genre::firstOrFail()->id],
             'hometown' => 'Hartford',
             'stateOrProvince' => 'CT',
             'country' => 'USA',
+            'show_on_map' => true,
             'lat' => 0.0,
             'lng' => 0.0,
+            'image_path' => 'artists/evil.png',
             'image_url' => 'https://evil.example/x.png',
         ]);
 
         $artist = Artist::firstOrFail();
+        // Photos are only ever written by the upload pipeline.
+        $this->assertNull($artist->image_path);
         $this->assertNull($artist->image_url);
         // Coordinates come from geocoding, never from client input.
         $this->assertNull($artist->lat);
@@ -45,10 +51,12 @@ class MassAssignmentTest extends TestCase
 
         $this->actingAs($member)->patch(route('artists.update', $artist), [
             'name' => $artist->name,
-            'genre' => $artist->genre,
+            'artist_type' => $artist->artist_type,
+            'genres' => $artist->genres->pluck('id')->all(),
             'hometown' => $artist->hometown,
             'stateOrProvince' => $artist->stateOrProvince,
             'country' => $artist->country,
+            'show_on_map' => true,
             'lat' => 0.0,
             'lng' => 0.0,
         ]);

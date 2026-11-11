@@ -8,9 +8,11 @@ use App\Models\User;
 class ArtistPolicy
 {
     /**
-     * Any authenticated user may view an artist profile.
+     * Anyone may view an artist, including guests: profiles and map cards
+     * are public. (The profile page itself is still behind auth middleware
+     * until the guest experience ships.)
      */
-    public function view(User $user, Artist $artist): bool
+    public function view(?User $user, Artist $artist): bool
     {
         return true;
     }
@@ -21,6 +23,24 @@ class ArtistPolicy
     public function create(User $user): bool
     {
         return true;
+    }
+
+    /**
+     * Any authenticated user may follow a visible artist. Archived artists
+     * never reach here -- route binding resolves only untrashed records.
+     */
+    public function follow(User $user, Artist $artist): bool
+    {
+        return true;
+    }
+
+    /**
+     * Members cannot block their own identity -- it would vanish from their
+     * own map like a bug, and show_on_map already exists for that.
+     */
+    public function block(User $user, Artist $artist): bool
+    {
+        return ! $user->isMemberOf($artist);
     }
 
     /**

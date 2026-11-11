@@ -1,0 +1,22 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - database/seeders
+        - database/factories
+        - routes
+        - config
+
+    # Level 6 minus docblock-generics pedantry: catches wrong types, unknown
+    # methods and columns, and impossible conditions without demanding
+    # template annotations on every query builder.
+    level: 6
+
+    ignoreErrors:
+        - identifier: missingType.generics
+        - identifier: missingType.iterableValue
+        # `$maybeNull?->prop ?? $fallback` is equivalent to `->` under ??,
+        # but the nullsafe arrow states the intent; keep it.
+        - identifier: nullsafe.neverNull

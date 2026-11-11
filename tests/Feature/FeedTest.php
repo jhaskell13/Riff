@@ -56,6 +56,25 @@ class FeedTest extends TestCase
             );
     }
 
+    /**
+     * image_url is an accessor over image_path; eager-loading must select
+     * the column, not the accessor. SQLite masked the regression by
+     * treating the unknown identifier as a string literal.
+     */
+    public function test_posts_carry_the_artists_photo(): void
+    {
+        $user = User::factory()->create();
+        $artist = Artist::factory()->create();
+        $artist->forceFill(['image_path' => 'artists/1/photo.jpg'])->save();
+        Post::factory()->create(['artist_id' => $artist->id]);
+
+        $this->actingAs($user)
+            ->get(route('feed.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('posts.data.0.artist.image_url', '/storage/artists/1/photo.jpg')
+            );
+    }
+
     public function test_the_feed_is_paginated(): void
     {
         $user = User::factory()->create();

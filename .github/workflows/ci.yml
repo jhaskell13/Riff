@@ -7,8 +7,10 @@ on:
   workflow_call:
 
 jobs:
-  test:
-    name: Lint, build, and test
+  # Style, static analysis, and dependency advisories: everything that
+  # judges the code without running it. Fails fast, needs no database.
+  quality:
+    name: Quality (pint, phpstan, audits)
     runs-on: ubuntu-latest
 
     steps:
@@ -18,21 +20,30 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, xml, curl, zip, bcmath, pdo, pdo_sqlite, sqlite3
+          extensions: mbstring, xml, curl, zip, bcmath, pdo, pdo_sqlite, sqlite3, gd
           coverage: none
 
       - name: Cache Composer packages
         uses: actions/cache@v4
         with:
           path: vendor
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-
+          key: composer-${{ runner.os }}-php8.3-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.3-
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-all
+
       - name: Check code style
         run: ./vendor/bin/pint --test
+
+      - name: Static analysis
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: PHP dependency advisories
+        run: composer audit
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -43,6 +54,79 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: JS dependency advisories
+        # Runtime dependencies must be clean; dev-tooling advisories warn
+        # without failing the build.
+        run: |
+          npm audit --omit=dev
+          npm audit || true
+
+  # The full suite against every database the app may run on. SQLite is the
+  # development default; MySQL and Postgres are the production candidates,
+  # and each has already caught driver-specific bugs SQLite let through
+  # (silent unknown-column literals, enum check constraints).
+  tests:
+    name: Tests (${{ matrix.db }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: sqlite
+          - db: mysql
+          - db: pgsql
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: riff_test
+        ports: [ "3306:3306" ]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -psecret --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: riff_test
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, bcmath, pdo, pdo_sqlite, sqlite3, pdo_mysql, pdo_pgsql, gd
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php8.3-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.3-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      # The manifest check in tests needs built assets.
       - name: Build assets
         run: npm run build
 
@@ -50,6 +134,42 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate --ansi
+          touch database/database.sqlite
+
+      # Real environment variables beat phpunit.xml's sqlite defaults
+      # (its <env> entries don't force), so only the non-sqlite rows
+      # export anything.
+      - name: Point tests at MySQL
+        if: matrix.db == 'mysql'
+        run: |
+          {
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=riff_test"
+            echo "DB_USERNAME=root"
+            echo "DB_PASSWORD=secret"
+          } >> "$GITHUB_ENV"
+
+      - name: Point tests at Postgres
+        if: matrix.db == 'pgsql'
+        run: |
+          {
+            echo "DB_CONNECTION=pgsql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=5432"
+            echo "DB_DATABASE=riff_test"
+            echo "DB_USERNAME=postgres"
+            echo "DB_PASSWORD=secret"
+          } >> "$GITHUB_ENV"
 
       - name: Run tests
         run: php artisan test
+
+      # The seeded pilot scene is the demo; a seeder that only works on a
+      # fresh schema or a single driver is a broken demo.
+      - name: Migrate and seed from scratch
+        run: php artisan migrate:fresh --seed --force
+
+      - name: Re-run the pilot seeder (idempotency)
+        run: php artisan riff:seed-pilot

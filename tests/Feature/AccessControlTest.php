@@ -22,16 +22,14 @@ class AccessControlTest extends TestCase
     {
         return [
             'feed' => ['feed.index', []],
-            'map' => ['map.index', []],
-            'map artists' => ['map.artists', ['south' => 41, 'north' => 42, 'west' => -73, 'east' => -72]],
             'artist index' => ['artists.index', []],
             'artist create' => ['artists.create', []],
-            'artist show' => ['artists.show', ['artist' => 1]],
-            'artist edit' => ['artists.edit', ['artist' => 1]],
+            'artist show' => ['artists.show', ['artist' => ':artist']],
+            'artist edit' => ['artists.edit', ['artist' => ':artist']],
             'streams' => ['streams', []],
             'stream create' => ['stream.create', []],
-            'stream show' => ['stream.show', ['stream' => 1]],
-            'stream manage' => ['stream.edit', ['stream' => 1]],
+            'stream show' => ['stream.show', ['stream' => ':stream']],
+            'stream manage' => ['stream.edit', ['stream' => ':stream']],
             'profile' => ['profile.edit', []],
         ];
     }
@@ -58,10 +56,19 @@ class AccessControlTest extends TestCase
     #[DataProvider('verifiedOnlyRoutes')]
     public function test_unverified_users_are_sent_to_the_verification_notice(string $routeName, array $params): void
     {
-        // Real records so route model binding resolves before middleware is the question.
-        Artist::factory()->create();
-        LiveStream::factory()->create();
+        // Real records so route model binding resolves before middleware is
+        // the question. Ids come from the created rows: on Postgres and
+        // MySQL, sequences keep counting across rolled-back tests, so
+        // nothing may assume it will be id 1.
+        $artist = Artist::factory()->create();
+        $stream = LiveStream::factory()->create();
         $user = User::factory()->unverified()->create();
+
+        $params = array_map(fn ($value) => match ($value) {
+            ':artist' => $artist->id,
+            ':stream' => $stream->id,
+            default => $value,
+        }, $params);
 
         $this->actingAs($user)
             ->get(route($routeName, $params))
@@ -81,10 +88,12 @@ class AccessControlTest extends TestCase
         $this->actingAs($user)
             ->post(route('artists.store'), [
                 'name' => 'Blocked Band',
-                'genre' => 'Rock',
+                'artist_type' => 'band',
+                'genres' => [1],
                 'hometown' => 'Hartford',
                 'stateOrProvince' => 'CT',
                 'country' => 'USA',
+                'show_on_map' => true,
             ])
             ->assertRedirect(route('verification.notice'));
 

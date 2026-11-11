@@ -19,6 +19,15 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
+# Two pushes in quick succession must not race each other onto the box;
+# the newer one waits for the older to finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   test:
     uses: ./.github/workflows/ci.yml
@@ -59,34 +68,52 @@ jobs:
         echo "GROUP=$GROUP" >> $GITHUB_ENV
         echo "BUCKET=$BUCKET" >> $GITHUB_ENV
 
+    # The same pinned PHP the CI jobs use, not whatever apt ships today.
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, curl, zip, bcmath, pdo, pdo_mysql, pdo_pgsql, gd
+        coverage: none
 
-    # Install PHP and Node build dependencies
-    - name: Install dependencies
-      run: |
-        sudo apt update -y
-        sudo apt install -y php-cli php-mbstring php-xml php-curl php-zip unzip php-bcmath php-pdo php-mysqlnd php-pgsql php-json php-fpm
-        composer install --no-dev --prefer-dist --optimize-autoloader
+    - name: Install PHP dependencies
+      run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
         node-version: '24'
+        cache: npm
 
-    # Install Node dependencies & build assets
     - name: Build assets
       run: |
         npm ci
         npm run build
 
+    # Ship only what production runs: no VCS, tests, CI config, or node
+    # modules. The bundle name carries the commit, so S3 keeps an artifact
+    # per release and a rollback is a redeploy of an old key.
     - name: Zip source
-      run: zip -r release.zip . -x "*.git*" "node_modules/*" "tests/*"
+      run: |
+        zip -r "release-${GITHUB_SHA}.zip" . \
+          -x "*.git*" "node_modules/*" "tests/*" ".github/*" \
+             "storage/logs/*" "storage/framework/cache/*" \
+             "storage/framework/sessions/*" "storage/framework/views/*"
 
     - name: Upload to S3
-      run: aws s3 cp release.zip s3://$BUCKET/releases/release.zip
+      run: aws s3 cp "release-${GITHUB_SHA}.zip" "s3://$BUCKET/releases/release-${GITHUB_SHA}.zip"
 
     - name: Trigger CodeDeploy
       run: |
-        aws deploy create-deployment \
+        DEPLOYMENT_ID=$(aws deploy create-deployment \
           --application-name "$APP" \
           --deployment-group-name "$GROUP" \
-          --s3-location bucket="$BUCKET",bundleType=zip,key=releases/release.zip
+          --s3-location bucket="$BUCKET",bundleType=zip,key="releases/release-${GITHUB_SHA}.zip" \
+          --query deploymentId --output text)
+        echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> $GITHUB_ENV
+        echo "Started deployment $DEPLOYMENT_ID"
+
+    # A deploy that fails on the box must fail the workflow, not sit green
+    # while production runs the old release.
+    - name: Wait for CodeDeploy to finish
+      run: aws deploy wait deployment-successful --deployment-id "$DEPLOYMENT_ID"

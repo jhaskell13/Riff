@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Contracts\Geocodable;
+use App\Models\Artist;
 use App\Services\Geocoder;
+use App\Support\MapCache;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
@@ -50,5 +52,12 @@ class GeocodeAddress implements ShouldQueueAfterCommit
             'lat' => $point->lat,
             'lng' => $point->lng,
         ])->saveQuietly();
+
+        // saveQuietly skips the model events that normally invalidate the
+        // map cache, and a newly geocoded artist is exactly the change a
+        // cached viewport must not miss.
+        if ($this->model instanceof Artist) {
+            MapCache::bump();
+        }
     }
 }
