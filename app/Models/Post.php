@@ -3,17 +3,30 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property int|null $artist_id
+ * @property string $content
+ * @property string $status
+ * @property Carbon|null $published_at
+ * @property-read User|null $user
+ * @property-read Artist|null $artist
+ */
 class Post extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'artist_id',
-        'author',
         'content',
         'media',
         'status',
@@ -28,8 +41,6 @@ class Post extends Model
 
     /**
      * Get the user that owns the Post
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -38,20 +49,33 @@ class Post extends Model
 
     /**
      * Get all of the comments for the Post
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function likes(): BelongsToMany
+    public function artist(): BelongsTo
+    {
+        return $this->belongsTo(Artist::class);
+    }
+
+    /** @return MorphMany<Report, $this> */
+    public function reports(): MorphMany
+    {
+        return $this->morphMany(Report::class, 'reportable');
+    }
+
+    /**
+     * Named likers, not likes: the posts table has an integer likes
+     * column, and a relation with the same name would be shadowed by it.
+     */
+    public function likers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'post_likes')->withTimestamps();
     }
 
-    public function scopePublished($query): Builder
+    public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', 'published')
             ->whereNotNull('published_at')
@@ -60,16 +84,6 @@ class Post extends Model
 
     public function isLikedBy(User $user): bool
     {
-        return isset($user) && $this->likes()->where('user_id', $user->id);
-    }
-
-    public function incrementLikesCount(): void
-    {
-        $this->increment('likes');
-    }
-
-    public function decrementLikesCount(): void
-    {
-        $this->decrement('likes');
+        return $this->likers()->whereKey($user->id)->exists();
     }
 }

@@ -23,9 +23,12 @@ class RegistrationTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'city' => 'Hartford',
+            'state' => 'CT',
+            'country' => 'USA',
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('feed.index', absolute: false));
+        $response->assertRedirect(route('map.index', absolute: false));
     }
 }

@@ -35,6 +35,14 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Shared once for every surface that raises a report, so the
+            // form always offers exactly what validation accepts.
+            'reportReasons' => $request->user() === null
+                ? []
+                : collect((array) config('riff.moderation.reasons'))
+                    ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                    ->values()
+                    ->all(),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

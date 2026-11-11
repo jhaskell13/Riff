@@ -1,0 +1,8 @@
+/*
+  Leaflet's own stylesheets, layered (see the order in app.css) so the
+  map's theme -- the dark container background in particular -- overrides
+  their defaults. Unlayered, Leaflet's #ddd background won, and every
+  tile gap during a pan or zoom showed as a light-grey slab.
+*/
+@import 'leaflet/dist/leaflet.css' layer(vendor);
+@import 'leaflet.markercluster/dist/MarkerCluster.css' layer(vendor);

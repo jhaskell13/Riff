@@ -3,56 +3,48 @@
 namespace App\Http\Controllers;
 
 use App\Events\LiveStreamDataSent;
-use App\Events\LiveStreamScheduled;
 use App\Events\LiveStreamStarted;
+use App\Http\Requests\Streams\StreamStoreRequest;
 use App\Models\Artist;
 use App\Models\LiveStream;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StreamController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): Response
     {
         return Inertia::render('LiveStreams/Index');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): Response
     {
-        return Inertia::render('LiveStreams/Broadcast');
+        return Inertia::render('LiveStreams/Broadcast', [
+            'artists' => Auth::user()->artists()->select('artists.id', 'artists.name')->get(),
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request): RedirectResponse
+    public function store(StreamStoreRequest $request): RedirectResponse
     {
-        $request->validate([
-            'artist_id' => 'required',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
+        $artist = Artist::findOrFail($request->validated('artist_id'));
 
-        $stream = LiveStream::create([
-            'artist_id' => $request->artist_id,
-            'title' => $request->title,
-            'description' => $request->description,
-        ]);
+        $this->authorize('create', [LiveStream::class, $artist]);
 
-        return redirect()->route('stream.edit', ['stream' => $stream->id]);
+        $stream = LiveStream::create($request->validated());
+
+        return redirect()->route('stream.edit', $stream);
     }
 
     public function start(Request $request, LiveStream $stream): JsonResponse
     {
+        $this->authorize('manage', $stream);
+
+        abort_unless($stream->status === 'scheduled', 409, 'Only a scheduled stream can be started.');
+
         $stream->update([
             'status' => 'live',
             'started_at' => now(),
@@ -65,11 +57,32 @@ class StreamController extends Controller
         ]);
     }
 
+    public function end(Request $request, LiveStream $stream): JsonResponse
+    {
+        $this->authorize('manage', $stream);
+
+        abort_unless($stream->status === 'live', 409, 'Only a live stream can be ended.');
+
+        $stream->update([
+            'status' => 'ended',
+            'ended_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Stream ended.',
+        ]);
+    }
+
     public function sendData(Request $request, LiveStream $stream): JsonResponse
     {
+        $this->authorize('manage', $stream);
+
         $request->validate([
-            'chunk' => 'required|string',
-            'type' => 'required|in:video,audio',
+            // ~1.5MB of base64 per chunk; broadcasting video through HTTP
+            // POSTs is a prototype transport, but it should not accept
+            // arbitrarily large payloads while it exists.
+            'chunk' => ['required', 'string', 'max:1500000'],
+            'type' => ['required', 'in:video,audio'],
         ]);
 
         broadcast(new LiveStreamDataSent(
@@ -82,45 +95,27 @@ class StreamController extends Controller
         return response()->json(['status' => 'sent successfully']);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(LiveStream $stream): Response
     {
-        if (auth()->user()->isMemberOf($stream->artist)) {
+        if (Auth::user()->can('manage', $stream)) {
             return Inertia::render('LiveStreams/Manage', [
                 'stream' => $stream,
             ]);
         }
+
+        $this->authorize('view', $stream);
 
         return Inertia::render('LiveStreams/View', [
             'stream' => $stream,
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(LiveStream $stream): Response
     {
+        $this->authorize('manage', $stream);
+
         return Inertia::render('LiveStreams/Manage', [
             'stream' => $stream,
         ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }

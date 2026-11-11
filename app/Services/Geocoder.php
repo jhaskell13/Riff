@@ -2,60 +2,86 @@
 
 namespace App\Services;
 
+use App\DTO\MapPoint;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class Geocoder
 {
     protected const GEOCODE_ENDPOINT = 'https://maps.googleapis.com/maps/api/geocode/json';
 
-    protected const DEFAULT_LAT = 41.727173300123091;
-
-    protected const DEFAULT_LNG = -72.824225127696991;
-
-    public function defaultCoords(): object
+    /**
+     * Resolve an address to coordinates, or null when the address cannot
+     * be geocoded. Callers decide what a missing location means; this
+     * service never substitutes a fake one.
+     */
+    public function fromAddress(string $city, string $state, ?string $country = null): ?MapPoint
     {
-        return (object) [
-            'lat' => self::DEFAULT_LAT,
-            'lng' => self::DEFAULT_LNG,
-        ];
-    }
+        if (blank(config('services.google.maps.key'))) {
+            Log::notice('Geocoder skipped: GOOGLE_MAPS_API_KEY is not configured.');
 
-    public function fromAddress(string $city, string $state, ?string $country = null): object
-    {
-        $address  = "$city, $state";
-        $address .= isset($country) ? ", $country" : "";
-
-        $results = Cache::rememberForever("gmaps.geocode.address.$address", function () use ($address) {
-            try {
-                $response = Http::get(self::GEOCODE_ENDPOINT, [
-                    'address' => $address,
-                    'key'     => config('services.google.maps.key'),
-                ]);
-
-                $response = json_decode($response->body());
-
-                if ($response?->status != 'OK' || ! $response?->results[0]) {
-                    \Log::info("Invalid geocoder request: [STATUS CODE $response?->status]");
-                    return $this->defaultCoords();
-                }
-
-                $location = $response->results[0]->geometry->location;
-
-                return (object) [
-                    'lat' => round($location->lat, 7),
-                    'lng' => round($location->lng, 7),
-                ];
-            } catch (\Throwable $e) {
-                \Log::error('Geocoder error: ' . $e->getMessage());
-                return $this->defaultCoords();
-            }
-        });
-
-        if ($results == $this->defaultCoords()) {
-            Cache::forget("gmaps.geocode.address.$address");
+            return null;
         }
 
-        return $results;
+        $address = collect([$city, $state, $country])
+            ->filter(fn (?string $part) => filled($part))
+            ->map(fn (string $part) => Str::squish($part))
+            ->implode(', ');
+
+        $cacheKey = 'geocoder.address.'.md5(Str::lower($address));
+
+        $cached = Cache::get($cacheKey);
+
+        if (is_array($cached)) {
+            return new MapPoint(lat: $cached['lat'], lng: $cached['lng']);
+        }
+
+        $point = $this->resolve($address);
+
+        // Only successful lookups are cached; failures stay retryable.
+        if ($point !== null) {
+            Cache::put($cacheKey, ['lat' => $point->lat, 'lng' => $point->lng], now()->addDays(config('riff.geocoder.cache_ttl_days')));
+        }
+
+        return $point;
+    }
+
+    protected function resolve(string $address): ?MapPoint
+    {
+        try {
+            $response = Http::timeout(config('riff.geocoder.timeout_seconds'))
+                ->retry(2, 200, throw: false)
+                ->get(self::GEOCODE_ENDPOINT, [
+                    'address' => $address,
+                    'key' => config('services.google.maps.key'),
+                ]);
+        } catch (ConnectionException $e) {
+            Log::warning('Geocoder request failed.', ['address' => $address, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if ($response->failed()) {
+            Log::warning('Geocoder returned an HTTP error.', ['address' => $address, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        $status = $response->json('status');
+        $location = $response->json('results.0.geometry.location');
+
+        if ($status !== 'OK' || ! isset($location['lat'], $location['lng'])) {
+            Log::info('Geocoder could not resolve address.', ['address' => $address, 'status' => $status]);
+
+            return null;
+        }
+
+        return new MapPoint(
+            lat: round((float) $location['lat'], 7),
+            lng: round((float) $location['lng'], 7),
+        );
     }
 }

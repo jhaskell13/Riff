@@ -1,0 +1,175 @@
+<script setup>
+import { Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import MusicPreview from '@/Components/MusicPreview.vue';
+import FollowButton from '@/Components/FollowButton.vue';
+import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
+
+const props = defineProps({
+    artist: {
+        type: Object,
+        required: true,
+    },
+    canManage: {
+        type: Boolean,
+        default: false,
+    },
+    isFollowing: {
+        type: Boolean,
+        default: false,
+    },
+    isBlocked: {
+        type: Boolean,
+        default: false,
+    },
+    canBlock: {
+        type: Boolean,
+        default: false,
+    },
+});
+
+const links = computed(() => [
+    { key: 'website', url: props.artist.website, label: 'Website', icon: 'public' },
+    { key: 'bandcamp_url', url: props.artist.bandcamp_url, label: 'Bandcamp', icon: 'album' },
+    { key: 'spotify_url', url: props.artist.spotify_url, label: 'Spotify', icon: 'graphic_eq' },
+    { key: 'soundcloud_url', url: props.artist.soundcloud_url, label: 'SoundCloud', icon: 'cloud' },
+    { key: 'youtube_url', url: props.artist.youtube_url, label: 'YouTube', icon: 'smart_display' },
+    { key: 'instagram_url', url: props.artist.instagram_url, label: 'Instagram', icon: 'photo_camera' },
+].filter((link) => Boolean(link.url)));
+</script>
+
+<template>
+    <AuthenticatedLayout>
+        <q-page class="page-bg">
+            <div class="row justify-center">
+                <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5 q-pa-md">
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-5">
+                            <q-avatar size="72px" :color="artist.image_url ? '' : 'primary'" text-color="white">
+                                <img v-if="artist.image_url" :src="artist.image_url" :alt="`${artist.name} photo`" />
+                                <q-icon v-else name="groups" size="36px" />
+                            </q-avatar>
+                            <div class="leading-tight">
+                                <div class="text-h5 text-weight-bold text-grey-2">{{ artist.name }}</div>
+                                <div class="text-caption text-grey-6">
+                                    {{ artist.type_label }} • {{ artist.address }}
+                                </div>
+                                <div v-if="!artist.show_on_map" class="text-caption text-orange-4 q-mt-xs">
+                                    <q-icon name="visibility_off" size="14px" /> Hidden from the map
+                                </div>
+                            </div>
+                            <q-card-actions class="ml-auto items-center">
+                                <q-btn
+                                    v-if="canManage"
+                                    unelevated
+                                    rounded
+                                    color="primary"
+                                    label="Edit"
+                                    padding="xs lg"
+                                    @click="router.visit(route('artists.edit', artist.id))"
+                                />
+                                <!-- Members get this too: reporting an
+                                     identity you share is how a band deals
+                                     with a member who has gone rogue. -->
+                                <ArtistSafetyMenu
+                                    :artist-id="artist.id"
+                                    :artist-name="artist.name"
+                                    :is-blocked="isBlocked"
+                                    :can-block="canBlock"
+                                    color="grey-6"
+                                />
+                            </q-card-actions>
+                        </q-card-section>
+
+                        <q-card-section v-if="artist.genres?.length" class="q-pt-none">
+                            <q-chip
+                                v-for="genre in artist.genres"
+                                :key="genre.id"
+                                dense
+                                square
+                                color="grey-9"
+                                text-color="grey-3"
+                                class="q-ml-none"
+                            >
+                                {{ genre.name }}
+                            </q-chip>
+                        </q-card-section>
+
+                        <q-card-section class="q-pt-none">
+                            <FollowButton
+                                :artist-id="artist.id"
+                                :artist-name="artist.name"
+                                :following="isFollowing"
+                                :followers-count="artist.followers_count ?? 0"
+                            />
+                        </q-card-section>
+
+                        <q-separator color="grey-9" />
+
+                        <q-card-section v-if="artist.music_embed">
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-sm">Listen</div>
+                            <MusicPreview :embed="artist.music_embed" :artist-name="artist.name" />
+                        </q-card-section>
+
+                        <q-card-section v-if="artist.biography">
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">About</div>
+                            <div class="text-body2 text-grey-3 whitespace-pre-line">{{ artist.biography }}</div>
+                        </q-card-section>
+
+                        <q-card-section>
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">Members</div>
+                            <div class="text-body2 text-grey-3">
+                                <span v-for="(member, index) in artist.members" :key="member.id">
+                                    {{ member.name }}{{ index < artist.members.length - 1 ? ', ' : '' }}
+                                </span>
+                            </div>
+                        </q-card-section>
+
+                        <q-card-section v-if="links.length || artist.email" class="q-pt-none">
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">Links</div>
+                            <div class="row gap-2">
+                                <q-btn
+                                    v-for="link in links"
+                                    :key="link.key"
+                                    outline
+                                    rounded
+                                    dense
+                                    no-caps
+                                    color="grey-5"
+                                    padding="xs md"
+                                    :icon="link.icon"
+                                    :label="link.label"
+                                    :href="link.url"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    type="a"
+                                />
+                            </div>
+                            <div v-if="artist.email" class="text-body2 text-grey-3 q-mt-sm">{{ artist.email }}</div>
+                        </q-card-section>
+
+                        <q-card-section class="q-pt-none">
+                            <Link :href="route('artists.index')" class="text-caption text-grey-6">
+                                &larr; Back to your artists
+                            </Link>
+                        </q-card-section>
+                    </q-card>
+                </div>
+            </div>
+        </q-page>
+    </AuthenticatedLayout>
+</template>
+
+<style scoped>
+.page-bg {
+    background: #121212;
+    min-height: 100vh;
+}
+
+.post-card {
+    background: #1e1e1e;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+</style>

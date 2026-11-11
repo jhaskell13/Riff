@@ -1,3 +1,249 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+  Cascade layer order for the whole app, declared before anything else so
+  it is the first layer statement the browser sees.
+
+  Tailwind v4 emits all of its CSS inside layers. Quasar's and Leaflet's
+  stylesheets are unlayered by default -- and unlayered CSS beats layered
+  CSS regardless of specificity or source order, so every Tailwind
+  utility on a Quasar component lost, and Leaflet's #ddd container
+  background beat the dark one. Both now live in named layers below
+  Tailwind's components and utilities:
+
+    resources/css/quasar.sass     -> layer(quasar)
+    resources/css/map-vendor.css  -> layer(vendor)   (Leaflet, markercluster)
+
+  Quasar sits above Tailwind's preflight (base) so its own resets keep
+  working as before; Tailwind utilities win wherever both set a property.
+
+  quasar-restore comes last and holds only the few Quasar rules that a
+  same-named Tailwind utility would break (see the block at the end).
+*/
+@layer properties, theme, base, quasar, vendor, components, utilities, quasar-restore;
+
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+  --font-sans:
+    Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  /*
+    Riff surfaces. These mirror the Quasar palette in
+    resources/css/quasar-variables.sass so Tailwind utilities and Quasar
+    components agree; change both together.
+  */
+  --color-riff-primary: #d32f2f;
+  --color-riff-bg: #121212;
+  --color-riff-surface: #1e1e1e;
+  --color-riff-surface-2: #242424;
+  --color-riff-line: #343434;
+  --color-riff-text: #ececec;
+  --color-riff-muted: #9e9e9e;
+}
+
+/*
+  Map chrome. Leaflet builds its own DOM outside Vue, so these styles are
+  global on purpose; everything else in the map UI is scoped to its
+  component.
+*/
+@layer components {
+  .riff-pin {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 2px;
+    transform: rotate(-45deg);
+    background: var(--color-riff-primary);
+    border: 2px solid rgb(255 255 255 / 0.85);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+    transition: transform 120ms ease, background 120ms ease;
+  }
+
+  .riff-pin > * {
+    transform: rotate(45deg);
+    font-size: 15px;
+    line-height: 1;
+    color: #fff;
+  }
+
+  .riff-pin--active,
+  .riff-pin--hover {
+    background: #fff;
+    z-index: 1000;
+  }
+
+  .riff-pin--active > *,
+  .riff-pin--hover > * {
+    color: var(--color-riff-primary);
+  }
+
+  .riff-pin--active {
+    transform: rotate(-45deg) scale(1.25);
+  }
+
+  /* Count bubbles: identical whether the grouping happened on the server
+     (dense viewport) or in the browser (markercluster). */
+  .riff-cluster {
+    display: grid;
+    place-items: center;
+    border-radius: 9999px;
+    font-weight: 600;
+    color: #fff;
+    background: color-mix(in srgb, var(--color-riff-primary) 85%, transparent);
+    border: 2px solid rgb(255 255 255 / 0.75);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+    transition: transform 120ms ease;
+  }
+
+  .riff-cluster:hover {
+    transform: scale(1.08);
+  }
+
+  /*
+    "You are here": a halo, not a dot. Artists sit on their town's exact
+    centre -- which is also where this sits -- so anything drawn on top
+    hid them (a cluster's count disappeared under it) and anything small
+    underneath was hidden by them. A ring wider than a cluster bubble,
+    drawn beneath the markers, frames whatever is at the centre and stays
+    visible around it. Non-interactive, so clicks reach the artists.
+  */
+  .riff-you {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    border: 3px solid #38bdf8;
+    background: rgb(56 189 248 / 0.16);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.45), 0 0 14px rgb(56 189 248 / 0.45);
+  }
+
+  .riff-you__pulse {
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    border: 2px solid #38bdf8;
+    opacity: 0;
+    animation: riff-you-pulse 2.6s ease-out infinite;
+  }
+
+  @keyframes riff-you-pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    70% { transform: scale(1.6); opacity: 0; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  .leaflet-container {
+    background: var(--color-riff-bg);
+    font-family: var(--font-sans);
+  }
+
+  /* Dropdown menus are teleported to <body>, outside any scoped style. */
+  .riff-select-menu {
+    background: var(--color-riff-surface-2);
+    border: 1px solid var(--color-riff-line);
+  }
+
+  /* Leaflet's light control chrome, matched to the dark map. */
+  .leaflet-bar a,
+  .leaflet-bar a:hover {
+    background: var(--color-riff-surface);
+    color: var(--color-riff-text);
+    border-bottom-color: var(--color-riff-line);
+  }
+
+  .leaflet-bar a:hover {
+    background: var(--color-riff-surface-2);
+  }
+
+  .leaflet-bar {
+    border: 1px solid var(--color-riff-line);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+  }
+
+  .leaflet-container .leaflet-control-attribution {
+    background: rgb(18 18 18 / 0.75);
+    color: var(--color-riff-muted);
+  }
+
+  .leaflet-container .leaflet-control-attribution a {
+    color: #d4d4d4;
+  }
+
+  .leaflet-control-scale-line {
+    background: rgb(18 18 18 / 0.6);
+    border-color: var(--color-riff-muted);
+    color: var(--color-riff-text);
+  }
+
+  .leaflet-container a.leaflet-popup-close-button {
+    color: var(--color-riff-muted);
+  }
+
+  /* Keyboard focus must be visible on map controls and markers. */
+  .leaflet-marker-icon:focus-visible,
+  .leaflet-container a:focus-visible,
+  .leaflet-container button:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .riff-pin,
+  .riff-cluster {
+    transition: none;
+  }
+
+  .riff-you__pulse {
+    animation: none;
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/*
+  Quasar components render with Quasar's own class names, and two of them
+  collide with Tailwind utilities that mean something else:
+
+    .inline  Tailwind: display:inline   Quasar ".row.inline": inline-flex
+    .flex    Tailwind: display:flex     Quasar ".flex.inline": inline-flex
+
+  With Tailwind above Quasar, chips, toggles, checkboxes, radios, badges
+  and breadcrumbs collapsed (QChip, QToggle, use-checkbox, QRadio, QFab,
+  QRating emit "row inline"; QBadge, QBreadcrumbsEl emit "flex inline").
+  These are Quasar's own rules, restored above utilities. :not(.hidden)
+  keeps a Tailwind "hidden" able to hide such a component.
+
+  Found by comparing every generated Tailwind utility against Quasar's
+  stylesheet; re-run that check when adding Tailwind classes that share a
+  name with Quasar's (row, column, flex, inline, ...).
+*/
+@layer quasar-restore {
+  .row.inline:not(.hidden),
+  .column.inline:not(.hidden),
+  .flex.inline:not(.hidden) {
+    display: inline-flex;
+  }
+}
