@@ -73,6 +73,47 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Venues
+    |--------------------------------------------------------------------------
+    |
+    | A venue is an established place that hosts music *regularly*: a club,
+    | a bar with live music, a small hall, a record store with in-stores, a
+    | named DIY space with a running calendar. One-off locations (a backyard,
+    | a park, a house party) are not venues — they belong to the show itself,
+    | so nothing lingers on the map after the night is over.
+    |
+    | Address visibility is two states, not three: a "public" venue gives a
+    | street address and is pinned at it; a "private" venue gives no street
+    | at all and is pinned at its town. Riff cannot leak an address it never
+    | stored. DIY spaces default to private.
+    |
+    */
+
+    'venues' => [
+        'kinds' => [
+            'club' => 'Club / music venue',
+            'bar' => 'Bar with live music',
+            'hall' => 'Hall / small theater',
+            'record_store' => 'Record store',
+            'cafe' => 'Café / coffee house',
+            'diy' => 'DIY space',
+            'other' => 'Other',
+        ],
+        'private_by_default' => ['diy'],
+        'age_policies' => [
+            'all_ages' => 'All ages',
+            '18_plus' => '18+',
+            '21_plus' => '21+',
+            'varies' => 'Varies by show',
+        ],
+        // Community-submitted, so a spam target: a few per minute and a
+        // daily ceiling per account.
+        'rate_limit_per_minute' => (int) env('RIFF_VENUE_RATE_LIMIT', 3),
+        'rate_limit_per_day' => (int) env('RIFF_VENUE_DAILY_LIMIT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Genres
     |--------------------------------------------------------------------------
     |

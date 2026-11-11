@@ -102,8 +102,8 @@ Never commit real credentials. Keep secret values in your local or deployment en
 
 ## Main areas of the code
 
-- `app/Models` — users, artists, genres, posts, comments, reports, and livestream records.
-- `app/Policies` — authorization for artists, streams, and the report queue; every state-changing route checks these.
+- `app/Models` — users, artists, venues, genres, posts, comments, reports, and livestream records.
+- `app/Policies` — authorization for artists, venues, streams, and the report queue; every state-changing route checks these.
 - `app/Http/Controllers` — request handling for the map, artist identities, feeds, follows, blocks, reports, moderation, and profiles.
 - `app/Http/Resources` — JSON shapes for client-fetched data such as map markers, artist cards, and the report queue.
 - `app/Services`, `app/Contracts`, `app/DTO` — geocoding, map search, music-link parsing, photo processing, the pluggable event-provider contract, and shared value objects.

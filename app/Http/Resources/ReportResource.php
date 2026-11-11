@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Artist;
 use App\Models\Post;
 use App\Models\Report;
+use App\Models\Venue;
 use App\Support\ModerationAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -77,6 +78,23 @@ class ReportResource extends JsonResource
                 'imageUrl' => null,
                 'url' => null,
                 'state' => $subject->status === 'published' ? null : 'Removed',
+            ];
+        }
+
+        if ($subject instanceof Venue) {
+            return [
+                'kind' => 'venue',
+                'id' => $subject->id,
+                'title' => $subject->name,
+                // public_address, never the street column: a moderator
+                // queue is no reason to surface a private venue's door.
+                'detail' => $subject->kind_label.' · '.$subject->public_address,
+                'body' => $subject->description ? Str::limit($subject->description, 400, '…') : null,
+                'imageUrl' => null,
+                'url' => $subject->trashed() ? null : route('venues.show', $subject),
+                'state' => $subject->trashed()
+                    ? 'Taken down'
+                    : ($subject->show_on_map ? null : 'Hidden from the map'),
             ];
         }
 

@@ -57,6 +57,17 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Blocking is as repeatable as following and costs about as little.
+        // Venues are community-submitted and published at once, so both a
+        // burst limit and a daily ceiling per account.
+        RateLimiter::for('venues', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return [
+                Limit::perMinute(config('riff.venues.rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.venues.rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
         RateLimiter::for('blocks', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

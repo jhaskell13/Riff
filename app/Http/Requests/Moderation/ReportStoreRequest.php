@@ -4,6 +4,7 @@ namespace App\Http\Requests\Moderation;
 
 use App\Models\Artist;
 use App\Models\Post;
+use App\Models\Venue;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,6 +18,7 @@ class ReportStoreRequest extends FormRequest
     public const SUBJECTS = [
         'artist' => Artist::class,
         'post' => Post::class,
+        'venue' => Venue::class,
     ];
 
     public function authorize(): bool
@@ -68,7 +70,7 @@ class ReportStoreRequest extends FormRequest
     }
 
     /** The model being reported; default scopes exclude archived subjects. */
-    public function subject(): Artist|Post
+    public function subject(): Artist|Post|Venue
     {
         $model = self::SUBJECTS[$this->validated('type')];
 

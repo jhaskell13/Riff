@@ -17,8 +17,11 @@ class Geocoder
      * Resolve an address to coordinates, or null when the address cannot
      * be geocoded. Callers decide what a missing location means; this
      * service never substitutes a fake one.
+     *
+     * Town-level by default. Only a public venue passes a street: artists
+     * and listeners are placed at their town's centre and nothing else.
      */
-    public function fromAddress(string $city, string $state, ?string $country = null): ?MapPoint
+    public function fromAddress(string $city, string $state, ?string $country = null, ?string $street = null): ?MapPoint
     {
         if (blank(config('services.google.maps.key'))) {
             Log::notice('Geocoder skipped: GOOGLE_MAPS_API_KEY is not configured.');
@@ -26,7 +29,7 @@ class Geocoder
             return null;
         }
 
-        $address = collect([$city, $state, $country])
+        $address = collect([$street, $city, $state, $country])
             ->filter(fn (?string $part) => filled($part))
             ->map(fn (string $part) => Str::squish($part))
             ->implode(', ');

@@ -12,6 +12,12 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Venues this user added; they edit them until a venue is claimed
+    // (Phase 4).
+    venues: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 // Artists carry a genre list now rather than a single string.
@@ -128,6 +134,53 @@ const archive = (artist) => {
                                 @click="router.visit(route('artists.create'))"
                             />
                         </q-card-section>
+                    </q-card>
+
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="leading-tight">
+                                <div class="text-subtitle1 text-weight-medium text-grey-3">Venues you added</div>
+                                <p class="text-caption text-grey-6 m-0">
+                                    Places that host music regularly. One-off shows don't need one.
+                                </p>
+                            </div>
+                            <q-btn
+                                unelevated
+                                rounded
+                                color="primary"
+                                icon="add"
+                                label="Add a venue"
+                                padding="xs lg"
+                                class="ml-auto"
+                                @click="router.visit(route('venues.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="venues.length > 0">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div
+                                    v-for="venue in venues"
+                                    :key="venue.id"
+                                    class="flex items-center mt-4 first:mt-0"
+                                >
+                                    <q-avatar size="36px" color="grey-9" text-color="grey-5">
+                                        <q-icon name="storefront" size="20px" />
+                                    </q-avatar>
+                                    <div class="col q-ml-md">
+                                        <div class="text-subtitle2 text-grey-2">{{ venue.name }}</div>
+                                        <div class="text-caption text-grey-6">{{ venue.kindLabel }} • {{ venue.area }}</div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <q-btn round color="primary" icon="visibility" size="xs" @click="router.visit(route('venues.show', venue.slug))">
+                                            <q-tooltip>View venue</q-tooltip>
+                                        </q-btn>
+                                        <q-btn round color="primary" icon="edit" size="xs" @click="router.visit(route('venues.edit', venue.id))">
+                                            <q-tooltip>Edit</q-tooltip>
+                                        </q-btn>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
                     </q-card>
 
                     <q-card v-if="archivedArtists.length > 0" class="post-card q-pb-md q-mb-xl">

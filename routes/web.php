@@ -10,6 +10,7 @@ use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StreamController;
+use App\Http\Controllers\VenueController;
 use Illuminate\Support\Facades\Route;
 
 // Deployment infrastructure may probe /health; keep alongside Laravel's /up.
@@ -80,6 +81,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // show is public and registered below, outside this group.
     Route::resource('artists', ArtistZoneController::class)->except(['show']);
 
+    // Venues: established places that host music regularly. The public
+    // page is registered below, outside this group, after venues/create.
+    Route::get('venues/create', [VenueController::class, 'create'])->name('venues.create');
+    Route::post('venues', [VenueController::class, 'store'])
+        ->middleware('throttle:venues')
+        ->name('venues.store');
+    Route::get('venues/{venue}/edit', [VenueController::class, 'edit'])
+        ->whereNumber('venue')
+        ->name('venues.edit');
+    Route::match(['put', 'patch'], 'venues/{venue}', [VenueController::class, 'update'])
+        ->whereNumber('venue')
+        ->name('venues.update');
+
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'index'])->name('streams');
@@ -106,6 +120,8 @@ Route::middleware('throttle:map')->group(function () {
         ->name('artists.show.id');
     Route::get('artists/{artist:slug}', [ArtistZoneController::class, 'show'])
         ->name('artists.show');
+    Route::get('venues/{venue:slug}', [VenueController::class, 'show'])
+        ->name('venues.show');
 });
 
 Route::middleware('auth')->group(function () {

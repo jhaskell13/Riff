@@ -6,6 +6,7 @@ use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
 use App\Models\Artist;
 use App\Models\Genre;
+use App\Models\Venue;
 use App\Services\ArtistPhotos;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,17 @@ class ArtistZoneController extends Controller
         return Inertia::render('ArtistZone/Index', [
             'artists' => $artists,
             'archivedArtists' => $archivedArtists,
+            'venues' => Auth::user()
+                ->submittedVenues()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Venue $venue) => [
+                    'id' => $venue->id,
+                    'slug' => $venue->slug,
+                    'name' => $venue->name,
+                    'kindLabel' => $venue->kind_label,
+                    'area' => $venue->area,
+                ]),
         ]);
     }
 
