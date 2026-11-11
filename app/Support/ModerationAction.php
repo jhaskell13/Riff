@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Artist;
 use App\Models\Post;
+use App\Models\Show;
 use App\Models\Venue;
 
 /**
@@ -19,6 +20,7 @@ enum ModerationAction: string
     case RemovePost = 'remove_post';
     case HideVenue = 'hide_venue';
     case ArchiveVenue = 'archive_venue';
+    case RemoveShow = 'remove_show';
 
     public function label(): string
     {
@@ -33,6 +35,9 @@ enum ModerationAction: string
             // For spam or a venue that never existed: the page 404s. A
             // soft delete, so still recoverable.
             self::ArchiveVenue => 'Take the venue down',
+            // A soft delete: the page 404s. Distinct from the hosts'
+            // own cancel, which keeps the page up to tell ticket holders.
+            self::RemoveShow => 'Take the show down',
         };
     }
 
@@ -49,6 +54,7 @@ enum ModerationAction: string
             self::HideArtist, self::ArchiveArtist => $subject instanceof Artist,
             self::RemovePost => $subject instanceof Post,
             self::HideVenue, self::ArchiveVenue => $subject instanceof Venue,
+            self::RemoveShow => $subject instanceof Show,
         };
     }
 
@@ -65,7 +71,7 @@ enum ModerationAction: string
             // The row stays for the audit trail; the feed filters on status.
             self::RemovePost => $subject->forceFill(['status' => 'removed'])->save(),
             self::HideVenue => $subject->forceFill(['show_on_map' => false])->save(),
-            self::ArchiveVenue => $subject->delete(),
+            self::ArchiveVenue, self::RemoveShow => $subject->delete(),
         };
     }
 
@@ -79,7 +85,7 @@ enum ModerationAction: string
         return array_values(array_map(
             fn (self $action) => ['value' => $action->value, 'label' => $action->label()],
             array_filter(
-                [self::HideArtist, self::ArchiveArtist, self::RemovePost, self::HideVenue, self::ArchiveVenue, self::Dismiss],
+                [self::HideArtist, self::ArchiveArtist, self::RemovePost, self::HideVenue, self::ArchiveVenue, self::RemoveShow, self::Dismiss],
                 fn (self $action) => $action->appliesTo($subject),
             ),
         ));

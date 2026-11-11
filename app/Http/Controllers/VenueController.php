@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Venues\VenueRequest;
+use App\Http\Resources\ShowCardResource;
 use App\Http\Resources\VenueResource;
 use App\Models\Venue;
 use Illuminate\Http\RedirectResponse;
@@ -50,6 +51,14 @@ class VenueController extends Controller
 
         return Inertia::render('Venues/Show', [
             'venue' => VenueResource::make($venue)->resolve($request),
+            'upcomingShows' => ShowCardResource::collection(
+                $venue->shows()
+                    ->listed()
+                    ->upcoming()
+                    ->with(['confirmedLineup.artist', 'venue'])
+                    ->limit(20)
+                    ->get()
+            )->resolve($request),
             'canEdit' => $user?->can('update', $venue) ?? false,
             'canReport' => $user !== null,
         ]);
@@ -92,7 +101,7 @@ class VenueController extends Controller
 
         return [
             'kinds' => $options((array) config('riff.venues.kinds')),
-            'agePolicies' => $options((array) config('riff.venues.age_policies')),
+            'agePolicies' => $options((array) config('riff.age_policies')),
             'privateByDefault' => array_values((array) config('riff.venues.private_by_default')),
         ];
     }

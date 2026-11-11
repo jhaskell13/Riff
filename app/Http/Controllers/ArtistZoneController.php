@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
+use App\Http\Resources\ShowCardResource;
 use App\Models\Artist;
 use App\Models\Genre;
+use App\Models\LineupEntry;
+use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +20,7 @@ use Inertia\Response;
 
 class ArtistZoneController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $columns = ['artists.id', 'artists.name', 'artists.slug', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
 
@@ -40,6 +43,29 @@ class ArtistZoneController extends Controller
         return Inertia::render('ArtistZone/Index', [
             'artists' => $artists,
             'archivedArtists' => $archivedArtists,
+            // Other bands' bills waiting on one of this user's artists.
+            'showInvites' => LineupEntry::query()
+                ->whereIn('artist_id', $artists->pluck('id'))
+                ->where('status', LineupEntry::PENDING)
+                ->whereHas('show', fn ($show) => $show->listed()->notOver())
+                ->with(['artist:id,name', 'show.confirmedLineup.artist', 'show.venue', 'show.hostArtist:id,name'])
+                ->get()
+                ->map(fn (LineupEntry $entry) => [
+                    'id' => $entry->id,
+                    'artistName' => $entry->artist?->name,
+                    'hostName' => $entry->show?->hostArtist?->name,
+                    'show' => ShowCardResource::make($entry->show)->resolve($request),
+                ])
+                ->values(),
+            // Shows this user's artists host, to manage.
+            'hostedShows' => ShowCardResource::collection(
+                Show::query()
+                    ->whereIn('host_artist_id', $artists->pluck('id'))
+                    ->listed()
+                    ->upcoming()
+                    ->with(['confirmedLineup.artist', 'venue'])
+                    ->get()
+            )->resolve($request),
             'venues' => Auth::user()
                 ->submittedVenues()
                 ->orderBy('name')
@@ -101,6 +127,15 @@ class ArtistZoneController extends Controller
                 ->load(['members:id,name', 'genres:id,name'])
                 ->loadCount('followers')
                 ->append(['address', 'type_label', 'music_embed']),
+            'upcomingShows' => ShowCardResource::collection(
+                Show::query()
+                    ->featuring($artist)
+                    ->listed()
+                    ->upcoming()
+                    ->with(['confirmedLineup.artist', 'venue'])
+                    ->limit(10)
+                    ->get()
+            )->resolve($request),
             'canManage' => $user?->can('update', $artist) ?? false,
             'canFollow' => $user !== null,
             'isFollowing' => $user?->follows($artist) ?? false,

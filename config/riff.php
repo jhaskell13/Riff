@@ -100,16 +100,47 @@ return [
             'other' => 'Other',
         ],
         'private_by_default' => ['diy'],
-        'age_policies' => [
-            'all_ages' => 'All ages',
-            '18_plus' => '18+',
-            '21_plus' => '21+',
-            'varies' => 'Varies by show',
-        ],
         // Community-submitted, so a spam target: a few per minute and a
         // daily ceiling per account.
         'rate_limit_per_minute' => (int) env('RIFF_VENUE_RATE_LIMIT', 3),
         'rate_limit_per_day' => (int) env('RIFF_VENUE_DAILY_LIMIT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Age policies
+    |--------------------------------------------------------------------------
+    |
+    | Shared by venues and shows: a show inherits its venue's policy unless
+    | it states its own. All-ages is first-class information in a scene app.
+    |
+    */
+
+    'age_policies' => [
+        'all_ages' => 'All ages',
+        '18_plus' => '18+',
+        '21_plus' => '21+',
+        'varies' => 'Varies by show',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Shows
+    |--------------------------------------------------------------------------
+    |
+    | A show is listed by the members of its host artist. Other Riff artists
+    | on the bill must confirm before they appear (see LineupEntry). A show
+    | counts as "upcoming" until still_on_hours after it starts, so tonight's
+    | show doesn't vanish from listings the moment the doors open.
+    |
+    */
+
+    'shows' => [
+        'max_lineup' => (int) env('RIFF_SHOW_MAX_LINEUP', 12),
+        'max_days_ahead' => (int) env('RIFF_SHOW_MAX_DAYS_AHEAD', 365),
+        'still_on_hours' => (int) env('RIFF_SHOW_STILL_ON_HOURS', 4),
+        'rate_limit_per_minute' => (int) env('RIFF_SHOW_RATE_LIMIT', 5),
+        'rate_limit_per_day' => (int) env('RIFF_SHOW_DAILY_LIMIT', 30),
     ],
 
     /*

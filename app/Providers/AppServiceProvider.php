@@ -68,6 +68,15 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('shows', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return [
+                Limit::perMinute(config('riff.shows.rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.shows.rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
         RateLimiter::for('blocks', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

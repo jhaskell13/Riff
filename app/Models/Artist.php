@@ -95,6 +95,17 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         }
     }
 
+    /**
+     * Shows this artist's members listed. Shows it merely plays are
+     * Show::featuring($artist).
+     *
+     * @return HasMany<Show, $this>
+     */
+    public function hostedShows(): HasMany
+    {
+        return $this->hasMany(Show::class, 'host_artist_id');
+    }
+
     /** @return HasMany<ArtistSlug, $this> */
     public function slugHistory(): HasMany
     {

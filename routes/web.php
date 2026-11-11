@@ -5,10 +5,14 @@ use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistPhotoController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\LineupEntryController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ShowController;
+use App\Http\Controllers\ShowRsvpController;
 use App\Http\Controllers\StreamController;
 use App\Http\Controllers\VenueController;
 use Illuminate\Support\Facades\Route;
@@ -94,6 +98,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereNumber('venue')
         ->name('venues.update');
 
+    // Shows: listed by a host artist's members. The public page is
+    // registered below, outside this group.
+    Route::get('shows/create', [ShowController::class, 'create'])->name('shows.create');
+    Route::post('shows', [ShowController::class, 'store'])
+        ->middleware('throttle:shows')
+        ->name('shows.store');
+    Route::whereNumber('show')->group(function () {
+        Route::get('shows/{show}/edit', [ShowController::class, 'edit'])->name('shows.edit');
+        Route::match(['put', 'patch'], 'shows/{show}', [ShowController::class, 'update'])->name('shows.update');
+        Route::post('shows/{show}/cancel', [ShowController::class, 'cancel'])->name('shows.cancel');
+        Route::post('shows/{show}/rsvp', [ShowRsvpController::class, 'store'])
+            ->middleware('throttle:follows')
+            ->name('shows.rsvp');
+        Route::delete('shows/{show}/rsvp', [ShowRsvpController::class, 'destroy'])
+            ->middleware('throttle:follows')
+            ->name('shows.unrsvp');
+    });
+
+    // Lineup consent: an artist answering for its own slot on a bill.
+    Route::whereNumber('entry')->middleware('throttle:follows')->group(function () {
+        Route::post('lineup/{entry}/confirm', [LineupEntryController::class, 'confirm'])->name('lineup.confirm');
+        Route::post('lineup/{entry}/decline', [LineupEntryController::class, 'decline'])->name('lineup.decline');
+    });
+
+    // Name lookups for the show form's pickers.
+    Route::middleware('throttle:map')->prefix('search')->group(function () {
+        Route::get('artists', [SearchController::class, 'artists'])->name('search.artists');
+        Route::get('venues', [SearchController::class, 'venues'])->name('search.venues');
+    });
+
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {
         Route::get('/', [StreamController::class, 'index'])->name('streams');
@@ -122,6 +156,9 @@ Route::middleware('throttle:map')->group(function () {
         ->name('artists.show');
     Route::get('venues/{venue:slug}', [VenueController::class, 'show'])
         ->name('venues.show');
+    Route::get('shows/{show}', [ShowController::class, 'show'])
+        ->whereNumber('show')
+        ->name('shows.show');
 });
 
 Route::middleware('auth')->group(function () {

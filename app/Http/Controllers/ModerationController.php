@@ -6,6 +6,7 @@ use App\Http\Requests\Moderation\ReportResolveRequest;
 use App\Http\Resources\ReportResource;
 use App\Models\Post;
 use App\Models\Report;
+use App\Models\Show;
 use App\Support\ReportStatus;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\RedirectResponse;
@@ -35,6 +36,7 @@ class ModerationController extends Controller
             ->with([
                 'reportable' => fn (MorphTo $morphTo) => $morphTo->morphWith([
                     Post::class => ['artist:id,name', 'user:id,name'],
+                    Show::class => ['confirmedLineup.artist', 'venue', 'hostArtist'],
                 ]),
                 'reporter:id,name',
                 'resolvedBy:id,name',

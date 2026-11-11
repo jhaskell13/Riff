@@ -103,6 +103,12 @@ class Venue extends Model implements Geocodable, HasPublicSlug
         return $this->belongsTo(User::class, 'submitted_by');
     }
 
+    /** @return HasMany<Show, $this> */
+    public function shows(): HasMany
+    {
+        return $this->hasMany(Show::class);
+    }
+
     /** @return MorphMany<Report, $this> */
     public function reports(): MorphMany
     {
@@ -173,6 +179,6 @@ class Venue extends Model implements Geocodable, HasPublicSlug
     {
         return Attribute::get(fn (): ?string => $this->age_policy === null
             ? null
-            : (config('riff.venues.age_policies')[$this->age_policy] ?? null));
+            : (config('riff.age_policies')[$this->age_policy] ?? null));
     }
 }

@@ -101,7 +101,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : null);
                         <div class="flex items-start gap-3">
                             <q-avatar size="40px" :color="report.subject.imageUrl ? '' : 'grey-9'" text-color="grey-5">
                                 <img v-if="report.subject.imageUrl" :src="report.subject.imageUrl" :alt="`${report.subject.title} photo`" />
-                                <q-icon v-else :name="{ post: 'chat', venue: 'storefront' }[report.subject.kind] ?? 'music_note'" size="20px" />
+                                <q-icon v-else :name="{ post: 'chat', venue: 'storefront', show: 'event' }[report.subject.kind] ?? 'music_note'" size="20px" />
                             </q-avatar>
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-2">

@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import ReportDialog from '@/Components/ReportDialog.vue';
+import ShowList from '@/Components/ShowList.vue';
 
 const props = defineProps({
     // VenueResource: the address arrives already reduced to what may be
@@ -10,6 +11,7 @@ const props = defineProps({
     venue: { type: Object, required: true },
     canEdit: { type: Boolean, default: false },
     canReport: { type: Boolean, default: false },
+    upcomingShows: { type: Array, default: () => [] },
 });
 
 const reporting = ref(false);
@@ -97,6 +99,11 @@ const metaDescription = computed(() => {
                             <div v-if="venue.isPrivate" class="text-caption text-grey-6 q-mt-xs">
                                 The address is shared by the hosts, not listed on Riff.
                             </div>
+                        </q-card-section>
+
+                        <q-card-section>
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-sm">Upcoming shows</div>
+                            <ShowList :shows="upcomingShows" empty="No shows listed here yet." />
                         </q-card-section>
 
                         <q-card-section v-if="venue.description">

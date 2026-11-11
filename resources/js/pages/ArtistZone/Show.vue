@@ -5,6 +5,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
 import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
+import ShowList from '@/Components/ShowList.vue';
 
 const props = defineProps({
     artist: {
@@ -28,6 +29,11 @@ const props = defineProps({
     isBlocked: {
         type: Boolean,
         default: false,
+    },
+    // Shows this artist has confirmed playing (ShowCardResource).
+    upcomingShows: {
+        type: Array,
+        default: () => [],
     },
     canBlock: {
         type: Boolean,
@@ -151,6 +157,22 @@ const metaDescription = computed(() => {
                         <q-card-section v-if="artist.music_embed">
                             <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-sm">Listen</div>
                             <MusicPreview :embed="artist.music_embed" :artist-name="artist.name" />
+                        </q-card-section>
+
+                        <q-card-section v-if="upcomingShows.length || canManage">
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">Upcoming shows</div>
+                                <q-space />
+                                <q-btn
+                                    v-if="canManage"
+                                    flat dense rounded no-caps
+                                    color="primary"
+                                    icon="add"
+                                    label="List a show"
+                                    @click="router.visit(route('shows.create', { artist: artist.id }))"
+                                />
+                            </div>
+                            <ShowList :shows="upcomingShows" empty="Nothing listed yet." />
                         </q-card-section>
 
                         <q-card-section v-if="artist.biography">

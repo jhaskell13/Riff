@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Artist;
 use App\Models\Post;
 use App\Models\Report;
+use App\Models\Show;
 use App\Models\Venue;
 use App\Support\ModerationAction;
 use Illuminate\Http\Request;
@@ -95,6 +96,23 @@ class ReportResource extends JsonResource
                 'state' => $subject->trashed()
                     ? 'Taken down'
                     : ($subject->show_on_map ? null : 'Hidden from the map'),
+            ];
+        }
+
+        if ($subject instanceof Show) {
+            return [
+                'kind' => 'show',
+                'id' => $subject->id,
+                'title' => ShowCardResource::displayTitle($subject),
+                'detail' => $subject->localStart()->isoFormat('ddd, MMM D, h:mm A')
+                    .' · '.($subject->venue?->name ?? $subject->location_name)
+                    .($subject->hostArtist ? ' · listed by '.$subject->hostArtist->name : ''),
+                'body' => $subject->description ? Str::limit($subject->description, 400, '…') : null,
+                'imageUrl' => null,
+                'url' => $subject->trashed() ? null : route('shows.show', $subject),
+                'state' => $subject->trashed()
+                    ? 'Taken down'
+                    : ($subject->is_cancelled ? 'Cancelled by its hosts' : null),
             ];
         }
 

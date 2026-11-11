@@ -2,6 +2,7 @@
 import { useForm, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ShowList from '@/Components/ShowList.vue';
 
 const props = defineProps({
     artists: {
@@ -14,6 +15,17 @@ const props = defineProps({
     },
     // Venues this user added; they edit them until a venue is claimed
     // (Phase 4).
+    // Pending lineup slots on other artists' bills, for one of this
+    // user's artists to confirm or decline.
+    showInvites: {
+        type: Array,
+        default: () => [],
+    },
+    // Upcoming shows this user's artists host.
+    hostedShows: {
+        type: Array,
+        default: () => [],
+    },
     venues: {
         type: Array,
         default: () => [],
@@ -22,6 +34,16 @@ const props = defineProps({
 
 // Artists carry a genre list now rather than a single string.
 const genreNames = (artist) => (artist.genres ?? []).map((genre) => genre.name).join(', ');
+
+const answering = ref(null);
+
+const answer = (invite, decision) => {
+    answering.value = invite.id;
+    router.post(route(`lineup.${decision}`, invite.id), {}, {
+        preserveScroll: true,
+        onFinish: () => (answering.value = null),
+    });
+};
 
 const restore = (artist) => {
     if (confirm(`Restore ${artist.name}? The identity becomes visible on Riff again.`)) {
@@ -101,6 +123,15 @@ const archive = (artist) => {
                                     <q-btn
                                         round
                                         color="primary"
+                                        icon="event"
+                                        size="xs"
+                                        @click="router.visit(route('shows.create', { artist: artist.id }))"
+                                    >
+                                        <q-tooltip>List a show</q-tooltip>
+                                    </q-btn>
+                                    <q-btn
+                                        round
+                                        color="primary"
                                         icon="edit"
                                         size="xs"
                                         @click="router.visit(route('artists.edit', artist.id))"
@@ -133,6 +164,46 @@ const archive = (artist) => {
                                 class="mt-2 m-auto"
                                 @click="router.visit(route('artists.create'))"
                             />
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card v-if="artists.length > 0" class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="text-subtitle1 text-weight-medium text-grey-3">Shows</div>
+                            <q-btn
+                                unelevated
+                                rounded
+                                color="primary"
+                                icon="add"
+                                label="List a show"
+                                padding="xs lg"
+                                class="ml-auto"
+                                @click="router.visit(route('shows.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="showInvites.length">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div class="text-subtitle2 text-weight-medium text-orange-4 q-mb-xs">Waiting for you to confirm</div>
+                                <p class="text-caption text-grey-6 m-0 q-mb-sm">
+                                    You're named on these bills. You appear on a show only once you confirm.
+                                </p>
+                                <div v-for="invite in showInvites" :key="invite.id" class="q-mb-md">
+                                    <div class="text-caption text-grey-5 q-mb-xs">
+                                        {{ invite.hostName }} added <strong>{{ invite.artistName }}</strong>
+                                    </div>
+                                    <ShowList :shows="[invite.show]" />
+                                    <div class="row justify-end gap-2 q-mt-xs">
+                                        <q-btn flat rounded dense no-caps color="grey-5" label="Decline" :loading="answering === invite.id" @click="answer(invite, 'decline')" />
+                                        <q-btn unelevated rounded dense no-caps color="primary" label="Confirm" padding="xs md" :loading="answering === invite.id" @click="answer(invite, 'confirm')" />
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
+                        <q-separator color="grey-9" />
+                        <q-card-section>
+                            <div class="text-subtitle2 text-weight-medium text-grey-4 q-mb-sm">Your upcoming shows</div>
+                            <ShowList :shows="hostedShows" empty="No shows listed yet." />
                         </q-card-section>
                     </q-card>
 

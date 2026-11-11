@@ -59,7 +59,7 @@ class VenueRequest extends FormRequest
             'city' => ['required', 'string', 'max:120'],
             'state' => ['required', 'string', 'max:120'],
             'country' => ['nullable', 'string', 'max:120'],
-            'age_policy' => ['nullable', 'string', Rule::in(array_keys(config('riff.venues.age_policies')))],
+            'age_policy' => ['nullable', 'string', Rule::in(array_keys(config('riff.age_policies')))],
             'website' => ['nullable', 'url:http,https', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
         ];
