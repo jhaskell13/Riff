@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Riff is a local music discovery platform (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 4, Vite 8, Leaflet). The map of nearby artists is the core feature. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. See ROADMAP.md for phased product direction — Phases 0 (dependable prototype) and 1 (local discovery MVP) are complete; Phase 2 (local participation: follows feed, events, notifications) is next.
+Riff is a **local music scene app** (Laravel 13, Inertia v3, Vue 3, Quasar + Tailwind 4, Vite 8, Leaflet): open it in a town and see the scene there — artists, shows, venues, bands looking for members — then become a fan of an artist and use their page to hear from them, talk with other fans, and support them. The map is the front door. Users hold multiple "artist identities" (band/solo/producer) via the `artist_user` pivot. ROADMAP.md is the source of truth for identity, principles, vocabulary (scene, fan, show, venue, listing) and phases — Phases 0 (dependable prototype) and 1 (local discovery MVP) are complete; **Phase 2 (put the whole scene on the map: public artist pages, venues, shows, map layers, scene views, listings)** is next, then Phase 3 (artist page as the fans' home), Phase 4 (scene tools for members/venues/promoters), Phase 5 (listening parties and live sessions, long-term).
+
+**Product guardrails** (from ROADMAP's principles — check new features against them):
+- Everything is anchored to a place, an artist, a show, or a venue. Do not add global timelines, algorithmic feeds, or popularity-only ranking; the existing global `/feed` is slated for replacement, not extension.
+- Fan interaction lives on the artist's page, where members speak *as the artist* and can moderate their own wall.
+- Support links send money to where artists already get paid; Riff does not process payments until the Phase 4 decision gate.
+- Public locations are approximate and chosen; DIY/house venue addresses default to on-request; listener locations are never public. Every new surface is reportable through `POST /reports`.
 
 ## Commands
 
@@ -52,9 +58,9 @@ Leaflet popups, where still used, are built with DOM nodes (`textContent`), neve
 - **Blocking** (`artist_blocks`, mirroring `artist_follows`) is one listener's own view: the artist leaves *their* map and feed, is told nothing, and stays on everyone else's map. `MapFilters::hiddenFor` is set only when the viewer actually blocks someone (`User::hasBlocks()`), because it makes results personal and therefore uncacheable; everyone else keeps the shared cache. The exclusion lives in `ArtistMapSearch::matching()`, so markers, the nearest list, and cluster counts all agree. In the feed, the `NOT IN` must be ORed with `whereNull('artist_id')` or artist-less posts vanish (a comparison with NULL is never true). Blocking also drops the follow; `ArtistPolicy::block` refuses members their own artist. The only way back is the list in profile settings.
 - **Moderation** is `users.is_moderator` — not fillable, no form, granted only by `riff:moderator` — read in exactly one place, `ReportPolicy`. `/moderation` is the whole surface: the queue (open oldest-first, settled newest-first) and one `POST` per decision. The four decisions are `App\Support\ModerationAction`, which also says which apply to which subject (`optionsFor()` feeds the buttons; the request re-checks). Nothing is destructive — hide takes the pin off the map, archive is the members' own recoverable soft delete, a removed post keeps its row. Resolving one report closes every other open report about the same subject, and `resolution`/`resolved_by_id`/`resolved_at`/`moderator_note` are the audit trail. `Report::reportable()` is `withTrashed()` so a report about an archived artist stays readable.
 
-**Events:** `App\Contracts\EventProvider` → `App\Services\Events\TicketmasterEvents` (bound in AppServiceProvider), returning provider-agnostic `App\DTO\LocalEvent`s. Not wired to the UI yet; new sources implement the contract.
+**Events:** `App\Contracts\EventProvider` → `App\Services\Events\TicketmasterEvents` (bound in AppServiceProvider), returning provider-agnostic `App\DTO\LocalEvent`s. Not wired to the UI yet. In Phase 2, artist/venue-submitted shows are the primary source; providers (local-first ones via this contract, Ticketmaster only as filler) are always labelled as imported and never outrank artist-confirmed shows.
 
-**Known prototype (do not polish):** livestreaming transport — HTTP POSTed base64 chunks re-broadcast over *public* channels — is a dead end slated for a managed provider in Phase 4. Its endpoints are policy-protected; leave the transport alone. Feed like/comment schema exists but UI is hidden until Phase 3.
+**Known prototype (do not polish):** livestreaming transport — HTTP POSTed base64 chunks re-broadcast over *public* channels — is a dead end, to be retired and replaced by a managed provider for Phase 5 "sessions". Its endpoints are policy-protected; leave the transport alone. Feed like/comment schema exists but UI is hidden until Phase 3, when it ships as artist-page walls and replies.
 
 ## Conventions and gotchas
 

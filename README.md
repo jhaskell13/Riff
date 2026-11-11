@@ -1,8 +1,8 @@
 # Riff
 
-Riff is an experimental local music discovery app. It helps listeners find independent artists near a chosen area and gives bands, solo artists, rappers, producers, and other music makers an artist identity they can use to share their work.
+Riff is a local music scene app. Open it in a town and see the scene around you: the bands and artists who play there, the shows coming up, the venues and DIY spaces that host them, and the acts looking for new members. Find an artist you love, become a fan, and their page becomes the place to hear from them, talk with other fans, and support them by buying their music and merch.
 
-The core idea is map-led discovery: explore local artists, hear their music, and find a reason to follow them or see them live. The project also contains early experiments with artist posts, events, and livestreaming. Those parts are still in progress; see the [development roadmap](ROADMAP.md).
+Riff is deliberately *not* a general social feed or a streaming service. Everything in it is anchored to a place, an artist, a show, or a venue. The [roadmap](ROADMAP.md) sets out the identity, principles, and phased plan; longer-term ideas include listening parties and intimate live sessions for fans.
 
 ## Project status
 
@@ -12,7 +12,9 @@ Riff is a prototype under active development, not a finished public service.
 
 **Phase 1 (local discovery MVP) is complete:** artist profiles with genres, photos, and playable music; a public map with artist cards, a synchronised list, search, filters, and clustering; onboarding that splits a first-time visitor into listener and artist paths; reporting, per-listener blocking, and a moderator report queue; and a seeded pilot scene to demonstrate it with.
 
-Livestreaming remains an early prototype and the Ticketmaster event lookup is not yet wired into the UI. Phase 2 — an artist-first follows feed, local events, and notifications — is next; see the [roadmap](ROADMAP.md).
+**Phase 2 (put the whole scene on the map) is next:** public artist pages, venues, shows with multi-artist lineups, map layers for shows and venues, shareable scene views (a place plus a genre family, like "Hartford punk"), and "looking for" listings. Phase 3 then turns the artist page into a home for fans. See the [roadmap](ROADMAP.md).
+
+The current global feed and the livestream prototype predate this direction. The feed is replaced in Phase 3, and the livestream transport is retired rather than extended. The Ticketmaster event lookup exists but is not wired into the UI.
 
 ## Stack
 
@@ -111,11 +113,11 @@ Never commit real credentials. Keep secret values in your local or deployment en
 - `config/riff.php` — map defaults and tuning, artist types, the curated genre vocabulary, media limits, distance units, and moderation settings.
 - `database/migrations` — database schema.
 - `database/seeders` — the pilot scene and the wider development dataset.
-- `resources/js/pages` — Inertia/Vue screens: the map, artist zone, profile, moderation queue, and the experimental feed/stream pages.
+- `resources/js/pages` — Inertia/Vue screens: the map, artist zone, profile, moderation queue, the global feed (to be replaced in Phase 3), and the livestream prototype.
 - `resources/js/Components/Map` — the map's own components (filter bar, result list, artist card, welcome overlay, marker builders).
 - `routes/web.php` — web routes.
 - `tests` — PHPUnit feature and unit tests (fully offline; external services are faked).
-- `ROADMAP.md` — product direction, current status, and milestones.
+- `ROADMAP.md` — what Riff is, its product principles, current status, and phased milestones.
 - `CLAUDE.md` — architecture and convention notes for AI-assisted development.
 
 ## Tests and code style
@@ -165,7 +167,7 @@ Check formatting without changing files:
 
 ## Product direction
 
-Riff is focused on helping people discover artists who may not appear in their usual streaming recommendations. With Phase 1 complete, the map, artist profiles, music previews, onboarding, and the safety tooling needed before public growth are all in place and demonstrable against the seeded pilot scene. The next step is Phase 2: turning discovery into participation with an artist-first follows feed, local events, and notifications, shaped by what pilot listeners and artists actually use. Real-time livestreaming and remote live jams remain exploratory because they add significant reliability, moderation, and latency challenges.
+Riff exists to make local music scenes visible and to connect them: the artists, their shows, the places they play, and the fans who keep them going. The core loop is **find your scene → go to a show → become a fan → hear from and support the artist → come back for the next show.** Phases 0 and 1 built the first step, a public map of local artists with profiles, music previews, onboarding, and safety tooling. The next phases add shows, venues, scene views, and listings (Phase 2); artist pages as fan homes with walls, posts in the artist's own voice, support links, and notifications (Phase 3); and tools for venues, promoters, and band members (Phase 4). Listening parties and live sessions are long-term (Phase 5), gated on demonstrated demand. [ROADMAP.md](ROADMAP.md) has the full plan and the principles behind it.
 
 ## License
 
