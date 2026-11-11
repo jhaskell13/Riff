@@ -38,7 +38,7 @@ use Illuminate\Support\Facades\DB;
 class ArtistMapSearch
 {
     private const MARKER_COLUMNS = [
-        'id', 'name', 'artist_type', 'hometown', 'stateOrProvince',
+        'id', 'name', 'slug', 'artist_type', 'hometown', 'stateOrProvince',
         'lat', 'lng', 'image_path', 'music_provider',
     ];
 

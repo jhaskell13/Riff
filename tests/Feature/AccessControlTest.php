@@ -24,7 +24,7 @@ class AccessControlTest extends TestCase
             'feed' => ['feed.index', []],
             'artist index' => ['artists.index', []],
             'artist create' => ['artists.create', []],
-            'artist show' => ['artists.show', ['artist' => ':artist']],
+            // artists.show is deliberately absent: profiles are public.
             'artist edit' => ['artists.edit', ['artist' => ':artist']],
             'streams' => ['streams', []],
             'stream create' => ['stream.create', []],

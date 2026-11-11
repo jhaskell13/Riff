@@ -60,7 +60,7 @@ class ReportResource extends JsonResource
                 'detail' => $subject->address,
                 'body' => $subject->biography ? Str::limit($subject->biography, 400, '…') : null,
                 'imageUrl' => $subject->image_url,
-                'url' => route('artists.show', $subject->id),
+                'url' => route('artists.show', $subject),
                 'state' => $subject->trashed()
                     ? 'Archived'
                     : ($subject->show_on_map ? null : 'Hidden from the map'),

@@ -12,7 +12,7 @@ Riff is a prototype under active development, not a finished public service.
 
 **Phase 1 (local discovery MVP) is complete:** artist profiles with genres, photos, and playable music; a public map with artist cards, a synchronised list, search, filters, and clustering; onboarding that splits a first-time visitor into listener and artist paths; reporting, per-listener blocking, and a moderator report queue; and a seeded pilot scene to demonstrate it with.
 
-**Phase 2 (put the whole scene on the map) is next:** public artist pages, venues, shows with multi-artist lineups, map layers for shows and venues, shareable scene views (a place plus a genre family, like "Hartford punk"), and "looking for" listings. Phase 3 then turns the artist page into a home for fans. See the [roadmap](ROADMAP.md).
+**Phase 2 (put the whole scene on the map) is next:** public artist pages, venues, shows with multi-artist lineups, one map that shows artists, shows, and venues together with kind and date filters, shareable scene views (a place plus a genre family, like "Hartford punk"), and "looking for" listings. Phase 3 then turns the artist page into a home for fans. See the [roadmap](ROADMAP.md).
 
 The current global feed and the livestream prototype predate this direction. The feed is replaced in Phase 3, and the livestream transport is retired rather than extended. The Ticketmaster event lookup exists but is not wired into the UI.
 

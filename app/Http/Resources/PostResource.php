@@ -31,6 +31,7 @@ class PostResource extends JsonResource
                 'id' => $this->artist->id,
                 'name' => $this->artist->name,
                 'image_url' => $this->artist->image_url,
+                'url' => route('artists.show', $this->artist),
             ]),
         ];
     }

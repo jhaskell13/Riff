@@ -1,5 +1,5 @@
 <script setup>
-import { Link, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MusicPreview from '@/Components/MusicPreview.vue';
@@ -12,6 +12,12 @@ const props = defineProps({
         required: true,
     },
     canManage: {
+        type: Boolean,
+        default: false,
+    },
+    // False means "not signed in": the page is public, and every
+    // account-bound control below swaps for a register prompt.
+    canFollow: {
         type: Boolean,
         default: false,
     },
@@ -37,9 +43,24 @@ const links = computed(() => [
     { key: 'youtube_url', url: props.artist.youtube_url, label: 'YouTube', icon: 'smart_display' },
     { key: 'instagram_url', url: props.artist.instagram_url, label: 'Instagram', icon: 'photo_camera' },
 ].filter((link) => Boolean(link.url)));
+
+// What a shared link unfurls as.
+const metaDescription = computed(() => {
+    const where = `${props.artist.type_label} from ${props.artist.address}`;
+    const bio = (props.artist.biography || '').trim();
+
+    return bio ? `${where}. ${bio}`.slice(0, 180) : `${where} on Riff.`;
+});
 </script>
 
 <template>
+    <Head :title="artist.name">
+        <meta name="description" :content="metaDescription" />
+        <meta property="og:title" :content="`${artist.name} — Riff`" />
+        <meta property="og:description" :content="metaDescription" />
+        <meta property="og:type" content="profile" />
+        <meta v-if="artist.image_url" property="og:image" :content="artist.image_url" />
+    </Head>
     <AuthenticatedLayout>
         <q-page class="page-bg">
             <div class="row justify-center">
@@ -73,6 +94,7 @@ const links = computed(() => [
                                      identity you share is how a band deals
                                      with a member who has gone rogue. -->
                                 <ArtistSafetyMenu
+                                    v-if="canFollow"
                                     :artist-id="artist.id"
                                     :artist-name="artist.name"
                                     :is-blocked="isBlocked"
@@ -98,11 +120,30 @@ const links = computed(() => [
 
                         <q-card-section class="q-pt-none">
                             <FollowButton
+                                v-if="canFollow"
                                 :artist-id="artist.id"
                                 :artist-name="artist.name"
                                 :following="isFollowing"
                                 :followers-count="artist.followers_count ?? 0"
                             />
+                            <!-- Guests: same destination as the map card's
+                                 Follow — registration with the fan intent. -->
+                            <div v-else class="row items-center no-wrap gap-2">
+                                <q-btn
+                                    unelevated
+                                    rounded
+                                    no-caps
+                                    color="primary"
+                                    icon="add"
+                                    label="Join Riff to follow"
+                                    padding="xs lg"
+                                    :href="route('register', { intent: 'fan' })"
+                                    type="a"
+                                />
+                                <span class="text-caption text-grey-6">
+                                    {{ artist.followers_count ?? 0 }} {{ (artist.followers_count ?? 0) === 1 ? 'follower' : 'followers' }}
+                                </span>
+                            </div>
                         </q-card-section>
 
                         <q-separator color="grey-9" />

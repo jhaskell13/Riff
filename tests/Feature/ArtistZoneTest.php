@@ -59,11 +59,14 @@ class ArtistZoneTest extends TestCase
         ], $overrides));
     }
 
-    public function test_guests_are_redirected_to_login(): void
+    public function test_guests_are_redirected_to_login_for_zone_pages(): void
     {
         $artist = Artist::factory()->create();
 
-        $this->get(route('artists.show', $artist))->assertRedirect(route('login'));
+        // The public profile is covered in ArtistPublicProfileTest; the
+        // zone (management) stays members-only.
+        $this->get(route('artists.index'))->assertRedirect(route('login'));
+        $this->get(route('artists.edit', $artist))->assertRedirect(route('login'));
     }
 
     public function test_a_user_can_create_an_artist_and_becomes_a_member(): void
@@ -97,7 +100,8 @@ class ArtistZoneTest extends TestCase
 
         $this->actingAs($member)
             ->patch(route('artists.update', $artist), $this->payloadFor($artist, ['name' => 'New Name']))
-            ->assertRedirect(route('artists.show', $artist));
+            // The redirect carries the fresh slug — a rename changes it.
+            ->assertRedirect(route('artists.show', $artist->fresh()));
 
         $this->assertSame('New Name', $artist->fresh()->name);
     }

@@ -138,7 +138,7 @@ const timeAgo = (iso) => {
                                                 v-if="post.artist"
                                                 v-close-popup
                                                 clickable
-                                                @click="router.visit(route('artists.show', post.artist.id))"
+                                                @click="router.visit(post.artist.url)"
                                             >
                                                 <q-item-section avatar><q-icon name="person" size="20px" /></q-item-section>
                                                 <q-item-section>Go to {{ post.artist.name }}</q-item-section>

@@ -88,7 +88,7 @@ const archive = (artist) => {
                                         color="primary"
                                         icon="visibility"
                                         size="xs"
-                                        @click="router.visit(route('artists.show', artist.id))"
+                                        @click="router.visit(route('artists.show', artist.slug))"
                                     >
                                         <q-tooltip>View profile</q-tooltip>
                                     </q-btn>

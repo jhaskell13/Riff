@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Contracts\Geocodable;
 use App\Observers\GeocodableObserver;
 use App\Services\MusicLink;
+use App\Support\ArtistSlugs;
 use App\Support\MapCache;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * @property int $id
  * @property string $name
+ * @property string|null $slug
  * @property string $artist_type
  * @property string $hometown
  * @property string $stateOrProvince
@@ -89,6 +92,63 @@ class Artist extends Model implements Geocodable
         foreach (['saved', 'deleted', 'restored'] as $event) {
             static::$event(fn () => MapCache::bump());
         }
+
+        // The public URL slug is model-managed, never request-set: links are
+        // permanent but slugs follow the name. A rename mints a new slug and
+        // parks the old one in artist_slugs, where resolveRouteBinding keeps
+        // it redirecting; renaming back reclaims the parked slug.
+        static::creating(function (self $artist): void {
+            if (blank($artist->slug)) {
+                $artist->slug = ArtistSlugs::generate($artist->name, $artist);
+            }
+        });
+
+        static::updating(function (self $artist): void {
+            if (! $artist->isDirty('name') || $artist->isDirty('slug')) {
+                return;
+            }
+
+            $slug = ArtistSlugs::generate($artist->name, $artist);
+
+            if ($slug === $artist->slug) {
+                return;
+            }
+
+            if ($artist->slug !== null) {
+                $artist->slugHistory()->firstOrCreate(['slug' => $artist->slug]);
+            }
+
+            $artist->slugHistory()->where('slug', $slug)->delete();
+
+            $artist->slug = $slug;
+        });
+    }
+
+    /**
+     * Slugs this artist used before renames; each keeps an old URL working.
+     */
+    public function slugHistory(): HasMany
+    {
+        return $this->hasMany(ArtistSlug::class);
+    }
+
+    /**
+     * Public profile URLs bind by slug. A historical slug still resolves —
+     * to the artist that used to hold it — and the controller answers with
+     * a permanent redirect to the canonical URL. Archived artists resolve
+     * to null (404) either way; members reach them through the zone.
+     *
+     * @param  mixed  $value
+     * @param  string|null  $field
+     */
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        if ($field !== 'slug') {
+            return static::query()->where($field ?? $this->getRouteKeyName(), $value)->first();
+        }
+
+        return static::query()->where('slug', $value)->first()
+            ?? ArtistSlug::query()->where('slug', $value)->first()?->artist;
     }
 
     /**

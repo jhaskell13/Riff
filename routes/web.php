@@ -77,7 +77,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('artists/{artist}/follow', [ArtistFollowController::class, 'destroy'])
         ->middleware('throttle:follows')
         ->name('artists.unfollow');
-    Route::resource('artists', ArtistZoneController::class);
+    // show is public and registered below, outside this group.
+    Route::resource('artists', ArtistZoneController::class)->except(['show']);
 
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {
@@ -90,6 +91,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
         Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
     });
+});
+
+// Artist profiles are public: a shared link must work logged out. These sit
+// after the auth group so artists/create and the other zone routes match
+// first, and the numeric route sits before the slug route so an old
+// /artists/{id} link redirects (slugs are never all digits).
+Route::middleware('throttle:map')->group(function () {
+    // A distinct parameter name: {artist} here would collide with the slug
+    // route below (binding fields are stripped from the URI, so both would
+    // key as artists/{artist} and the later one wins).
+    Route::get('artists/{artistId}', [ArtistZoneController::class, 'redirectToSlug'])
+        ->whereNumber('artistId')
+        ->name('artists.show.id');
+    Route::get('artists/{artist:slug}', [ArtistZoneController::class, 'show'])
+        ->name('artists.show');
 });
 
 Route::middleware('auth')->group(function () {

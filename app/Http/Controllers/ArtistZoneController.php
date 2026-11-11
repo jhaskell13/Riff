@@ -8,6 +8,7 @@ use App\Models\Artist;
 use App\Models\Genre;
 use App\Services\ArtistPhotos;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -17,7 +18,7 @@ class ArtistZoneController extends Controller
 {
     public function index(): Response
     {
-        $columns = ['artists.id', 'artists.name', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
+        $columns = ['artists.id', 'artists.name', 'artists.slug', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
 
         $artists = Auth::user()
             ->artists()
@@ -65,9 +66,21 @@ class ArtistZoneController extends Controller
         return to_route('artists.show', $artist);
     }
 
-    public function show(Artist $artist): Response
+    /**
+     * The public profile. Guests land here from shared links and the map,
+     * so every account-specific prop must survive a null user.
+     */
+    public function show(Request $request, Artist $artist): Response|RedirectResponse
     {
         $this->authorize('view', $artist);
+
+        // A historical slug resolves (Artist::resolveRouteBinding) but the
+        // canonical URL is the current one.
+        $requested = $request->route()->originalParameters()['artist'] ?? null;
+
+        if ($requested !== null && $requested !== $artist->slug) {
+            return redirect()->route('artists.show', $artist, 301);
+        }
 
         $user = Auth::user();
 
@@ -76,11 +89,21 @@ class ArtistZoneController extends Controller
                 ->load(['members:id,name', 'genres:id,name'])
                 ->loadCount('followers')
                 ->append(['address', 'type_label', 'music_embed']),
-            'canManage' => $user->can('update', $artist),
-            'isFollowing' => $user->follows($artist),
-            'isBlocked' => $user->blocks($artist),
-            'canBlock' => $user->can('block', $artist),
+            'canManage' => $user?->can('update', $artist) ?? false,
+            'canFollow' => $user !== null,
+            'isFollowing' => $user?->follows($artist) ?? false,
+            'isBlocked' => $user?->blocks($artist) ?? false,
+            'canBlock' => $user?->can('block', $artist) ?? false,
         ]);
+    }
+
+    /**
+     * Old numeric profile URLs (and anything still generating them from an
+     * id) land on the slug URL permanently.
+     */
+    public function redirectToSlug(int $artistId): RedirectResponse
+    {
+        return redirect()->route('artists.show', Artist::findOrFail($artistId), 301);
     }
 
     public function edit(Artist $artist): Response
