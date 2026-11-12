@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Shows;
 
+use App\Models\Artist;
 use App\Models\Show;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -105,6 +107,22 @@ class ShowRequest extends FormRequest
                 // and it keeps every listing tied to an artist who agreed.
                 if (! $lineupArtistIds->contains($hostId)) {
                     $validator->errors()->add('lineup', 'The hosting artist has to be on the bill.');
+                }
+
+                // Consent only means something if it can't be sidestepped:
+                // a free-text act may not carry a Riff artist's name (a
+                // declined band re-added "by name" would be on the bill).
+                $names = $this->collect('lineup')->pluck('name')->filter()
+                    ->map(fn ($name) => mb_strtolower(trim((string) $name)));
+
+                if ($names->isNotEmpty()) {
+                    $taken = Artist::query()
+                        ->whereIn(DB::raw('lower(name)'), $names->all())
+                        ->pluck('name');
+
+                    foreach ($taken as $name) {
+                        $validator->errors()->add('lineup', "{$name} is on Riff — add them as a Riff artist so they can confirm, not by name.");
+                    }
                 }
 
                 $startsAt = $this->startsAt();

@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\LineupEntry;
 use App\Models\Show;
 use App\Models\User;
+use App\Models\Venue;
+use App\Support\MapCache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Writes a show's bill and enforces lineup consent, for create and edit
@@ -21,6 +24,31 @@ use App\Models\User;
  */
 class Lineup
 {
+    /**
+     * A venue's name or location changed under its upcoming shows: the
+     * same material change, made from the venue side. Every confirmed act
+     * other than the host is asked again. (Called from Venue's `updated`
+     * hook; the only other writer of lineup status besides sync() and the
+     * confirm/decline endpoints.)
+     */
+    public static function reaskForVenue(Venue $venue): void
+    {
+        LineupEntry::query()
+            ->whereIn('show_id', Show::query()->where('venue_id', $venue->id)->listed()->notOver()->select('id'))
+            ->whereNotNull('artist_id')
+            ->where('status', LineupEntry::CONFIRMED)
+            // Not the show's own host: hosting is consent, and the host
+            // chose (and can see) the venue.
+            ->whereNotExists(fn ($host) => $host
+                ->select(DB::raw(1))
+                ->from('shows')
+                ->whereColumn('shows.id', 'lineup_entries.show_id')
+                ->whereColumn('shows.host_artist_id', 'lineup_entries.artist_id'))
+            ->update(['status' => LineupEntry::PENDING, 'responded_at' => null]);
+
+        MapCache::bump();
+    }
+
     /**
      * @param  list<array{artist_id?: int|null, name?: string|null}>  $entries  in bill order
      */

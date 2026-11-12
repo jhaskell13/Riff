@@ -100,8 +100,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('venues/{venue}/edit', [VenueController::class, 'edit'])
         ->whereNumber('venue')
         ->name('venues.edit');
+    // Edits are throttled too: each address change is a paid geocode and
+    // empties the shared map cache.
     Route::match(['put', 'patch'], 'venues/{venue}', [VenueController::class, 'update'])
         ->whereNumber('venue')
+        ->middleware('throttle:venues')
         ->name('venues.update');
 
     // Shows: listed by a host artist's members. The public page is
@@ -112,7 +115,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('shows.store');
     Route::whereNumber('show')->group(function () {
         Route::get('shows/{show}/edit', [ShowController::class, 'edit'])->name('shows.edit');
-        Route::match(['put', 'patch'], 'shows/{show}', [ShowController::class, 'update'])->name('shows.update');
+        Route::match(['put', 'patch'], 'shows/{show}', [ShowController::class, 'update'])
+            ->middleware('throttle:shows')
+            ->name('shows.update');
         Route::post('shows/{show}/cancel', [ShowController::class, 'cancel'])->name('shows.cancel');
         Route::post('shows/{show}/rsvp', [ShowRsvpController::class, 'store'])
             ->middleware('throttle:follows')
@@ -129,7 +134,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('listings.store');
     Route::whereNumber('listing')->group(function () {
         Route::get('listings/{listing}/edit', [ListingController::class, 'edit'])->name('listings.edit');
-        Route::match(['put', 'patch'], 'listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
+        Route::match(['put', 'patch'], 'listings/{listing}', [ListingController::class, 'update'])
+            ->middleware('throttle:listings')
+            ->name('listings.update');
         Route::post('listings/{listing}/renew', [ListingController::class, 'renew'])->name('listings.renew');
         Route::post('listings/{listing}/close', [ListingController::class, 'close'])->name('listings.close');
         Route::post('listings/{listing}/replies', [ListingReplyController::class, 'store'])

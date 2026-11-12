@@ -69,6 +69,12 @@ class ListingRequest extends FormRequest
                 if ($listing instanceof Listing && $this->input('type') !== $listing->type) {
                     $validator->errors()->add('type', "A listing's type can't be changed; close it and post a new one.");
                 }
+
+                // Nor who it's from: replies go to the original poster, so
+                // a bandmate re-attributing it would misdirect them.
+                if ($listing instanceof Listing && (int) $this->input('artist_id') !== (int) $listing->artist_id) {
+                    $validator->errors()->add('artist_id', "Who a listing is from can't be changed; close it and post a new one.");
+                }
             },
         ];
     }

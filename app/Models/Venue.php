@@ -6,6 +6,7 @@ use App\Contracts\Geocodable;
 use App\Contracts\HasPublicSlug;
 use App\Models\Concerns\HasHistoricalSlugs;
 use App\Observers\GeocodableObserver;
+use App\Services\Lineup;
 use App\Support\MapCache;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -97,6 +98,15 @@ class Venue extends Model implements Geocodable, HasPublicSlug
         // carried, a private venue never stores a street. Runs before the
         // geocoding observer's updating hook sees the dirty attributes, so
         // going private also re-places the pin at town level.
+        // Moving or renaming a venue moves every upcoming show at it:
+        // confirming "the Lantern Room in Hartford" isn't consent to
+        // wherever the submitter edits it to.
+        static::updated(function (self $venue): void {
+            if ($venue->wasChanged(['name', ...$venue->geocodableAttributes()])) {
+                Lineup::reaskForVenue($venue);
+            }
+        });
+
         static::saving(function (self $venue): void {
             if ($venue->address_visibility === self::VISIBILITY_PRIVATE) {
                 $venue->street_address = null;

@@ -30,9 +30,13 @@ class ListingResource extends JsonResource
             'instruments' => $this->instrument_labels,
             'genres' => $this->whenLoaded('genres', fn () => $this->genres->pluck('name'), []),
             'area' => $this->area,
-            'postedBy' => $this->artist !== null
-                ? ['name' => $this->artist->name, 'url' => route('artists.show', $this->artist), 'isArtist' => true]
-                : ['name' => $this->user?->name ?? 'Someone on Riff', 'url' => null, 'isArtist' => false],
+            // An artist's listing never falls back to the member's own name,
+            // even once the artist is archived.
+            'postedBy' => match (true) {
+                $this->artist !== null => ['name' => $this->artist->name, 'url' => route('artists.show', $this->artist), 'isArtist' => true],
+                $this->artist_id !== null => ['name' => 'An archived artist', 'url' => null, 'isArtist' => true],
+                default => ['name' => $this->user?->name ?? 'Someone on Riff', 'url' => null, 'isArtist' => false],
+            },
             'postedLabel' => $this->created_at?->diffForHumans(),
             'expiresLabel' => $this->expires_at->isFuture()
                 ? 'Open until '.$this->expires_at->isoFormat('MMM D')

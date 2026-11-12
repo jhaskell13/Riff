@@ -350,4 +350,40 @@ class ListingTest extends TestCase
         $this->assertSoftDeleted($listing);
         $this->get(route('listings.show', $listing))->assertNotFound();
     }
+
+    // ---- Audit regressions ---------------------------------------------------
+
+    public function test_a_listing_cannot_be_reattributed_on_edit(): void
+    {
+        $band = Artist::factory()->create();
+        $otherBand = Artist::factory()->create();
+        $poster = $this->memberOf($band);
+        $bandmate = $this->memberOf($band);
+        $bandmate->artists()->attach($otherBand);
+        $listing = Listing::factory()->for($poster)->create(['type' => 'practice_space']);
+        $listing->forceFill(['artist_id' => $band->id])->save();
+
+        $this->actingAs($bandmate)
+            ->patch(route('listings.update', $listing), $this->payload(['type' => 'practice_space', 'artist_id' => $otherBand->id]))
+            ->assertSessionHasErrors('artist_id');
+
+        $this->actingAs($bandmate)
+            ->patch(route('listings.update', $listing), $this->payload(['type' => 'practice_space', 'artist_id' => null]))
+            ->assertSessionHasErrors('artist_id');
+
+        $this->assertSame($band->id, $listing->fresh()->artist_id);
+    }
+
+    public function test_an_archived_artists_listing_never_shows_the_members_name(): void
+    {
+        $band = Artist::factory()->create();
+        $poster = User::factory()->create(['name' => 'Private Person']);
+        $poster->artists()->attach($band);
+        $listing = Listing::factory()->for($poster)->create(['type' => 'members_wanted']);
+        $listing->forceFill(['artist_id' => $band->id])->save();
+        $band->delete();
+
+        $this->get(route('listings.show', $listing))
+            ->assertInertia(fn ($page) => $page->where('listing.postedBy.name', 'An archived artist'));
+    }
 }

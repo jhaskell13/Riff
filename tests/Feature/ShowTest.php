@@ -547,4 +547,61 @@ class ShowTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Gutter Hymns');
     }
+
+    // ---- Audit regressions ---------------------------------------------------
+
+    public function test_a_riff_artist_cannot_be_added_by_name_to_skip_their_consent(): void
+    {
+        $host = Artist::factory()->create();
+        Artist::factory()->create(['name' => 'Sewer Psalms']);
+
+        $this->actingAs($this->memberOf($host))
+            ->post(route('shows.store'), $this->payload($host, [
+                'lineup' => [['artist_id' => $host->id], ['name' => 'sewer psalms']],
+            ]))
+            ->assertSessionHasErrors('lineup');
+
+        $this->assertDatabaseCount('shows', 0);
+    }
+
+    public function test_moving_a_venue_asks_the_confirmed_acts_again(): void
+    {
+        $venue = Venue::factory()->create(['name' => 'The Lantern Room']);
+        $show = Show::factory()->create(['venue_id' => $venue->id]);
+        $guest = $show->lineup()->make(['artist_id' => Artist::factory()->create()->id, 'position' => 1]);
+        $guest->forceFill(['status' => LineupEntry::CONFIRMED])->save();
+
+        // A description edit is not a move.
+        $venue->update(['description' => 'Two hundred cap.']);
+        $this->assertSame(LineupEntry::CONFIRMED, $guest->fresh()->status);
+
+        $venue->update(['city' => 'New Haven']);
+
+        $this->assertSame(LineupEntry::PENDING, $guest->fresh()->status);
+        // The host chose the venue; its slot stands.
+        $this->assertSame(LineupEntry::CONFIRMED, $show->lineup()->where('artist_id', $show->host_artist_id)->value('status'));
+    }
+
+    public function test_a_guest_on_one_bill_is_reasked_even_if_it_hosts_another_at_the_venue(): void
+    {
+        $venue = Venue::factory()->create();
+        $band = Artist::factory()->create();
+        Show::factory()->create(['venue_id' => $venue->id, 'host_artist_id' => $band->id]);
+        $other = Show::factory()->create(['venue_id' => $venue->id]);
+        $entry = $other->lineup()->make(['artist_id' => $band->id, 'position' => 1]);
+        $entry->forceFill(['status' => LineupEntry::CONFIRMED])->save();
+
+        $venue->update(['name' => 'Somewhere Else Entirely']);
+
+        $this->assertSame(LineupEntry::PENDING, $entry->fresh()->status);
+    }
+
+    public function test_the_public_profile_does_not_serialise_membership_pivots(): void
+    {
+        $artist = Artist::factory()->create();
+        $this->memberOf($artist);
+
+        $this->get(route('artists.show', $artist))
+            ->assertInertia(fn ($page) => $page->missing('artist.members.0.pivot')->has('artist.members.0.name'));
+    }
 }

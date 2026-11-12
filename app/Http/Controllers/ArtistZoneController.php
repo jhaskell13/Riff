@@ -146,10 +146,13 @@ class ArtistZoneController extends Controller
         $user = Auth::user();
 
         return Inertia::render('ArtistZone/Show', [
-            'artist' => $artist
+            'artist' => tap($artist
                 ->load(['members:id,name', 'genres:id,name'])
                 ->loadCount('followers')
                 ->append(['address', 'type_label', 'music_embed']),
+                // The page is public: member names only, not the pivot's
+                // user ids and join dates.
+                fn (Artist $a) => $a->members->each->makeHidden('pivot')),
             'upcomingShows' => ShowCardResource::collection(
                 Show::query()
                     ->featuring($artist)
