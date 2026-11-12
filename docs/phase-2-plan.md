@@ -1,6 +1,6 @@
 # Phase 2 implementation plan — put the whole scene on the map
 
-Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–3 are built.**
+Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–4 are built.**
 
 This turns Phase 2 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. Each step ships on its own, keeps CI green on all three database drivers, and leaves the app better even if we pause after it. Order matters: venues before shows (shows reference venues), shows before map layers (a layer needs data), layers before scenes (a scene is a composed view of the layers), and listings last among the features because they reuse the area/genre machinery everything else establishes.
 
@@ -51,18 +51,31 @@ Revised on review: **a venue is an established place that hosts music regularly*
 
 **Done when:** a band lists Friday's show with another Riff band on the bill, the second band confirms from their zone, both artist pages and the venue page show it, and a fan can mark "going" without their name appearing. ✅
 
-## Step 4 — One scene map: Shows and Venues join Artists
+## Step 4 — One scene map: Shows and Venues join Artists — ✅ BUILT (November 2026)
 
-Revised on review: no switchable layers. Artists, shows, and venues render **together by default** — opening Riff shows the whole scene with nothing to know about — and kind toggles join the existing filter bar, so hiding venues is a filter like hiding a genre. One `/map` URL carries kinds + filters + date window, all shareable.
+No switchable layers (revised on review): artists, shows, and venues render **together by default**, and kind toggles sit in the filter bar beside genre, so hiding venues is just another filter. One `/map` URL carries kinds, filters, and the date window (`?kinds=shows,venues&when=weekend&genres=punk`), and a URL carrying any of them suppresses the welcome overlay like any other filter.
 
-- Endpoints: `GET /map/shows` and `GET /map/venues`, public, under the `map` limiter, alongside `/map/artists` — the *data* stays per-kind (own request class, resource, covering index, cache shape) even though the *view* is unified; the client fetches enabled kinds in parallel and composes them.
-- Extract the reusable core of `ArtistMapSearch` (probe-for-cap, grid clustering, expanding-circle nearest list, equirectangular ordering) into a shared base or trait; `VenueMapSearch` and `ShowMapSearch` implement `matching()` for their filters. Each table gets its own covering index: `venues_map_index (show_on_map, deleted_at, lat, lng)`, and shows query through venue/lineup joins bounded by `starts_at` — benchmark that join against a large seeded dataset before shipping, per the existing rule. Venue pins come from `VenueResource` (a private venue's point is already only its town). Dormant venues (no upcoming show, none in ~6 months) drop off the default view; their pages stay. Markers cluster **per kind** (separate cluster groups, distinct pin styles) so a cluster count always means one thing; a show at a venue sits on the venue's pin position and the existing same-coordinate spiderfy handles the overlap.
-- Show filters: date window (`tonight`, `weekend`, `week`, `month`, or explicit range), plus genre (via lineup artists' genres) and age policy. Venue filters: kind. Caching mirrors `MapCache`: per-layer version keys bumped by Show/Venue model events (`MapCache` grows `version(string $layer)` rather than a second helper class).
-- UI: `useMapFilters` gains a `kinds` set (artists, shows, venues — all on by default) mirrored to the URL like everything else (`replaceState`); FilterBar gets the kind toggles and a date-window control that applies to shows; `markers.js` gets show/venue pin + cluster variants (same `textContent` discipline); `ResultList` and the card panel render mixed, per-kind cards (show card: date, lineup, venue, price; venue card: kind, area, next show), grouped or badged by kind so the list stays scannable. `useMapData` fans out one request per enabled kind and merges results; an aborted kind is not an error state. Blocked artists' shows: a show is hidden for a viewer only if *every* Riff artist on its lineup is blocked — same `hiddenFor` personal-cache rule.
-- Guest CTAs stay intact: the kind toggles must not break the welcome-overlay suppression rules (a URL carrying non-default kinds counts as “carries filters”).
-- Tests: bounds/radius parity with the artists queries, date windows across drivers and timezones, per-kind cluster counts, cache rotation on show/venue changes, blocked-lineup behaviour, kind toggles in the URL.
+**What was built**
+- `GET /map/shows` and `GET /map/venues` (public, `map` limiter) beside `/map/artists`. Each kind keeps its own endpoint, query and resource; the client fetches the enabled kinds in parallel. The "where" parsing is shared by all three (`ParsesMapArea` trait, `Geo::confine`), so a viewport or radius means the same thing everywhere.
+- **Shows** (`SceneMapSearch::shows`): listed shows in the area within a **date window** — tonight, this weekend, next 7 days, next 30 days (default) — computed in the *viewer's* timezone (the client sends `tz`; "this weekend" before Friday starts on Friday), opening 4 hours back so tonight's show stays on after doors. A show is placed at its venue, or at its own town-level point if it's one-off; a show at a taken-down venue has no point and leaves the map. Ordered soonest first, nearest within a day.
+- **Venues** (`SceneMapSearch::venues`): `show_on_map`, geolocated, in the area. **Dormant venues fade:** no non-cancelled show in `riff.map.venue_dormant_days` (180) and not added within that window → off the map, page stays. The "newly added" grace was added here — without it a venue would be invisible until its first show was listed.
+- **Genre filter carries over:** a show matches if a *confirmed* act on the bill has the genre (a pending invite doesn't make a bill punk); a venue matches if it has such a show coming up — the genre lives on the acts, not the room. The artist-only filters (type, has music/photo, followed, sort) don't apply to shows or venues, and a name search stays artists-only — shows and venues follow the viewport around it.
+- **Blocking:** a show is hidden from a blocking viewer only when every Riff act on the confirmed bill is blocked (free-text acts don't count); such viewers bypass the cache, like the artists' `hiddenFor`.
+- **UI:** shows get a calendar-leaf pin with the day of the month (amber), venues a storefront pin (teal), artists keep theirs (red). Each kind has its **own cluster group**, tinted to match, so a count always means one kind; venues draw lowest and shows highest, so tonight's show sits on top of its venue. The list has Shows / Artists / Venues sections; picking a show or venue opens a card built from its pin (no extra request) with a link to its page.
+- **Demo data:** `SceneSeeder` (run by `DatabaseSeeder` after the pilot) adds seven invented venues around Greater Hartford — including a private DIY space and a dormant one that has faded — and a month of shows on the pilot's acts relative to the seeding date: tonight, the weekend, a backyard and a park show, a pending lineup slot, an in-store, a cancellation. Idempotent; not yet the full Step 7 pilot data.
 
-**Done when:** opening the map shows artists, this week's shows, and venues together; narrowing to "shows this weekend" is two filter taps whose URL is shareable; and the private DIY space renders at its town, never its door.
+**Deviations from the original plan**
+- **One cache version, not one per kind.** A show pin depends on its artists (names, genres) and its venue, so per-kind versions would have to be bumped across kinds anyway. Show, Venue, and LineupEntry events and `GeocodeAddress` all bump `MapCache`.
+- **No server-side grid clusters for shows and venues.** Both return a capped (`riff.map.max_scene_markers`, 300), nearest-first list that the browser clusters. Benchmarked on 2,007 venues and 20,010 shows (SQLite, uncached): town views 5–17 ms; zoomed out across the region, shows tonight 14 ms, venues 64 ms, and shows this month 168 ms with the cap hit (~3,300 matched). That last case is the trigger for adding server clustering for shows if real density approaches it. When the cap bites, the map shows the *soonest* 300 shows.
+- **Fixed along the way:** PDO binds floats as strings, and SQLite never converts a string compared against an expression — so `coalesce(venue, show)` comparisons matched nothing, and the existing artist radius filter had silently been only its bounding box on SQLite. Bound values compared to expressions are now forced numeric (`? * 1.0`, portable to MySQL/Postgres), with a regression test that fails without the fix.
+
+**Not yet**
+- Hover-highlighting between list rows and show/venue pins (artists have it).
+- A venue-kind filter (club, bar, DIY…).
+- Searching venues or shows by name.
+- Not checked in a real browser: headless Chromium couldn't start in the dev environment (missing system libraries), so the UI is verified by build and API tests only.
+
+**Done when:** opening the map shows artists, this week's shows, and venues together; narrowing to "shows this weekend" is two filter taps whose URL is shareable; and the private DIY space renders at its town, never its door. ✅ (pending a visual pass in a browser)
 
 ## Step 5 — Scene views
 
@@ -114,4 +127,4 @@ Revised on review: no switchable layers. Artists, shows, and venues render **tog
 
 ## Suggested checkpoints
 
-Steps 1–3 are built. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.
+Steps 1–4 are built; Step 5 (scene views) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.

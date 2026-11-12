@@ -57,7 +57,7 @@ php artisan storage:link   # once, so seeded artist photos resolve
 php artisan db:seed
 ```
 
-The seeder builds a demonstrable dataset: a dense pilot scene of about 25 artists across Greater Hartford — several per town, with genres, bios, generated cover art, playable links on most of them, listeners following them, posts, and a report queue — plus around 75 more artists scattered across Connecticut, Massachusetts, Rhode Island, and the Hudson Valley so the map stays populated as you pan. Sign in as `test@example.com` / `password`; that account is also the local moderator, so the report queue under **Reports** in the account menu is reachable.
+The seeder builds a demonstrable dataset: a dense pilot scene of about 25 artists across Greater Hartford — several per town, with genres, bios, generated cover art, playable links on most of them, listeners following them, posts, and a report queue — plus invented venues and a month of shows around Hartford (dated from whenever you seed, so the scene map always has something on), plus around 75 more artists scattered across Connecticut, Massachusetts, Rhode Island, and the Hudson Valley so the map stays populated as you pan. Sign in as `test@example.com` / `password`; that account is also the local moderator, so the report queue under **Reports** in the account menu is reachable.
 
 Every seeded artist is invented, and the music links on them are public placeholder tracks, not those acts' own work. This data is for local development and demos only — never seed it into a production database, and never import real artists who have not asked to be listed.
 
