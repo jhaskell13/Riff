@@ -206,7 +206,7 @@ class MapController extends Controller
                 ['value' => 'artists', 'label' => 'Artists', 'icon' => 'groups'],
                 ['value' => 'shows', 'label' => 'Shows', 'icon' => 'event'],
                 ['value' => 'venues', 'label' => 'Venues', 'icon' => 'storefront'],
-                ['value' => 'listings', 'label' => 'Wanted', 'icon' => 'campaign'],
+                ['value' => 'listings', 'label' => 'Listings', 'icon' => 'campaign'],
             ],
             'windows' => collect(ShowWindow::OPTIONS)
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])

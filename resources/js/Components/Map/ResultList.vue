@@ -52,7 +52,7 @@ const TAB_META = {
     shows: { label: 'Shows', icon: 'event', color: 'text-riff-show' },
     artists: { label: 'Artists', icon: 'groups', color: 'text-riff-primary' },
     venues: { label: 'Venues', icon: 'storefront', color: 'text-riff-venue' },
-    listings: { label: 'Wanted', icon: 'campaign', color: 'text-riff-listing' },
+    listings: { label: 'Listings', icon: 'campaign', color: 'text-riff-listing' },
 };
 // Shows first: "what's on" is the first question a scene answers.
 const TAB_ORDER = ['shows', 'artists', 'venues', 'listings'];
