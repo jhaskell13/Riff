@@ -26,6 +26,16 @@ return [
             'lng' => (float) env('RIFF_MAP_DEFAULT_LNG', -72.6850932),
         ],
         'max_markers' => (int) env('RIFF_MAP_MAX_MARKERS', 500),
+        // Shows and venues per response. Shows are bounded by their date
+        // window and venues are few, so these are browser-clustered from a
+        // capped list rather than grid-clustered on the server.
+        'max_scene_markers' => (int) env('RIFF_MAP_MAX_SCENE_MARKERS', 300),
+        // Used for the shows' "when" window when the browser sends no
+        // timezone. The pilot is in Connecticut.
+        'default_timezone' => env('RIFF_MAP_DEFAULT_TIMEZONE', 'America/New_York'),
+        // A venue with no show in this many days (and not newly added)
+        // drops off the map; its page stays.
+        'venue_dormant_days' => (int) env('RIFF_MAP_VENUE_DORMANT_DAYS', 180),
         'list_limit' => (int) env('RIFF_MAP_LIST_LIMIT', 100),
         'search_limit' => (int) env('RIFF_MAP_SEARCH_LIMIT', 50),
         'cluster_grid' => (int) env('RIFF_MAP_CLUSTER_GRID', 16),

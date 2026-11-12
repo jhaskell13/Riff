@@ -126,15 +126,7 @@ class ArtistMapSearch
      */
     private function area(MapFilters $filters): array|null|false
     {
-        $radiusBox = $filters->radiusKm !== null
-            ? Geo::boundingBox($filters->origin->lat, $filters->origin->lng, $filters->radiusKm)
-            : null;
-
-        return match (true) {
-            $filters->bounds !== null && $radiusBox !== null => Geo::intersect($filters->bounds, $radiusBox) ?? false,
-            $filters->bounds !== null => $filters->bounds,
-            default => $radiusBox,
-        };
+        return Geo::confine($filters->bounds, $filters->origin->lat, $filters->origin->lng, $filters->radiusKm);
     }
 
     /**
@@ -226,7 +218,10 @@ class ArtistMapSearch
         foreach ([$filters->radiusKm !== null ? $filters->radiusKm / Geo::KM_PER_DEGREE : null, $withinDegrees] as $degrees) {
             if ($degrees !== null) {
                 [$sql, $bindings] = $this->distanceSquared($filters);
-                $query->whereRaw("{$sql} <= ?", [...$bindings, $degrees * $degrees]);
+                // (? * 1.0): PDO binds floats as strings, and SQLite never
+                // converts a string compared against an expression -- the
+                // radius test was always true there, leaving only the box.
+                $query->whereRaw("{$sql} <= (? * 1.0)", [...$bindings, $degrees * $degrees]);
             }
         }
 

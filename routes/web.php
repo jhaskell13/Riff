@@ -36,6 +36,8 @@ Route::middleware('throttle:map')->group(function () {
     Route::get('map/artists/{artist}', [MapController::class, 'card'])
         ->whereNumber('artist')
         ->name('map.artists.card');
+    Route::get('map/shows', [MapController::class, 'shows'])->name('map.shows');
+    Route::get('map/venues', [MapController::class, 'venues'])->name('map.venues');
     Route::get('map/places', [MapController::class, 'places'])->name('map.places');
 });
 

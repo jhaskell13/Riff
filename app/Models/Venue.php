@@ -6,6 +6,7 @@ use App\Contracts\Geocodable;
 use App\Contracts\HasPublicSlug;
 use App\Models\Concerns\HasHistoricalSlugs;
 use App\Observers\GeocodableObserver;
+use App\Support\MapCache;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -86,6 +87,12 @@ class Venue extends Model implements Geocodable, HasPublicSlug
 
     protected static function booted(): void
     {
+        // On the map now (Phase 2 Step 4): any change can change a cached
+        // viewport. See MapCache.
+        foreach (['saved', 'deleted', 'restored'] as $event) {
+            static::$event(fn () => MapCache::bump());
+        }
+
         // Defence in depth for the privacy rule: whatever the request
         // carried, a private venue never stores a street. Runs before the
         // geocoding observer's updating hook sees the dirty attributes, so

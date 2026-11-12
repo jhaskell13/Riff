@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Contracts\Geocodable;
 use App\Jobs\GeocodeAddress;
+use App\Support\MapCache;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -98,6 +99,12 @@ class Show extends Model implements Geocodable
 
     protected static function booted(): void
     {
+        // On the map now (Phase 2 Step 4): any change can change a cached
+        // viewport. See MapCache.
+        foreach (['saved', 'deleted', 'restored'] as $event) {
+            static::$event(fn () => MapCache::bump());
+        }
+
         // A show is at a venue or at its own one-off location, never both:
         // whatever the request sent, a venue show keeps no location of its
         // own (and so nothing stale to put on the map).

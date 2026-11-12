@@ -279,6 +279,18 @@ class MapSearchTest extends TestCase
         $this->assertSame(['Here', 'Next Door', 'Down The Road'], $this->names($hundredKm));
     }
 
+    public function test_radius_is_a_circle_not_its_bounding_box(): void
+    {
+        // ~44 km north and ~44 km east of Hartford: inside the 50 km
+        // radius's bounding box, but ~62 km away, so outside the circle.
+        // On SQLite this was returned until the radius comparison bound
+        // its value numerically (see ArtistMapSearch::matching).
+        Artist::factory()->create(['name' => 'In The Corner', 'lat' => 41.7658 + 0.40, 'lng' => -72.6734 + 0.53]);
+        Artist::factory()->inTown('Hartford')->create(['name' => 'Here']);
+
+        $this->assertSame(['Here'], $this->names($this->map([...self::HARTFORD, 'radius' => 50, 'unit' => 'km'])));
+    }
+
     public function test_radius_is_read_in_the_requested_unit(): void
     {
         Artist::factory()->inTown('New Haven')->create(['name' => 'Down The Road']);

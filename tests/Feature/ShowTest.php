@@ -203,7 +203,9 @@ class ShowTest extends TestCase
         $member = $this->memberOf($host);
 
         $this->actingAs($member)
-            ->post(route('shows.store'), $this->payload($host, ['date' => now()->subDay()->format('Y-m-d')]))
+            // Two days back in the show's own timezone: "yesterday" in UTC
+            // can still be later today in New York.
+            ->post(route('shows.store'), $this->payload($host, ['date' => now('America/New_York')->subDays(2)->format('Y-m-d')]))
             ->assertSessionHasErrors('date');
 
         $this->actingAs($member)

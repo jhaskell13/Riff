@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MapCache;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,17 @@ class LineupEntry extends Model
     protected $casts = [
         'responded_at' => 'datetime',
     ];
+
+    /**
+     * A confirm or decline changes a show pin's title, its genre match,
+     * and whether a blocking viewer sees it.
+     */
+    protected static function booted(): void
+    {
+        foreach (['saved', 'deleted'] as $event) {
+            static::$event(fn () => MapCache::bump());
+        }
+    }
 
     /** @return BelongsTo<Show, $this> */
     public function show(): BelongsTo

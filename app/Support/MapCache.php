@@ -11,7 +11,10 @@ use Illuminate\Support\Str;
  * which is far simpler and cheaper than finding which cached viewports an
  * edited artist appeared in.
  *
- * Bumped by Artist model events and by GeocodeAddress, which writes
+ * One version for every kind on the map, deliberately: a show pin depends
+ * on its artists (genres, names) and its venue, so a per-kind version would
+ * have to be bumped across kinds anyway. Bumped by Artist, Venue, Show and
+ * LineupEntry model events, and by GeocodeAddress, which writes
  * coordinates quietly and would otherwise slip past the model events.
  */
 final class MapCache
