@@ -280,6 +280,50 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Artist walls
+    |--------------------------------------------------------------------------
+    |
+    | An artist's page is where fan interaction lives (ROADMAP principle 3).
+    | Two voices speak there, and which one a post carries is explicit, never
+    | inferred: members post *as the artist*, fans post *as themselves*.
+    |
+    | wall_modes is who may post as a fan:
+    |   fans         -- listeners who follow the artist (the default: being a
+    |                   fan should mean something, and following is a free,
+    |                   effective spam gate)
+    |   everyone     -- any verified user (the artist's own opt-in)
+    |   members_only -- nobody but the artist; the wall is closed, and the
+    |                   page still carries updates and comments stay readable
+    |
+    | Replies are one level deep. A wall should read on a phone, and a flat
+    | reply list renders in two queries instead of a recursive walk.
+    |
+    */
+
+    'wall' => [
+        'modes' => [
+            'fans' => 'Fans who follow us',
+            'everyone' => 'Anyone with a Riff account',
+            'members_only' => 'Only us',
+        ],
+        'default_mode' => 'fans',
+        'max_post' => (int) env('RIFF_WALL_MAX_POST', 5000),
+        'max_comment' => (int) env('RIFF_WALL_MAX_COMMENT', 2000),
+        // How many posts a wall shows per page, and how many comments come
+        // with each post before "show more".
+        'posts_per_page' => (int) env('RIFF_WALL_POSTS_PER_PAGE', 10),
+        'comments_per_post' => (int) env('RIFF_WALL_COMMENTS_PER_POST', 3),
+        'replies_per_comment' => (int) env('RIFF_WALL_REPLIES_PER_COMMENT', 3),
+        // Fan posts are the cheapest thing to flood a page with, so they
+        // are capped per minute and per day, like venues and listings.
+        'post_rate_limit_per_minute' => (int) env('RIFF_WALL_POST_RATE_LIMIT', 5),
+        'post_rate_limit_per_day' => (int) env('RIFF_WALL_POST_DAILY_LIMIT', 60),
+        'comment_rate_limit_per_minute' => (int) env('RIFF_WALL_COMMENT_RATE_LIMIT', 10),
+        'comment_rate_limit_per_day' => (int) env('RIFF_WALL_COMMENT_DAILY_LIMIT', 200),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Support links
     |--------------------------------------------------------------------------
     |

@@ -100,6 +100,27 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Wall posts and comments. A fan post is the cheapest thing to
+        // flood someone's page with, so both are capped per minute and
+        // per day, like venues and listings.
+        RateLimiter::for('wall-posts', function (Request $request) {
+            $key = (string) ($request->user()?->id ?: $request->ip());
+
+            return [
+                Limit::perMinute(config('riff.wall.post_rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.wall.post_rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
+        RateLimiter::for('wall-comments', function (Request $request) {
+            $key = (string) ($request->user()?->id ?: $request->ip());
+
+            return [
+                Limit::perMinute(config('riff.wall.comment_rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.wall.comment_rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
         // Outbound support-link clicks. Public and unauthenticated, so it
         // needs a ceiling -- but a generous one: the counter it feeds
         // answers "do support links get clicked", and throttling a real

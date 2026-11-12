@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\WallViewer;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
+use App\Http\Resources\PostResource;
 use App\Http\Resources\ShowCardResource;
 use App\Http\Resources\SupportLinkResource;
 use App\Models\Artist;
@@ -11,6 +13,7 @@ use App\Models\ArtistSupportLink;
 use App\Models\Genre;
 use App\Models\LineupEntry;
 use App\Models\Listing;
+use App\Models\Post;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
@@ -198,12 +201,97 @@ class ArtistZoneController extends Controller
             // Counts only, never names or places (ROADMAP principle 5).
             // "< 5" below the floor rather than an exact small number.
             'localFans' => $fanCounts->displayLocal($artist),
+            // The wall: updates from the band and posts from fans, newest
+            // first, in one stream. Ordered by time, never by likes.
+            'wall' => $this->wall($request, $artist),
+            'wallMode' => $artist->wall_mode,
+            'wallModeLabel' => config('riff.wall.modes.'.$artist->wall_mode),
+            // Whether *this* viewer may post, and in which voice. Guests
+            // get false for both and are offered registration instead.
+            'canPostAsArtist' => $user?->can('postAsArtist', $artist) ?? false,
+            'canPostOnWall' => $user?->can('postOnWall', $artist) ?? false,
             'canManage' => $user?->can('update', $artist) ?? false,
             'canFollow' => $user !== null,
             'isFollowing' => $user?->follows($artist) ?? false,
             'isBlocked' => $user?->blocks($artist) ?? false,
             'canBlock' => $user?->can('block', $artist) ?? false,
         ]);
+    }
+
+    /**
+     * One page of an artist's wall.
+     *
+     * Both voices in one stream, newest first. Each post carries its first
+     * few replies (and each reply its first few answers) so a reader sees a
+     * conversation rather than a count -- bounded by config so a long
+     * thread can't make the page unbounded.
+     *
+     * @return array<string, mixed>
+     */
+    private function wall(Request $request, Artist $artist): array
+    {
+        $commentsPerPost = (int) config('riff.wall.comments_per_post');
+        $repliesPerComment = (int) config('riff.wall.replies_per_comment');
+        $viewerId = $request->user()?->id;
+
+        // Whether *this* viewer has reacted, as one EXISTS per row in the
+        // same query rather than a lookup per post and per comment. A wall
+        // is ten posts, each with replies and their answers: done naively
+        // that is over a hundred queries for a page of hearts.
+        $likedByViewer = fn ($query) => $query->when(
+            $viewerId !== null,
+            fn ($scope) => $scope->withExists([
+                'likers as is_liked' => fn ($likers) => $likers->whereKey($viewerId),
+            ]),
+        );
+
+        $posts = Post::query()
+            ->onWall($artist)
+            ->published()
+            ->with([
+                'user:id,name',
+                'artist:id,name,slug,image_path',
+                // Only top-level comments here; replies hang off them.
+                'comments' => fn ($query) => $likedByViewer($query)
+                    ->published()
+                    ->topLevel()
+                    ->with([
+                        'user:id,name',
+                        'artist:id,name,image_path',
+                        'replies' => fn ($replies) => $likedByViewer($replies)
+                            ->published()
+                            ->with(['user:id,name', 'artist:id,name,image_path'])
+                            ->oldest()
+                            ->limit($repliesPerComment),
+                    ])
+                    ->withCount(['replies' => fn ($replies) => $replies->published()])
+                    // A conversation reads forwards, unlike a wall.
+                    ->oldest()
+                    ->limit($commentsPerPost),
+            ])
+            ->withCount(['comments' => fn ($query) => $query->published()])
+            ->tap($likedByViewer)
+            ->latest('published_at')
+            ->latest('id')
+            ->paginate((int) config('riff.wall.posts_per_page'))
+            ->withQueryString();
+
+        // Worked out once for the whole page; see App\DTO\WallViewer.
+        $wallViewer = WallViewer::for($request->user(), $artist);
+
+        return [
+            'posts' => $posts->getCollection()
+                ->map(fn (Post $post) => PostResource::make($post)->forViewer($wallViewer)->resolve($request))
+                ->all(),
+            'total' => $posts->total(),
+            'nextPage' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
+            'commentsPerPost' => $commentsPerPost,
+            'repliesPerComment' => $repliesPerComment,
+            // Shared to the client so the composer's limit matches what
+            // validation will accept, as reportReasons does for reports.
+            'maxPost' => (int) config('riff.wall.max_post'),
+            'maxComment' => (int) config('riff.wall.max_comment'),
+        ];
     }
 
     /**
@@ -234,6 +322,9 @@ class ArtistZoneController extends Controller
                     'hint' => $config['hint'] ?? null,
                     'hosts' => array_values((array) ($config['hosts'] ?? [])),
                 ])
+                ->values(),
+            'wallModes' => collect((array) config('riff.wall.modes'))
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                 ->values(),
             'maxSupportLinks' => (int) config('riff.support.max_links'),
             'maxSupportLabel' => (int) config('riff.support.max_label'),

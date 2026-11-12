@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\Post;
 use App\Models\Show;
@@ -19,6 +20,7 @@ enum ModerationAction: string
     case HideArtist = 'hide_artist';
     case ArchiveArtist = 'archive_artist';
     case RemovePost = 'remove_post';
+    case RemoveComment = 'remove_comment';
     case HideVenue = 'hide_venue';
     case ArchiveVenue = 'archive_venue';
     case RemoveShow = 'remove_show';
@@ -31,6 +33,7 @@ enum ModerationAction: string
             self::HideArtist => 'Hide from the map',
             self::ArchiveArtist => 'Archive the artist',
             self::RemovePost => 'Remove the post',
+            self::RemoveComment => 'Remove the comment',
             // For a venue that closed or stopped hosting: its page (and,
             // from Step 3, its show history) stays.
             self::HideVenue => 'Hide the venue from the map',
@@ -56,6 +59,7 @@ enum ModerationAction: string
             self::Dismiss => true,
             self::HideArtist, self::ArchiveArtist => $subject instanceof Artist,
             self::RemovePost => $subject instanceof Post,
+            self::RemoveComment => $subject instanceof Comment,
             self::HideVenue, self::ArchiveVenue => $subject instanceof Venue,
             self::RemoveShow => $subject instanceof Show,
             self::RemoveListing => $subject instanceof Listing,
@@ -74,6 +78,9 @@ enum ModerationAction: string
             self::ArchiveArtist => $subject->delete(),
             // The row stays for the audit trail; the feed filters on status.
             self::RemovePost => $subject->forceFill(['status' => 'removed'])->save(),
+            // Same rule as a post: the row stays for the audit trail and
+            // the thread filters on status.
+            self::RemoveComment => $subject->forceFill(['status' => Comment::REMOVED])->save(),
             self::HideVenue => $subject->forceFill(['show_on_map' => false])->save(),
             self::ArchiveVenue, self::RemoveShow, self::RemoveListing => $subject->delete(),
         };
@@ -89,7 +96,7 @@ enum ModerationAction: string
         return array_values(array_map(
             fn (self $action) => ['value' => $action->value, 'label' => $action->label()],
             array_filter(
-                [self::HideArtist, self::ArchiveArtist, self::RemovePost, self::HideVenue, self::ArchiveVenue, self::RemoveShow, self::RemoveListing, self::Dismiss],
+                [self::HideArtist, self::ArchiveArtist, self::RemovePost, self::RemoveComment, self::HideVenue, self::ArchiveVenue, self::RemoveShow, self::RemoveListing, self::Dismiss],
                 fn (self $action) => $action->appliesTo($subject),
             ),
         ));

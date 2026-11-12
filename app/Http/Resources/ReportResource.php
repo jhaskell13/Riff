@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\Post;
 use App\Models\Report;
@@ -80,6 +81,31 @@ class ReportResource extends JsonResource
                 'imageUrl' => null,
                 'url' => null,
                 'state' => $subject->status === 'published' ? null : 'Removed',
+            ];
+        }
+
+        if ($subject instanceof Comment) {
+            return [
+                'kind' => 'comment',
+                'id' => $subject->id,
+                // Who said it, in the voice they said it in. A moderator
+                // judging an artist-voice reply is judging the band, and
+                // naming the member who typed it here would leak exactly
+                // what the public payload is careful not to.
+                'title' => $subject->isArtistVoice()
+                    ? ($subject->artist?->name ?? 'a deleted artist').' (as the artist)'
+                    : ($subject->user?->name ?? 'Deleted account'),
+                'detail' => $subject->created_at?->toIso8601String(),
+                'body' => Str::limit($subject->content, 400, '…'),
+                'imageUrl' => null,
+                // The comment lives on its post's wall; link to the page
+                // it can actually be read in context on.
+                'url' => $subject->commentable instanceof Post && $subject->commentable->artist !== null
+                    ? route('artists.show', $subject->commentable->artist)
+                    : null,
+                'state' => $subject->status === Comment::PUBLISHED
+                    ? null
+                    : ($subject->status === Comment::HIDDEN ? 'Hidden by the artist' : 'Removed'),
             ];
         }
 

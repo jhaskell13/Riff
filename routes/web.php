@@ -5,6 +5,7 @@ use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistPhotoController;
 use App\Http\Controllers\ArtistSupportLinkController;
 use App\Http\Controllers\ArtistZoneController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\LineupEntryController;
 use App\Http\Controllers\ListingController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\ListingReplyController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SearchController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\ShowController;
 use App\Http\Controllers\ShowRsvpController;
 use App\Http\Controllers\StreamController;
 use App\Http\Controllers\VenueController;
+use App\Http\Controllers\WallPostController;
 use Illuminate\Support\Facades\Route;
 
 // Deployment infrastructure may probe /health; keep alongside Laravel's /up.
@@ -53,6 +56,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('feed', [FeedController::class, 'store'])
         ->middleware('throttle:posts')
         ->name('feed.store');
+
+    // Artist walls: posting on an artist's page, in one of two voices.
+    // Which voice you get is decided by policy, not by the request.
+    Route::post('artists/{artist}/posts', [WallPostController::class, 'store'])
+        ->whereNumber('artist')
+        ->middleware('throttle:wall-posts')
+        ->name('wall.posts.store');
+    Route::delete('posts/{post}', [WallPostController::class, 'destroy'])
+        ->whereNumber('post')
+        ->name('wall.posts.destroy');
+
+    Route::whereNumber('post')->group(function () {
+        Route::post('posts/{post}/comments', [CommentController::class, 'store'])
+            ->middleware('throttle:wall-comments')
+            ->name('wall.comments.store');
+        Route::post('posts/{post}/like', [ReactionController::class, 'likePost'])
+            ->middleware('throttle:follows')
+            ->name('wall.posts.like');
+        Route::delete('posts/{post}/like', [ReactionController::class, 'unlikePost'])
+            ->middleware('throttle:follows')
+            ->name('wall.posts.unlike');
+    });
+
+    Route::whereNumber('comment')->group(function () {
+        Route::delete('comments/{comment}', [CommentController::class, 'destroy'])
+            ->name('wall.comments.destroy');
+        Route::post('comments/{comment}/like', [ReactionController::class, 'likeComment'])
+            ->middleware('throttle:follows')
+            ->name('wall.comments.like');
+        Route::delete('comments/{comment}/like', [ReactionController::class, 'unlikeComment'])
+            ->middleware('throttle:follows')
+            ->name('wall.comments.unlike');
+    });
 
     // Safety: reporting something, and hiding an artist from your own Riff
     Route::post('reports', [ReportController::class, 'store'])

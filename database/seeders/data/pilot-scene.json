@@ -8,7 +8,7 @@
             "Entries with \"real\": false are invented. Everything that attributes a state or action to its subject stays on fictional entries ONLY: hidden/archived profiles, seeded reports and the moderation queue, feed posts written in the artist's voice, listings, lineup slots shown as pending/declined, and cancelled shows.",
             "Shows are plausible compositions (real bands at venues they could play, dated relative to seeding), not real events. Member accounts behind every act are invented.",
             "No real DIY space is listed: a private venue's whole point is that Riff never holds its address, and outing one's existence is harm the privacy rules exist to prevent. The DIY space here is fictional.",
-            "Support links are on fictional entries ONLY. A support section is an invitation to pay, which is a stronger attribution than listing a link: Riff must not imply a real act asks for money anywhere. Real acts keep only their research-verified Bandcamp link, rendered as a link, not as a support ask. Seeded click counts are invented and exist to demo the counter."
+            "Support links are on fictional entries ONLY. A support section is an invitation to pay, which is a stronger attribution than listing a link: Riff must not imply a real act asks for money anywhere. Real acts keep only their research-verified Bandcamp link, rendered as a link, not as a support ask. Seeded click counts are invented and exist to demo the counter. A fictional act's links must never resolve to anything a stranger could own: use reserved example.* domains, or (where a type requires a known host) that service's own homepage. An invented band name is exactly the kind of name a real band may already have taken on Bandcamp or Ko-fi."
         ],
         "sources": [
             "https://ctvisit.com/articles/great-venues-live-music-and-concerts-connecticut",
@@ -199,13 +199,13 @@
             "support": [
                 {
                     "type": "bandcamp",
-                    "url": "https://thesilvermill.bandcamp.com",
+                    "url": "https://bandcamp.com",
                     "label": null,
                     "clicks": 31
                 },
                 {
                     "type": "tip_jar",
-                    "url": "https://ko-fi.com/thesilvermill",
+                    "url": "https://ko-fi.com",
                     "label": "Chip in for the van",
                     "clicks": 7
                 }
@@ -225,7 +225,7 @@
             "support": [
                 {
                     "type": "bandcamp",
-                    "url": "https://quiettransit.bandcamp.com",
+                    "url": "https://bandcamp.com",
                     "label": null,
                     "clicks": 18
                 },
@@ -251,7 +251,7 @@
             "support": [
                 {
                     "type": "bandcamp",
-                    "url": "https://marisolvega.bandcamp.com",
+                    "url": "https://bandcamp.com",
                     "label": null,
                     "clicks": 12
                 },

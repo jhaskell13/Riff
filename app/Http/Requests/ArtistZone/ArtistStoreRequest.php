@@ -62,6 +62,9 @@ class ArtistStoreRequest extends FormRequest
             'stateOrProvince' => ['required', 'string', 'max:255'],
             'country' => ['required', 'string', 'max:255'],
             'show_on_map' => ['required', 'boolean'],
+            // Who may post on this artist's wall. The artist's own call:
+            // fans by default, opened to everyone or closed entirely.
+            'wall_mode' => ['sometimes', Rule::in(array_keys((array) config('riff.wall.modes')))],
 
             'biography' => ['nullable', 'string', 'max:5000'],
             'formed_date' => ['nullable', 'date', 'before_or_equal:today'],

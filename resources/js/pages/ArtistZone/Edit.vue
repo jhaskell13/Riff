@@ -12,6 +12,7 @@ const props = defineProps({
     genreOptions: { type: Array, default: () => [] },
     artistTypes: { type: Array, default: () => [] },
     maxGenres: { type: Number, default: 3 },
+    wallModes: { type: Array, default: () => [] },
     supportLinks: { type: Array, default: () => [] },
     supportTypes: { type: Array, default: () => [] },
     maxSupportLinks: { type: Number, default: 6 },
@@ -27,6 +28,7 @@ const form = useForm({
     stateOrProvince: props.artist.stateOrProvince,
     country: props.artist.country,
     show_on_map: props.artist.show_on_map,
+    wall_mode: props.artist.wall_mode,
     music_url: props.artist.music_url ?? '',
     website: props.artist.website ?? '',
     bandcamp_url: props.artist.bandcamp_url ?? '',
@@ -119,6 +121,7 @@ const archive = () => {
                                 :genre-options="genreOptions"
                                 :artist-types="artistTypes"
                                 :max-genres="maxGenres"
+                                :wall-modes="wallModes"
                             />
                         </q-card-section>
 

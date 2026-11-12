@@ -16,14 +16,18 @@ class ArtistSupportLinkFactory extends Factory
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Fixture URLs never point anywhere a stranger could own: reserved
+     * example.* domains where the type takes any host, and the service's
+     * own homepage where it requires a known one. A generated band-name
+     * subdomain is exactly the kind a real act may already have taken.
+     */
     public function definition(): array
     {
-        $slug = $this->faker->unique()->slug(2);
-
         return [
             'artist_id' => Artist::factory(),
             'type' => 'bandcamp',
-            'url' => "https://{$slug}.bandcamp.com",
+            'url' => 'https://bandcamp.com',
             'label' => null,
             'position' => 0,
             'clicks' => 0,
@@ -34,7 +38,7 @@ class ArtistSupportLinkFactory extends Factory
     {
         return $this->state(fn () => [
             'type' => 'tip_jar',
-            'url' => 'https://ko-fi.com/'.$this->faker->unique()->slug(1),
+            'url' => 'https://ko-fi.com',
         ]);
     }
 
@@ -43,7 +47,7 @@ class ArtistSupportLinkFactory extends Factory
     {
         return $this->state(fn () => [
             'type' => 'store',
-            'url' => 'https://'.$this->faker->unique()->domainName().'/shop',
+            'url' => 'https://example.com/shop/'.$this->faker->unique()->slug(2),
         ]);
     }
 }

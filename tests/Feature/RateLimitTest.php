@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Artist;
 use App\Models\ArtistSupportLink;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,6 +47,26 @@ class RateLimitTest extends TestCase
         $this->post($route)->assertTooManyRequests();
 
         $this->assertSame($limit, $link->fresh()->clicks);
+    }
+
+    public function test_wall_posts_are_rate_limited(): void
+    {
+        // A fan post is the cheapest thing to flood someone's page with.
+        $artist = Artist::factory()->create(['wall_mode' => 'everyone']);
+        $user = User::factory()->create();
+        $limit = (int) config('riff.wall.post_rate_limit_per_minute');
+
+        foreach (range(1, $limit) as $i) {
+            $this->actingAs($user)
+                ->post(route('wall.posts.store', $artist), ['content' => "Post {$i}"])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->actingAs($user)
+            ->post(route('wall.posts.store', $artist), ['content' => 'One too many'])
+            ->assertTooManyRequests();
+
+        $this->assertSame($limit, Post::count());
     }
 
     public function test_the_limit_is_per_user_not_global(): void

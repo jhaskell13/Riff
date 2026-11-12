@@ -141,6 +141,33 @@ class PilotDatasetTest extends TestCase
             }
         }
 
+        // An invented act's links must never resolve to anything a stranger
+        // could own. "The Silver Mill" is exactly the kind of name a real
+        // band may already have taken on Bandcamp or Ko-fi, and sending a
+        // visitor to them under an invented profile is the harm.
+        foreach (PilotScene::acts() as $act) {
+            if ($act['real']) {
+                continue;
+            }
+
+            foreach ($act['support'] ?? [] as $link) {
+                $host = (string) parse_url($link['url'], PHP_URL_HOST);
+                $path = trim((string) parse_url($link['url'], PHP_URL_PATH), '/');
+
+                // Either a reserved example.* domain (never registrable),
+                // or the bare homepage of a service, which belongs to the
+                // service and names nobody.
+                $reserved = preg_match('/(^|\.)example\.(com|net|org)$/', $host) === 1;
+                $bareService = $path === '' && ! str_contains($host, '.bandcamp.com');
+
+                $this->assertTrue(
+                    $reserved || $bareService,
+                    "{$act['name']}: {$link['url']} could belong to a real person. Use a reserved "
+                    .'example.* domain, or the service\'s own homepage.',
+                );
+            }
+        }
+
         // A support section is an invitation to pay. Saying a real act
         // asks for money -- anywhere, let alone at a URL nobody verified --
         // is a stronger attribution than listing a link, so it stays on

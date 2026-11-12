@@ -7,6 +7,7 @@ import FollowButton from '@/Components/FollowButton.vue';
 import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
 import ShowList from '@/Components/ShowList.vue';
 import SupportLinks from '@/Components/SupportLinks.vue';
+import ArtistWall from '@/Components/Wall/ArtistWall.vue';
 
 const props = defineProps({
     artist: {
@@ -57,6 +58,23 @@ const props = defineProps({
     localFans: {
         type: String,
         default: null,
+    },
+    // The wall: posts from the band and from fans, newest first.
+    wall: {
+        type: Object,
+        default: () => ({ posts: [], total: 0 }),
+    },
+    wallMode: {
+        type: String,
+        default: 'fans',
+    },
+    canPostAsArtist: {
+        type: Boolean,
+        default: false,
+    },
+    canPostOnWall: {
+        type: Boolean,
+        default: false,
     },
     canBlock: {
         type: Boolean,
@@ -225,6 +243,32 @@ const metaDescription = computed(() => {
                                 />
                             </div>
                             <ShowList :shows="upcomingShows" empty="Nothing listed yet." />
+                        </q-card-section>
+
+                        <!-- The fans' home (ROADMAP principle 3): fan
+                             interaction happens here, on the artist's own
+                             page, not in a shared public square. -->
+                        <q-card-section>
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">
+                                    Wall
+                                </div>
+                                <q-space />
+                                <span v-if="wall?.total" class="text-caption text-grey-6">
+                                    {{ wall.total }} {{ wall.total === 1 ? 'post' : 'posts' }}
+                                </span>
+                            </div>
+                            <ArtistWall
+                                :artist="artist"
+                                :wall="wall"
+                                :wall-mode="wallMode"
+                                :can-post-as-artist="canPostAsArtist"
+                                :can-post-on-wall="canPostOnWall"
+                                :is-authenticated="canFollow"
+                                :is-following="isFollowing"
+                                :max-post="wall?.maxPost ?? 5000"
+                                :max-comment="wall?.maxComment ?? 2000"
+                            />
                         </q-card-section>
 
                         <q-card-section v-if="listings.length || canManage" class="q-pt-none">

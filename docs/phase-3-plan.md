@@ -33,10 +33,11 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - **No `url` mutator on the model.** Canonicalising needs the sibling `type`, and `fill()` follows the incoming array's order rather than `$fillable`'s, so a mutator reading `$attributes['type']` would have been correct only by luck. It lives in `ArtistSupportLinks::sync()` instead, which has both values in hand.
 - **Support links are queried, not eager-loaded, for the public page.** A loaded relation serialises with its model, which would have put `clicks` into the public payload no matter what the resource chose to emit. There's a test asserting the public page carries no click count.
 - **The dataset's consent rule was extended, not reused.** Support links are seeded onto **fictional acts only**, and `PilotDatasetTest` now fails if a real act carries one. A support section is an *invitation to pay*, which is a stronger attribution than listing a link — the existing rule covered the research-verified Bandcamp link-out, but "this act asks to be paid here" is a claim nobody verified. Flagged rather than assumed: if the owner reads it the other way, the real acts' already-verified Bandcamp URLs could be promoted into the section by relaxing that one assertion.
+- **Invented acts must never link anywhere a stranger could own** (owner note, November 12): "The Silver Mill" is exactly the kind of name a real band may already have taken on Bandcamp or Ko-fi. Fictional seed links now use reserved `example.*` domains, or — where a type requires a known host — that service's own homepage. `PilotDatasetTest` enforces it. The same rule retired `ArtistFactory::withMusic()`'s real third-party tracks (a Spotify track, a YouTube video, a SoundCloud track) in favour of valid-shaped but all-zero identifiers: the Listen section and the "has music" filter still demo, and the player resolves to the provider's own "not found" instead of a real musician's work.
 - The parser's reject list is where the real work is — credentials in the host (`https://bandcamp.com@evil.example`), non-http(s) schemes, IP and bare hostnames, odd ports, interior control characters. Surrounding whitespace is trimmed instead, since a trailing newline is an ordinary paste and refusing it would be a bad error for a good link.
 - **Not done in this step:** support links on map cards (the card is a preview, and the section belongs on the page), and anything about the Phase 2 "scene banner on the map" proposal.
 
-## Step 2 — Posts with explicit context
+## Step 2 — Posts with explicit context — ✅ BUILT (November 12, 2026)
 
 **Why here:** this is the schema everything downstream reads. Today a post carries `user_id` (NOT NULL) and a nullable `artist_id`, so "the band announced this" and "a fan wrote this" are indistinguishable — and `FeedStoreRequest` doesn't even accept `artist_id`, so artist-voice posts exist only in the seeder. This step makes the voice explicit and gives every post a home.
 
@@ -52,9 +53,9 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - `posts` limiter stays; `@property` docblocks added to `Post` (and `Comment`, which has none today).
 - Tests: a non-member can't post as the artist, a member can, the member's identity never appears in artist-voice output, context can't be set from the request, wall query ignores other artists' posts, legacy rows survive the migration on all three drivers.
 
-**Done when:** a member posts an update from the Artist Zone, it renders on the public page as the artist with no member name anywhere in the payload, and a guest can read it.
+**Done when:** a member posts an update from the Artist Zone, it renders on the public page as the artist with no member name anywhere in the payload, and a guest can read it. ✅ (built together with step 3, since they share the schema)
 
-## Step 3 — The fan wall and replies
+## Step 3 — The fan wall and replies — ✅ BUILT (November 12, 2026)
 
 **Why here:** the wall is the product promise of the phase, and replies are the long-hidden `comments`/`comment_likes` schema finally shipping.
 
@@ -66,7 +67,21 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - New limiters: `wall` (fan posts, tighter than `posts`) and `comments`. Both per-minute and per-day, like `venues`.
 - Tests: fan post renders as the fan, artist reply is marked as the artist, a non-follower can't post when `wall_mode` is `fans`, depth cap, blocked artist's wall content is invisible to the blocker, ordering is chronological.
 
-**Done when:** a fan comments on the band's announcement, another fan replies, and the band answers in its own voice — all on the band's page, visible to a logged-out reader.
+**Done when:** a fan comments on the band's announcement, another fan replies, and the band answers in its own voice — all on the band's page, visible to a logged-out reader. ✅
+
+### Notes from building steps 2 and 3
+
+**Changed from the plan**
+- **`wall_mode` is three states, not two** (owner decision 2): `fans` (default) | `everyone` (the artist's opt-in) | `members_only`.
+- **Comment reporting moved up from step 4.** Shipping a comment surface with no way to report it would have broken the cross-cutting rule that every new surface is reportable, so `comment` joined `ReportStoreRequest::SUBJECTS` and `ModerationAction::RemoveComment` here. *Artist-level* moderation (hiding, wall bans) is still step 4; the `comments.status` column already carries a `hidden` state for it.
+- **Asking for the artist voice without membership is refused, not downgraded.** `Wall::voiceFor()` still falls back to the fan voice (it is the safe default for any internal caller), but the controller authorizes against what was actually asked for. Someone who ticks "post as the band" and silently gets a post under their own name is surprised in public, on someone else's page.
+
+**Three things that bit, all now covered by tests**
+- **`posts.comments` was an integer counter column shadowing the relation** — the same trap CLAUDE.md documents for `likes`. `$post->comments` returned `0`, so eager loading worked and reading it did not. Nothing had ever maintained the column; it is dropped, and comment counts come from `withCount()`.
+- **An N+1 of permissions and reactions.** Every post and reply asked the policies "can I delete / reply here?" (three `exists()` each) and `isLikedBy()` (one more). A busy wall ran 42 queries against 18 for an empty one. Fixed with `App\DTO\WallViewer` (computed once per render, passed into the resources) and a `withExists('likers as is_liked')` in the wall query. `WallTest` asserts the count **does not grow** with contents. A memo on the `User` model was tried first and **rejected**: it went stale as soon as a follow was written outside the follow controller, which a test caught.
+- **Nested resource collections serialise as `{"data": [...]}`**, so the client would have been iterating an object. Wall children are mapped and `resolve()`d to plain arrays.
+
+**Seed data was rewritten, not backfilled** (decision 3). `PilotSeeder` now seeds four wall conversations — a question the band answers, fans agreeing with each other, a practice-space offer, and a question nobody has answered yet — on fictional acts only, since a wall of invented fans saying invented things about a real band attributes them a community they never had. Wall seeding is idempotent **per act**, which `PilotSeedTest` now checks: re-running gave a band the same announcement twice.
 
 ## Step 4 — Artist-level moderation
 

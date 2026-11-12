@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $music_provider
  * @property string|null $image_path
  * @property bool $show_on_map
+ * @property string $wall_mode
  * @property float|null $lat
  * @property float|null $lng
  * @property-read string|null $image_url
@@ -65,6 +66,7 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         'email',
         'music_url',
         'show_on_map',
+        'wall_mode',
         'formed_date',
         'lat',
         'lng',
@@ -121,7 +123,10 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
-     * Get all of the members for the Artist
+     * The people who hold this identity. Membership -- not following -- is
+     * what grants the authority to speak as the artist.
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function members(): BelongsToMany
     {
@@ -135,6 +140,17 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     public function followers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
+    }
+
+    /**
+     * Everything on this artist's wall, in both voices -- the band's own
+     * updates and the fans' posts. Filter by voice with Post::inVoice().
+     *
+     * @return HasMany<Post, $this>
+     */
+    public function wallPosts(): HasMany
+    {
+        return $this->hasMany(Post::class);
     }
 
     /**

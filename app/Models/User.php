@@ -181,7 +181,10 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /**
-     * Get all of the posts for the User
+     * Posts this user wrote, in either voice. Create through this relation
+     * so the author can't be mass-assigned.
+     *
+     * @return HasMany<Post, $this>
      */
     public function posts(): HasMany
     {

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Genre;
 use App\Models\Post;
 use App\Models\Report;
@@ -15,6 +16,7 @@ use Database\Seeders\Support\PilotScene;
 use Database\Seeders\Support\PlaceholderPhoto;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -93,7 +95,14 @@ class PilotSeeder extends Seeder
 
         $this->listeners($onMap);
         // Posts speak as the act and reports accuse one: fictional only.
-        $this->posts($fictional);
+        //
+        // The first few fictional acts get full wall conversations; the
+        // rest get a lone artist-voice post, so the demo shows both a busy
+        // wall and a quiet one. They are split rather than overlapping, or
+        // an act would carry the same line twice.
+        $withWalls = $fictional->take(4);
+        $this->walls($withWalls);
+        $this->posts($fictional->skip($withWalls->count()));
         $this->reports($fictional);
     }
 
@@ -184,17 +193,169 @@ class PilotSeeder extends Seeder
         foreach ($artists->random(min(10, $artists->count())) as $index => $artist) {
             $member = $artist->members()->first();
 
-            if ($member === null) {
+            // Idempotent per act, like the acts themselves: re-running the
+            // seeder on an existing database must not give a band the same
+            // announcement twice.
+            if ($member === null || $artist->wallPosts()->exists()) {
                 continue;
             }
 
-            Post::factory()->create([
-                'user_id' => $member->getKey(),
-                'artist_id' => $artist->id,
+            Post::factory()->asArtist($artist, $member)->create([
                 'content' => $lines[$index % count($lines)],
                 'published_at' => now()->subDays(rand(0, 21))->subHours(rand(0, 23)),
             ]);
         }
+    }
+
+    /**
+     * Conversations on the walls: fans posting, fans answering each other,
+     * and the band replying in its own voice.
+     *
+     * Fictional acts only, like the artist-voice posts above. A wall full
+     * of invented fans saying invented things about a real band attributes
+     * a community to them that does not exist.
+     *
+     * @param  Collection<int, Artist>  $artists
+     */
+    private function walls(Collection $artists): void
+    {
+        $fans = User::where('onboarding_intent', OnboardingIntent::Fan)->get();
+
+        if ($fans->isEmpty() || $artists->isEmpty()) {
+            return;
+        }
+
+        // Four exchanges, each a different shape a wall actually takes:
+        // a question the band answers, fans agreeing with each other, a
+        // thank-you, and a question nobody has answered yet.
+        $conversations = [
+            [
+                'post' => ['voice' => 'artist', 'content' => 'New single is up. Thanks to everyone who came out to the release show.'],
+                'comments' => [
+                    ['voice' => 'fan', 'content' => 'Been waiting for this one since you played it in May. The bridge is enormous.', 'replies' => [
+                        ['voice' => 'artist', 'content' => 'That bridge took four practices and one argument. Glad it landed.'],
+                        ['voice' => 'fan', 'content' => 'Worth every practice.'],
+                    ]],
+                    ['voice' => 'fan', 'content' => 'Any chance of a tape run?', 'replies' => [
+                        ['voice' => 'artist', 'content' => 'Fifty of them, at the merch table Friday. First come.'],
+                    ]],
+                ],
+            ],
+            [
+                'post' => ['voice' => 'fan', 'content' => 'Saw these three last night in a basement with about forty people. Go while you still can stand that close.'],
+                'comments' => [
+                    ['voice' => 'fan', 'content' => 'I was at the one in March. Same thing. Ears rang for a day.', 'replies' => []],
+                    ['voice' => 'artist', 'content' => 'Thanks for coming out. Next one is announced this week.', 'replies' => []],
+                ],
+            ],
+            [
+                'post' => ['voice' => 'artist', 'content' => 'Practice space flooded. If anyone has a room in the area for a month, we are asking.'],
+                'comments' => [
+                    ['voice' => 'fan', 'content' => 'My uncle has a garage in Newington, I can ask him tonight.', 'replies' => [
+                        ['voice' => 'artist', 'content' => 'That would genuinely save us. Message through the listing and we will sort it.'],
+                    ]],
+                ],
+            ],
+            [
+                'post' => ['voice' => 'fan', 'content' => 'Does anyone know if the Friday show is all ages? Bringing my younger brother and do not want to get turned away at the door.'],
+                'comments' => [],
+            ],
+        ];
+
+        foreach ($artists->take(count($conversations))->values() as $index => $artist) {
+            $member = $artist->members()->first();
+
+            // Same rule as posts(): a wall is seeded once.
+            if ($member === null || $artist->wallPosts()->exists()) {
+                continue;
+            }
+
+            // Posting fans follow the artist, which is what the default
+            // wall mode requires of a real one.
+            $local = $fans->random(min(4, $fans->count()))->values();
+            $local->each(fn (User $fan) => $fan->followedArtists()->syncWithoutDetaching([$artist->id]));
+
+            $this->conversation($artist, $member, $local, $conversations[$index]);
+        }
+    }
+
+    /**
+     * One post and its thread.
+     *
+     * @param  Collection<int, User>  $fans
+     * @param  array<string, mixed>  $script
+     */
+    private function conversation(Artist $artist, User $member, Collection $fans, array $script): void
+    {
+        $fanAt = fn (int $i) => $fans[$i % $fans->count()];
+        $postedAt = now()->subDays(rand(1, 12))->subHours(rand(0, 23));
+
+        $post = $script['post']['voice'] === 'artist'
+            ? Post::factory()->asArtist($artist, $member)->create([
+                'content' => $script['post']['content'],
+                'published_at' => $postedAt,
+            ])
+            : Post::factory()->onWall($artist)->create([
+                'user_id' => $fanAt(0)->getKey(),
+                'content' => $script['post']['content'],
+                'published_at' => $postedAt,
+            ]);
+
+        // A couple of likes, so the counter is not always zero. Nothing is
+        // ever ordered by them.
+        foreach ($fans->take(rand(0, $fans->count())) as $fan) {
+            $post->likers()->attach($fan->getKey());
+            $post->increment('likes');
+        }
+
+        foreach ($script['comments'] as $commentIndex => $comment) {
+            $parent = $this->comment($artist, $member, $fanAt($commentIndex + 1), $post, $comment, $postedAt, $commentIndex);
+
+            foreach ($comment['replies'] ?? [] as $replyIndex => $reply) {
+                $this->comment(
+                    $artist,
+                    $member,
+                    $fanAt($commentIndex + $replyIndex + 2),
+                    $post,
+                    $reply,
+                    $postedAt,
+                    $commentIndex + $replyIndex + 1,
+                    $parent,
+                );
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $script
+     */
+    private function comment(
+        Artist $artist,
+        User $member,
+        User $fan,
+        Post $post,
+        array $script,
+        Carbon $postedAt,
+        int $offset,
+        ?Comment $parent = null,
+    ): Comment {
+        $factory = $script['voice'] === 'artist'
+            ? Comment::factory()->asArtist($artist, $member)
+            : Comment::factory()->state(['user_id' => $fan->getKey()]);
+
+        if ($parent !== null) {
+            $factory = $factory->replyTo($parent);
+        }
+
+        $at = $postedAt->copy()->addHours($offset + 1);
+
+        return $factory->create([
+            'commentable_type' => $post->getMorphClass(),
+            'commentable_id' => $post->getKey(),
+            'content' => $script['content'],
+            'created_at' => $at,
+            'updated_at' => $at,
+        ]);
     }
 
     /**

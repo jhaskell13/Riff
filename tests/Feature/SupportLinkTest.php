@@ -274,7 +274,12 @@ class SupportLinkTest extends TestCase
             ->where('supportLinks.0.typeLabel', 'Bandcamp')
             ->missing('supportLinks.0.clicks'));
 
-        $response->assertDontSee('77');
+        // Scoped to the support payload: a bare assertDontSee('77') on the
+        // whole page collides with any id or timestamp containing it.
+        $this->assertStringNotContainsString(
+            '77',
+            json_encode($response->viewData('page')['props']['supportLinks']),
+        );
     }
 
     #[Test]
