@@ -143,6 +143,15 @@ Recommended first: 1 and 2 together (small, and every map session passes through
 
 **Done when:** `php artisan migrate:fresh --seed` demos the entire Phase 2 loop, and CI's seed-twice check still passes on all three drivers. ✅
 
+## Phase 2 audit (November 2026)
+
+Three independent reviews (security/authorization, performance/queries, frontend/correctness) of the whole phase, then fixes with regression tests. No high-severity findings. Fixed:
+- **Security:** a free-text lineup act can't carry a Riff artist's name (consent bypass); renaming or moving a venue re-asks confirmed acts on its upcoming shows; a listing's artist can't change on edit; archived artists' listings never fall back to the member's name; public profiles don't serialise membership pivots; edit routes are throttled like creation.
+- **Performance:** moderation-queue N+1 on listing reports; foreign-key indexes SQLite/Postgres don't add themselves; venue cache shared with blocking viewers; the Artist Zone's ended-listing list is bounded.
+- **UI/correctness:** active show/listing pins lost their contents (CSS order again); the list keeps its tab across card opens; distance units with artists off; URL radius with artists off; `?when=` whitelisted; kept pins redraw on change; venue-mode "pick a venue" error; editing a show with an archived act; a poster who left the band can edit; long slugs truncated; Riff-less bills not hidden from blockers.
+
+**Deliberately left (low value at pilot scale, noted for later):** a show's free-text *title* can still name a band (titles are free expression; the bill is what consent governs); the venue duplicate check scans (`lower()` can't use the index — fine for hundreds of venues); a show save bumps the map cache once per lineup entry; slug generation queries per collision; the show page uses four RSVP queries.
+
 ## Step 8 — Imported events (optional, last)
 
 - A queued `riff:import-events` command maps `EventProvider` results into `shows` rows (`source = 'imported'`, deduped on `provider`+`provider_ref`, venue matched by name+town or left as `location_note`). Labelled everywhere, never outranking member shows, degrades to a no-op when the provider is down. Ticketmaster only where it adds local coverage; the contract stays open for venue-calendar providers.
