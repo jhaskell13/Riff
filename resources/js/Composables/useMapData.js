@@ -1,7 +1,7 @@
 import { ref, shallowRef } from 'vue';
 
 /**
- * Talks to one map endpoint (artists, shows, or venues — each kind has its
+ * Talks to one map endpoint (artists, shows, venues or listings — each kind has its
  * own, with its own query shape and cache).
 
  *

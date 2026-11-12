@@ -604,4 +604,30 @@ class ShowTest extends TestCase
         $this->get(route('artists.show', $artist))
             ->assertInertia(fn ($page) => $page->missing('artist.members.0.pivot')->has('artist.members.0.name'));
     }
+
+    public function test_a_show_with_an_archived_act_on_its_bill_can_still_be_edited(): void
+    {
+        $show = Show::factory()->create();
+        $gone = Artist::factory()->create();
+        $show->lineup()->make(['artist_id' => $gone->id, 'position' => 1])
+            ->forceFill(['status' => LineupEntry::CONFIRMED])->save();
+        $gone->delete();
+
+        $this->actingAs($this->memberOf($show->hostArtist))
+            ->patch(route('shows.update', $show), $this->editPayload($show, ['price' => '$5']))
+            ->assertSessionHasNoErrors();
+
+        // The slot survives, so restoring the artist brings it back.
+        $this->assertNotNull($show->lineup()->where('artist_id', $gone->id)->first());
+    }
+
+    public function test_a_very_long_name_still_gets_a_valid_slug(): void
+    {
+        $artist = Artist::factory()->create(['name' => str_repeat('щ', 255)]);
+        $twin = Artist::factory()->create(['name' => str_repeat('щ', 255)]);
+
+        $this->assertLessThanOrEqual(255, strlen($artist->slug));
+        $this->assertLessThanOrEqual(255, strlen($twin->slug));
+        $this->assertNotSame($artist->slug, $twin->slug);
+    }
 }

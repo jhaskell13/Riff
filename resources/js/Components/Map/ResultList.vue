@@ -20,6 +20,9 @@ const props = defineProps({
     kinds: { type: Array, default: () => ['artists', 'shows', 'venues', 'listings'] },
     windowLabel: { type: String, default: '' },
     selectedPlaceKey: { type: String, default: null },
+    // Distances from every feed come in the viewer's unit; passed in, not
+    // read from the artists' meta, which is empty when artists are off.
+    unit: { type: String, default: 'mi' },
     meta: { type: Object, default: null },
     loading: { type: Boolean, default: false },
     failed: { type: Boolean, default: false },
@@ -37,7 +40,6 @@ const venuesHere = computed(() => (has('venues') ? props.venues : []));
 const listingsHere = computed(() => (has('listings') ? props.listings : []));
 const artistsHere = computed(() => (has('artists') ? props.artists : []));
 
-const unit = computed(() => props.meta?.unit ?? 'mi');
 const isEmpty = computed(() => !props.loading && !props.failed && !props.pristine
     && artistsHere.value.length === 0 && showsHere.value.length === 0
     && venuesHere.value.length === 0 && listingsHere.value.length === 0);

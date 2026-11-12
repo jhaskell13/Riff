@@ -386,4 +386,19 @@ class ListingTest extends TestCase
         $this->get(route('listings.show', $listing))
             ->assertInertia(fn ($page) => $page->where('listing.postedBy.name', 'An archived artist'));
     }
+
+    public function test_a_poster_who_left_the_band_can_still_edit_their_listing(): void
+    {
+        $band = Artist::factory()->create();
+        $poster = $this->memberOf($band);
+        $listing = Listing::factory()->for($poster)->create(['type' => 'members_wanted']);
+        $listing->forceFill(['artist_id' => $band->id])->save();
+        $poster->artists()->detach($band);
+
+        $this->actingAs($poster)
+            ->patch(route('listings.update', $listing), $this->payload(['type' => 'members_wanted', 'artist_id' => $band->id, 'title' => 'Drummer still wanted']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Drummer still wanted', $listing->fresh()->title);
+    }
 }

@@ -73,6 +73,9 @@ class ArtistZoneController extends Controller
             'listings' => Listing::query()
                 ->managedBy(Auth::user())
                 ->whereNull('closed_at')
+                // Ended ones stay renewable here for a month, then drop off
+                // (their pages remain), so the list doesn't grow forever.
+                ->where('expires_at', '>', now()->subDays(30)->toDateTimeString())
                 ->with('artist:id,name')
                 ->latest()
                 ->get()

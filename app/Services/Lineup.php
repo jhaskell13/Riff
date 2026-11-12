@@ -16,11 +16,12 @@ use Illuminate\Support\Facades\DB;
  * - An artist the acting member belongs to is confirmed at once.
  * - Any other Riff artist starts pending, and appears nowhere public until
  *   one of its own members confirms.
- * - A declined artist stays declined across edits: re-saving the form must
- *   not re-ask a band that already said no.
+ * - A declined artist stays declined across ordinary edits: re-saving the
+ *   form must not re-ask a band that already said no.
  * - A material change (date, time, or place) puts every other artist's
- *   answer back to pending: confirming "Friday at the Lantern Room" is not
- *   consent to "Saturday in a backyard".
+ *   answer back to pending -- declines included, deliberately: confirming
+ *   "Friday at the Lantern Room" is not consent to "Saturday in a
+ *   backyard", and a band that couldn't do Friday may well do Saturday.
  */
 class Lineup
 {

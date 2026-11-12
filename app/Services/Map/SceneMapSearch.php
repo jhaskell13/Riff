@@ -134,12 +134,17 @@ class SceneMapSearch
             // Hidden only when *every* Riff artist on the bill is blocked:
             // keep the show if any confirmed Riff act is not. A shared bill
             // is the other bands' show too.
-            $query->whereExists(fn (QueryBuilder $entries) => $this->confirmedEntries($entries)
-                ->whereNotNull('lineup_entries.artist_id')
-                ->whereNotIn('lineup_entries.artist_id', fn (QueryBuilder $blocks) => $blocks
-                    ->select('artist_id')
-                    ->from('artist_blocks')
-                    ->where('user_id', $filters->hiddenFor)));
+            // (A bill with no Riff acts at all -- an imported listing --
+            // has nobody to block, so it stays.)
+            $query->where(fn (Builder $keep) => $keep
+                ->whereExists(fn (QueryBuilder $entries) => $this->confirmedEntries($entries)
+                    ->whereNotNull('lineup_entries.artist_id')
+                    ->whereNotIn('lineup_entries.artist_id', fn (QueryBuilder $blocks) => $blocks
+                        ->select('artist_id')
+                        ->from('artist_blocks')
+                        ->where('user_id', $filters->hiddenFor)))
+                ->orWhereNotExists(fn (QueryBuilder $entries) => $this->confirmedEntries($entries)
+                    ->whereNotNull('lineup_entries.artist_id')));
         }
 
         $rows = $query

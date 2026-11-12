@@ -44,7 +44,6 @@ return new class extends Migration
             // Same covering shape as artists_map_index, ready for the map
             // (Phase 2, Step 4).
             $table->index(['show_on_map', 'deleted_at', 'lat', 'lng'], 'venues_map_index');
-            // Duplicate check on submission: same name in the same town.
             $table->index(['city', 'state']);
         });
 

@@ -29,7 +29,9 @@ class SceneFilters
 
     public function cacheKey(string $kind): ?string
     {
-        if ($this->hiddenFor !== null) {
+        // Venues don't depend on who's looking (blocking hides artists'
+        // things, not rooms), so a blocking viewer still shares their cache.
+        if ($this->hiddenFor !== null && $kind !== 'venues') {
             return null;
         }
 

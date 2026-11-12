@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Query parameters for GET /map/shows and GET /map/venues. Always an area
+ * Query parameters for GET /map/shows, /map/venues and /map/listings. Always an area
  * (viewport or radius) — unlike artists there is no global name search;
  * these pins follow the map. `when` and `tz` matter only for shows; `genres`
  * narrows shows to bills with a matching artist, and venues to places

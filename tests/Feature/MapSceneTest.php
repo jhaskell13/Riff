@@ -284,4 +284,19 @@ class MapSceneTest extends TestCase
                 ->has('filterOptions.kinds', 4)
                 ->where('filterOptions.windows.0.value', 'tonight'));
     }
+
+    public function test_a_blocking_viewer_shares_the_venue_cache_and_imported_bills_stay(): void
+    {
+        $viewer = User::factory()->create();
+        $viewer->blockedArtists()->attach(Artist::factory()->create());
+
+        Venue::factory()->at('Hartford')->create();
+        $this->actingAs($viewer)->getJson(route('map.venues', self::AREA))->assertHeader('Cache-Control', 'max-age=30, private');
+
+        // A bill with no Riff acts at all has nobody to block.
+        $imported = Show::factory()->create(['host_artist_id' => null, 'venue_id' => Venue::factory()->at('Hartford')]);
+        $imported->lineup()->create(['name' => 'Touring Band', 'position' => 0]);
+
+        $this->assertContains($imported->id, collect($this->shows([], $viewer)->json('data'))->pluck('id'));
+    }
 }

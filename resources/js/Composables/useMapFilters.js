@@ -12,6 +12,7 @@ import { computed, reactive, watch } from 'vue';
 // mode, so a first visit sees artists, shows and venues together.
 export const ALL_KINDS = ['artists', 'shows', 'venues', 'listings'];
 export const DEFAULT_WHEN = 'month';
+const WINDOWS = ['tonight', 'weekend', 'week', 'month'];
 
 export const DEFAULT_FILTERS = {
     kinds: ALL_KINDS,
@@ -41,7 +42,8 @@ export function useMapFilters() {
         ...DEFAULT_FILTERS,
         // Kept in ALL_KINDS order so the URL and comparisons are stable.
         kinds: kindsParam.length ? ALL_KINDS.filter((kind) => kindsParam.includes(kind)) : [...ALL_KINDS],
-        when: params.get('when') ?? DEFAULT_WHEN,
+        // Whitelisted like kinds: a bad value would 422 every scene feed.
+        when: WINDOWS.includes(params.get('when')) ? params.get('when') : DEFAULT_WHEN,
         q: params.get('q') ?? '',
         genres: asList(params.get('genres')),
         types: asList(params.get('types')),

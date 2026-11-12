@@ -201,6 +201,16 @@
     background: var(--color-riff-listing);
   }
 
+  /* Restated after the kind backgrounds: the base active/hover white is
+     declared earlier at equal specificity and would lose, leaving an
+     amber day on an amber tile. */
+  .riff-pin--show.riff-pin--active,
+  .riff-pin--show.riff-pin--hover,
+  .riff-pin--listing.riff-pin--active,
+  .riff-pin--listing.riff-pin--hover {
+    background: #fff;
+  }
+
   .riff-pin--show.riff-pin--active > *,
   .riff-pin--show.riff-pin--hover > * {
     color: var(--color-riff-show);

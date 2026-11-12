@@ -98,7 +98,7 @@ class ListingController extends Controller
     {
         $this->authorize('update', $listing);
 
-        $artist = $this->artistFor($request);
+        $artist = $this->artistFor($request, $listing);
 
         DB::transaction(function () use ($request, $listing, $artist) {
             $listing->fill($request->listingAttributes());
@@ -133,7 +133,7 @@ class ListingController extends Controller
      * The artist a listing is posted as, if any: only one the poster is a
      * member of.
      */
-    private function artistFor(ListingRequest $request): ?Artist
+    private function artistFor(ListingRequest $request, ?Listing $current = null): ?Artist
     {
         $id = $request->validated('artist_id');
 
@@ -142,7 +142,13 @@ class ListingController extends Controller
         }
 
         $artist = Artist::findOrFail($id);
-        $this->authorize('update', $artist);
+
+        // Re-checked only when it's being set: a poster who has since left
+        // the band can still fix a typo in their own listing (the artist
+        // can't change on edit at all; see ListingRequest).
+        if ($current?->artist_id !== $artist->id) {
+            $this->authorize('update', $artist);
+        }
 
         return $artist;
     }

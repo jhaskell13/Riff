@@ -83,7 +83,12 @@ class ShowRequest extends FormRequest
 
             'lineup' => ['required', 'array', 'min:1', 'max:'.config('riff.shows.max_lineup')],
             'lineup.*' => ['array:artist_id,name'],
-            'lineup.*.artist_id' => ['nullable', 'integer', 'distinct', Rule::exists('artists', 'id')->whereNull('deleted_at')],
+            // Live artists, or one already on this bill that has since been
+            // archived -- that slot is kept (and hidden publicly) so editing
+            // the show still works and a restore brings it back.
+            'lineup.*.artist_id' => ['nullable', 'integer', 'distinct', Rule::exists('artists', 'id')->where(fn ($q) => $q
+                ->whereNull('deleted_at')
+                ->orWhereIn('id', $this->existingLineupArtistIds()))],
             'lineup.*.name' => ['nullable', 'required_without:lineup.*.artist_id', 'prohibits:lineup.*.artist_id', 'string', 'max:120'],
         ];
     }
@@ -146,6 +151,16 @@ class ShowRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /** @return list<int> */
+    private function existingLineupArtistIds(): array
+    {
+        $show = $this->route('show');
+
+        return $show instanceof Show
+            ? $show->lineup()->whereNotNull('artist_id')->pluck('artist_id')->map(fn ($id) => (int) $id)->all()
+            : [];
     }
 
     /** The start, in UTC. */

@@ -24,7 +24,9 @@ class Slugs
 
     public static function generate(string $name, Model&HasPublicSlug $for): string
     {
-        $base = Str::slug($name);
+        // Transliteration can lengthen a 255-char name, and a suffix adds
+        // more; leave room for both under the column's limit.
+        $base = rtrim(Str::limit(Str::slug($name), 230, ''), '-');
 
         if ($base === '' || ctype_digit($base) || in_array($base, self::RESERVED, true)) {
             $suffix = Str::slug($for->slugFallback()) ?: 'riff';

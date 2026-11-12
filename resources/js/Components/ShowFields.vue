@@ -135,8 +135,8 @@ const ensureHostOnBill = () => {
         return;
     }
 
-    // Drop a previously chosen host the user hasn't otherwise kept, then
-    // put the new host first.
+    // Drop the entry auto-added for the previous host choice, then put
+    // the new host first.
     props.form.lineup = props.form.lineup.filter((entry) => !entry.wasHost);
 
     if (!props.form.lineup.some((entry) => entry.artist_id === props.form.host_artist_id)) {
@@ -167,6 +167,14 @@ const filterTimezones = (term, update) => update(() => {
     const needle = term.toLowerCase();
     timezoneOptions.value = timezones.filter((zone) => zone.toLowerCase().includes(needle));
 });
+
+// In venue mode the server's "need a place" errors land on the one-off
+// fields, which aren't on screen; surface them on the venue picker.
+const venueError = computed(() => props.form.errors.venue_id
+    || (where.value === 'venue' && !props.form.venue_id
+        && (props.form.errors.location_name || props.form.errors.city || props.form.errors.state)
+        ? 'Pick a venue — or choose "Somewhere one-off".'
+        : null));
 
 const lineupError = computed(() => Object.entries(props.form.errors)
     .filter(([key]) => key === 'lineup' || key.startsWith('lineup.'))
@@ -302,8 +310,8 @@ const lineupError = computed(() => Object.entries(props.form.errors)
                 input-debounce="250"
                 clearable
                 v-bind="inputProps"
-                :error="!!form.errors.venue_id"
-                :error-message="form.errors.venue_id"
+                :error="!!venueError"
+                :error-message="venueError"
                 @filter="searchVenues"
                 @update:model-value="pickVenue"
             >

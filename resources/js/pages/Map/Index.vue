@@ -192,6 +192,11 @@ const buildSceneParams = () => {
 };
 
 const load = (options) => {
+    // Settled first, for every kind: a radius from a shared URL with
+    // artists switched off must still have its centre.
+    if (filters.radius) {
+        radiusOrigin.value ??= map.getCenter();
+    }
     if (includesKind('artists')) {
         fetchArtists(buildParams(), options);
     } else {
@@ -309,6 +314,10 @@ const syncPlaces = (layer, items, icon) => {
     const gone = ours.filter((key) => !next.has(key));
     const added = [...next.keys()].filter((key) => !placeMarkers.has(key));
 
+    // What a pin shows; when an edit changes it (a show moved to another
+    // day), the kept marker is redrawn rather than left stale.
+    const signature = (item) => [item.title, item.name, item.day, item.month, item.icon, item.lat, item.lng].join('|');
+
     if (gone.length) {
         layer.removeLayers(gone.map((key) => placeMarkers.get(key)));
         gone.forEach((key) => {
@@ -328,12 +337,31 @@ const syncPlaces = (layer, items, icon) => {
                 riseOnHover: true,
             });
             marker.__riffLayer = layer;
+            marker.__riffSig = signature(item);
             marker.on('click', () => selectPlace(placeData.get(key), { pan: false }));
             placeMarkers.set(key, marker);
 
             return marker;
         }));
     }
+
+    next.forEach((item, key) => {
+        const marker = placeMarkers.get(key);
+
+        if (!marker || added.includes(key)) {
+            return;
+        }
+
+        const label = markerLabel(item, unit.value);
+        marker.options.title = label;
+        marker.getElement()?.setAttribute('title', label);
+
+        if (marker.__riffSig !== signature(item)) {
+            marker.__riffSig = signature(item);
+            marker.setLatLng([item.lat, item.lng]);
+            marker.setIcon(icon(item, { active: key === selectedPlaceKey.value }));
+        }
+    });
 };
 
 /**
@@ -653,6 +681,7 @@ watch(panelOpen, async () => {
     map?.invalidateSize({ animate: false });
     // Again once the width transition has finished, or the map keeps the
     // size it had partway through the animation.
+    clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => map?.invalidateSize({ animate: false }), 240);
 });
 
@@ -829,8 +858,11 @@ onBeforeUnmount(() => {
                         @unblocked="onUnblocked"
                         @collapse="panelOpen = false"
                     />
+                    <!-- v-show, not v-else: the list keeps its tab and scroll
+                         while a card is open. -->
                     <ResultList
-                        v-else
+                        v-show="!selectedPlace && !selectedId"
+                        :unit="unit"
                         :artists="markers"
                         :shows="showsFeed.markers.value"
                         :venues="venuesFeed.markers.value"
