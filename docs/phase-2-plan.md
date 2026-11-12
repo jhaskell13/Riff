@@ -1,6 +1,6 @@
 # Phase 2 implementation plan — put the whole scene on the map
 
-Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–5 are built.**
+Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–6 are built.**
 
 This turns Phase 2 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. Each step ships on its own, keeps CI green on all three database drivers, and leaves the app better even if we pause after it. Order matters: venues before shows (shows reference venues), shows before map layers (a layer needs data), layers before scenes (a scene is a composed view of the layers), and listings last among the features because they reuse the area/genre machinery everything else establishes.
 
@@ -101,16 +101,37 @@ No switchable layers (revised on review): artists, shows, and venues render **to
 
 **Done when:** `/scenes/hartford-ct/punk` is a link someone can text a friend, and it answers "who plays, what's on, where" without sign-in. ✅ (in the seeded data: 6 punk artists, both punk bills, and the two rooms hosting them)
 
-## Step 6 — Listings ("looking for")
+## Step 6 — Listings ("looking for") — ✅ BUILT (November 2026)
 
-- Migration `listings`: `type` (`members_wanted` / `band_wanted` / `bill_wanted` / `practice_space`), `user_id`, `artist_id` (nullable — required for `members_wanted`/`bill_wanted`, posted *as* the artist; null for seeker types), `instruments` (JSON list from a config vocabulary), `body` (bounded), `hometown`/`stateOrProvince` + `lat`/`lng` (defaulted from the artist or user, approximate — reuse `Geocodable`), `expires_at` (default +30 days, max +60, bump-able once), soft deletes. Genres via a `listing_genre` pivot mirroring `artist_genre`.
-- `ListingPolicy`: creating as an artist requires membership; owner edits/closes/bumps. `listing` joins report SUBJECTS and `ModerationAction` (remove-listing, recoverable). `listings` limiter (tight — this is a spam magnet).
-- **Replies are relayed email, interim by design:** `POST /listings/{listing}/replies` (verified users, very tight limiter, one reply per user per listing) takes a message plus optional contact handle, and queues a Mailable to the poster. The replier's email is never exposed unless they typed it; the poster's is never exposed at all. Store replies in a `listing_replies` table (needed for the one-reply rule, abuse review, and so the thread can migrate into the Phase 4 **in-app messaging system** that will replace this relay).
-- Surfaces: a listings section on scene views, a browse page `GET /listings` scoped to an area + filters (type, instrument, genre), active listings on the posting artist's page, and the artist-create "join" stub finally pointed at real `band_wanted`/`members_wanted` listings instead of the fake search. Map layer only if the pilot asks — a list scoped by area covers the need without another index.
-- Expiry is a query concern (`active()` scope), not a cron: expired listings vanish from every surface and the owner can renew.
-- Tests: policy (member-only artist listings), expiry, relay (via `Mail::fake`), one-reply rule, report round-trip, limiter.
+*Also in this round, from Step 5 review:*
+- **Cluster tints never applied.** The kind variants were declared before the base `.riff-cluster` rule at equal specificity, so every bubble was red. Fixed. Every kind now also differs by **shape and glyph**, not colour alone: artists are round/teardrop, shows a calendar tile / rounded square, venues a hexagon, listings a speech bubble.
+- **Kinds no longer stack.** A show at its venue, or a private venue at a town's centre among its artists, put different kinds on the same point where they couldn't be clicked apart. markercluster only separates markers *within* a group, so each kind now has a **fixed quadrant slot** around its point (`KIND_SLOTS` in `markers.js`: artists up-left, shows up-right, venues down-left, listings down-right). Pins and clusters both use it, so mixed kinds form a small 2×2 grid instead of a pile. The trade-off is that a lone pin sits a few pixels off its true point; everything but a public venue is a town centre anyway.
+- **List tabs** are now full-width underlined tabs (icon and count over a short label, an equal column each), visibly different from the filter bar's filled pill toggles, with room for four kinds. I chose this over a dropdown, which would hide the other kinds behind a click.
 
-**Done when:** a band posts "drummer wanted — Hartford, punk/hardcore", it shows in the scene view, a drummer replies, and the band gets an email relay with no addresses leaked either way.
+**What was built**
+- `listings` (+ `listing_genre`, `listing_replies`). The **types** live in `config('riff.listings.types')`: *band seeking members* and *gigs or openers wanted* are posted as one of the poster's artists (membership checked via `ArtistPolicy::update`); *musician seeking a band* is posted as a person; *practice space* can be either. Each listing has instruments, up to 3 genres, a **town-level** location (prefilled from the artist or the user, shown publicly as a town only) and a 30-day run.
+- **Lifecycle:** *renew* (only within 7 days of the end, or after it), *close* ("found someone" — off every surface, page kept), with expiry as a query scope (`Listing::active()`), not a cron job. The poster and the artist's members manage a listing. The type is fixed after posting, because replies were made to that kind of post.
+- **Replies, relayed by email (interim):** one per person per listing, never to your own, and a contact is required (without it the poster couldn't answer). The `ListingReplyMail` email sets **no Reply-To**: the poster's address is never shown, and the replier's only as the contact they typed. It's a **plain HTML** view, not a markdown mailable — markdown mail parses the whole template, so a reply could have injected links into the poster's inbox. Replies are stored so threads can move into in-app messaging (Phase 4). `listing-replies` limiter: 3/min, 20/day.
+- **Surfaces:** a fourth map kind (`GET /map/listings`; genre filter and blocking apply; a blocked artist's listings leave the blocker's map) with a *Wanted* list tab and card; the public listing page (`/listings/{id}`) with the reply form (guests are prompted to join); a *Looking for* section on scene pages and artist pages; *Looking for* management in the Artist Zone. The old artist-create "join" stub now points at bands looking for members and at posting "I'm looking for a band".
+- **Moderation:** `listing` is reportable; `remove_listing` soft-deletes (the page 404s).
+- **Demo data:** `SceneSeeder` adds four listings — The Silver Mill after a drummer, a bassist after a band, Thread City Ska after openers, and Quiet Transit's shared room (ending in 4 days, to show renewal).
+
+**Not yet**
+- Replies can't be reported, and a poster can't block a replier. The relay exposes only what the replier chose to share, but harassment by reply has no in-app recourse yet. This belongs with in-app messaging (Phase 4); the email tells posters to report the listing page in the meantime.
+- No `/listings` browse page: the map tab and scene pages cover discovery by place.
+
+## Proposed (not built): making scenes easier to find
+
+From Step 5 review: scene pages feel hidden. Options, roughly in order of value for effort:
+
+1. **A scene banner on the map.** When the map settles over a town that has a scene page (the view's centre is within a place's radius), show a slim bar along the top of the map or list: "You're looking at the Hartford scene — 9 shows this month · 46 artists → See the scene". It becomes "Hartford punk" when a genre filter matches a family. Cheap: places are a small table, and the client can pick the nearest one. This is the strongest funnel, because it meets people where they already are.
+2. **"See the scene" in every map card.** Artist, show, venue and listing cards get the same link the full pages have ("More in Hartford punk").
+3. **Turn on the map's genre filter → offer the family.** Choosing *Punk* or *Hardcore* surfaces "Hartford punk scene →" next to the filter — the clearest moment of intent.
+4. **The welcome overlay ends in a scene.** For a first-time guest, "Explore Hartford's scene" is a better first step than an empty map, especially on a phone.
+5. **Scene in the nav.** A "Scene" item that resolves to the viewer's own town (signed-in users have one; guests use the map's centre or default area).
+6. **Share affordance.** A share button on scene pages (native share sheet on phones). Scene links are the most shareable thing Riff has, and the unfurl metadata is already in place.
+
+Recommended first: 1 and 2 together (small, and every map session passes through them), then 3. Measure scene-page visits that came from the map before doing 4–5.
 
 ## Step 7 — Pilot seed data + docs
 
@@ -140,4 +161,4 @@ No switchable layers (revised on review): artists, shows, and venues render **to
 
 ## Suggested checkpoints
 
-Steps 1–5 are built; Step 6 (listings) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.
+Steps 1–6 are built; Step 7 (pilot data + docs) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.
