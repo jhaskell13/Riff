@@ -11,7 +11,7 @@ import ResultList from '@/Components/Map/ResultList.vue';
 import ArtistCardPanel from '@/Components/Map/ArtistCardPanel.vue';
 import PlaceCardPanel from '@/Components/Map/PlaceCardPanel.vue';
 import WelcomeOverlay from '@/Components/Map/WelcomeOverlay.vue';
-import { artistIcon, clusterIcon, markerLabel, showIcon, venueIcon, youIcon } from '@/Components/Map/markers';
+import { artistIcon, clusterIcon, listingIcon, markerLabel, showIcon, venueIcon, youIcon } from '@/Components/Map/markers';
 import { useArtistCard, useMapArtists, useMapFeed } from '@/Composables/useMapData';
 import { useMapFilters } from '@/Composables/useMapFilters';
 
@@ -29,6 +29,7 @@ const { markers, clusters, meta, loading: artistsLoading, failed: artistsFailed,
 // same map as the artists. See SceneMapSearch.
 const showsFeed = useMapFeed('map.shows');
 const venuesFeed = useMapFeed('map.venues');
+const listingsFeed = useMapFeed('map.listings');
 const artistsFeed = { loading: artistsLoading, failed: artistsFailed, pristine: artistsPristine };
 const card = useArtistCard();
 
@@ -38,6 +39,7 @@ const activeFeeds = computed(() => [
     includesKind('artists') && artistsFeed,
     includesKind('shows') && showsFeed,
     includesKind('venues') && venuesFeed,
+    includesKind('listings') && listingsFeed,
 ].filter(Boolean));
 const loading = computed(() => activeFeeds.value.some((feed) => feed.loading.value));
 const failed = computed(() => activeFeeds.value.some((feed) => feed.failed.value));
@@ -46,6 +48,7 @@ const retry = () => {
     if (includesKind('artists')) retryArtists();
     if (includesKind('shows')) showsFeed.retry();
     if (includesKind('venues')) venuesFeed.retry();
+    if (includesKind('listings')) listingsFeed.retry();
 };
 
 // A selected show or venue (its pin payload); exclusive with selectedId.
@@ -54,7 +57,8 @@ const placeKey = (place) => `${place.kind}:${place.id}`;
 const selectedPlaceKey = computed(() => (selectedPlace.value ? placeKey(selectedPlace.value) : null));
 const nearbyCount = computed(() => (includesKind('artists') ? meta.value?.returned ?? 0 : 0)
     + (includesKind('shows') ? showsFeed.markers.value.length : 0)
-    + (includesKind('venues') ? venuesFeed.markers.value.length : 0));
+    + (includesKind('venues') ? venuesFeed.markers.value.length : 0)
+    + (includesKind('listings') ? listingsFeed.markers.value.length : 0));
 
 const selectedId = ref(null);
 const hoveredId = ref(null);
@@ -74,6 +78,7 @@ let markerLayer = null;
 let clusterLayer = null;
 let showLayer = null;
 let venueLayer = null;
+let listingLayer = null;
 let radiusCircle = null;
 let youMarker = null;
 let resizeTimer = null;
@@ -196,7 +201,7 @@ const load = (options) => {
     // After buildParams, which settles the radius origin.
     const sceneParams = buildSceneParams();
 
-    for (const [kind, feed] of [['shows', showsFeed], ['venues', venuesFeed]]) {
+    for (const [kind, feed] of [['shows', showsFeed], ['venues', venuesFeed], ['listings', listingsFeed]]) {
         if (includesKind(kind)) {
             feed.fetch(sceneParams, options);
         } else {
@@ -416,6 +421,7 @@ watch([markers, clusters], () => {
 
 watch(showsFeed.markers, (items) => showLayer && syncPlaces(showLayer, items, showIcon));
 watch(venuesFeed.markers, (items) => venueLayer && syncPlaces(venueLayer, items, venueIcon));
+watch(listingsFeed.markers, (items) => listingLayer && syncPlaces(listingLayer, items, listingIcon));
 
 watch(hoveredId, (id, previous) => {
     if (previous && previous !== selectedId.value) setPinState(previous, null);
@@ -740,7 +746,9 @@ onMounted(() => {
     // of the venue's own pin, where it's easy to tap.
     venueLayer = placeLayer('venues');
     showLayer = placeLayer('shows');
+    listingLayer = placeLayer('listings');
     map.addLayer(venueLayer);
+    map.addLayer(listingLayer);
     map.addLayer(markerLayer);
     map.addLayer(clusterLayer);
     map.addLayer(showLayer);
@@ -769,6 +777,7 @@ onBeforeUnmount(() => {
     cancel();
     showsFeed.cancel();
     venuesFeed.cancel();
+    listingsFeed.cancel();
     map?.remove();
     map = null;
 });
@@ -825,6 +834,7 @@ onBeforeUnmount(() => {
                         :artists="markers"
                         :shows="showsFeed.markers.value"
                         :venues="venuesFeed.markers.value"
+                        :listings="listingsFeed.markers.value"
                         :kinds="filters.kinds"
                         :window-label="showsFeed.meta.value?.window?.label ?? ''"
                         :selected-place-key="selectedPlaceKey"
@@ -845,7 +855,7 @@ onBeforeUnmount(() => {
                 </aside>
 
                 <div class="map-canvas">
-                    <div id="map" class="h-full w-full" role="application" aria-label="Map of the local scene: artists, shows and venues"></div>
+                    <div id="map" class="h-full w-full" role="application" aria-label="Map of the local scene: artists, shows, venues and listings"></div>
 
                     <!-- Transient messages: location, default area -->
                     <transition name="fade">

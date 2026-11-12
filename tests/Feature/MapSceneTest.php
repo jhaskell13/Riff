@@ -281,7 +281,7 @@ class MapSceneTest extends TestCase
     {
         $this->get(route('map.index'))
             ->assertInertia(fn ($page) => $page
-                ->has('filterOptions.kinds', 3)
+                ->has('filterOptions.kinds', 4)
                 ->where('filterOptions.windows.0.value', 'tonight'));
     }
 }

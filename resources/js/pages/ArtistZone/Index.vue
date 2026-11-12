@@ -30,7 +30,19 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Listings this user manages, open or ended (closed ones drop off).
+    listings: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const renewListing = (listing) => router.post(route('listings.renew', listing.id), {}, { preserveScroll: true });
+const closeListing = (listing) => {
+    if (confirm(`Close "${listing.title}"? It comes off the map and scene pages.`)) {
+        router.post(route('listings.close', listing.id), {}, { preserveScroll: true });
+    }
+};
 
 // Artists carry a genre list now rather than a single string.
 const genreNames = (artist) => (artist.genres ?? []).map((genre) => genre.name).join(', ');
@@ -205,6 +217,49 @@ const archive = (artist) => {
                             <div class="text-subtitle2 text-weight-medium text-grey-4 q-mb-sm">Your upcoming shows</div>
                             <ShowList :shows="hostedShows" empty="No shows listed yet." />
                         </q-card-section>
+                    </q-card>
+
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="leading-tight">
+                                <div class="text-subtitle1 text-weight-medium text-grey-3">Looking for</div>
+                                <p class="text-caption text-grey-6 m-0">
+                                    Members, a band, gigs, a room. Listings run 30 days; replies come to your email.
+                                </p>
+                            </div>
+                            <q-btn
+                                unelevated rounded color="deep-purple-5" icon="add" label="Post a listing"
+                                padding="xs lg" class="ml-auto"
+                                @click="router.visit(route('listings.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="listings.length">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div v-for="listing in listings" :key="listing.id" class="flex items-center mt-4 first:mt-0">
+                                    <q-avatar size="36px" color="deep-purple-5" text-color="white">
+                                        <q-icon :name="listing.icon" size="20px" />
+                                    </q-avatar>
+                                    <div class="col q-ml-md">
+                                        <div class="text-subtitle2 text-grey-2">{{ listing.title }}</div>
+                                        <div class="text-caption" :class="listing.isActive ? 'text-grey-6' : 'text-orange-4'">
+                                            {{ listing.typeLabel }}<template v-if="listing.postedAs"> · as {{ listing.postedAs }}</template> · {{ listing.expiresLabel }}
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <q-btn round color="primary" icon="visibility" size="xs" @click="router.visit(listing.url)">
+                                            <q-tooltip>View</q-tooltip>
+                                        </q-btn>
+                                        <q-btn v-if="listing.canRenew" round color="deep-purple-5" icon="update" size="xs" @click="renewListing(listing)">
+                                            <q-tooltip>Renew for 30 days</q-tooltip>
+                                        </q-btn>
+                                        <q-btn round color="grey-8" icon="check" size="xs" @click="closeListing(listing)">
+                                            <q-tooltip>Found someone — close it</q-tooltip>
+                                        </q-btn>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
                     </q-card>
 
                     <q-card class="post-card q-pb-md q-mb-xl">

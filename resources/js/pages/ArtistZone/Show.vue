@@ -35,6 +35,11 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // What this artist is looking for: members, gigs, a room.
+    listings: {
+        type: Array,
+        default: () => [],
+    },
     // "Hartford punk", "Everything in Hartford": into the local scene.
     sceneLinks: {
         type: Array,
@@ -180,6 +185,26 @@ const metaDescription = computed(() => {
                             <ShowList :shows="upcomingShows" empty="Nothing listed yet." />
                         </q-card-section>
 
+                        <q-card-section v-if="listings.length || canManage" class="q-pt-none">
+                            <div class="row items-center q-mb-xs">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">Looking for</div>
+                                <q-space />
+                                <q-btn
+                                    v-if="canManage"
+                                    flat dense rounded no-caps color="deep-purple-3" icon="add" label="Post a listing"
+                                    @click="router.visit(route('listings.create', { artist: artist.id }))"
+                                />
+                            </div>
+                            <div v-if="listings.length" class="column gap-2">
+                                <Link v-for="listing in listings" :key="listing.id" :href="listing.url" class="listing-link">
+                                    <q-icon :name="listing.icon" size="18px" color="deep-purple-3" />
+                                    <span class="text-body2 text-grey-2">{{ listing.title }}</span>
+                                    <span class="text-caption text-grey-6">{{ listing.typeLabel }}</span>
+                                </Link>
+                            </div>
+                            <p v-else class="text-caption text-grey-6 m-0">Nothing posted. Need a drummer? Post it here.</p>
+                        </q-card-section>
+
                         <q-card-section v-if="sceneLinks.length" class="q-pt-none">
                             <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">The local scene</div>
                             <div class="row gap-2">
@@ -270,5 +295,19 @@ const metaDescription = computed(() => {
 .scene-link:hover {
     border-color: #9e9e9e;
     color: #eee;
+}
+
+.listing-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #262626;
+    text-decoration: none;
+}
+
+.listing-link:hover {
+    background: #2e2e2e;
 }
 </style>

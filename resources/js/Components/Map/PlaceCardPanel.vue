@@ -15,6 +15,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'collapse']);
 
 const isShow = computed(() => props.place.kind === 'show');
+const isListing = computed(() => props.place.kind === 'listing');
 </script>
 
 <template>
@@ -73,6 +74,32 @@ const isShow = computed(() => props.place.kind === 'show');
                     class="mt-5 inline-flex items-center gap-1 rounded-full bg-riff-show px-4 py-1.5 text-sm font-medium text-black no-underline"
                 >
                     See the show <q-icon name="arrow_forward" size="16px" />
+                </Link>
+            </template>
+
+            <!-- Listing -->
+            <template v-else-if="isListing">
+                <div class="flex items-start gap-3">
+                    <q-avatar size="48px" class="bg-riff-listing" text-color="white">
+                        <q-icon :name="place.icon" size="24px" />
+                    </q-avatar>
+                    <div class="min-w-0">
+                        <p class="m-0 text-xs font-medium text-riff-listing">{{ place.typeLabel }}</p>
+                        <h2 class="m-0 text-lg leading-tight font-semibold break-words text-riff-text">{{ place.title }}</h2>
+                        <p class="m-0 mt-1 text-xs text-riff-muted">
+                            {{ place.postedBy ? `${place.postedBy} · ` : '' }}{{ place.area }} · {{ place.postedLabel }}
+                        </p>
+                    </div>
+                </div>
+                <div v-if="place.instruments.length" class="mt-3 flex flex-wrap gap-1">
+                    <span v-for="i in place.instruments" :key="i" class="rounded-full bg-riff-surface-2 px-2 py-0.5 text-xs text-riff-text">{{ i }}</span>
+                </div>
+                <p class="m-0 mt-3 text-sm whitespace-pre-line text-riff-text">{{ place.excerpt }}</p>
+                <Link
+                    :href="place.url"
+                    class="mt-5 inline-flex items-center gap-1 rounded-full bg-riff-listing px-4 py-1.5 text-sm font-medium text-white no-underline"
+                >
+                    Read and reply <q-icon name="arrow_forward" size="16px" />
                 </Link>
             </template>
 

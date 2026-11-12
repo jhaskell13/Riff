@@ -8,6 +8,7 @@ use App\Http\Resources\ShowCardResource;
 use App\Models\Artist;
 use App\Models\Genre;
 use App\Models\LineupEntry;
+use App\Models\Listing;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
@@ -67,6 +68,27 @@ class ArtistZoneController extends Controller
                     ->with(['confirmedLineup.artist', 'venue'])
                     ->get()
             )->resolve($request),
+            // Every listing this user manages, open or ended, newest first;
+            // ended ones can be renewed from here.
+            'listings' => Listing::query()
+                ->managedBy(Auth::user())
+                ->whereNull('closed_at')
+                ->with('artist:id,name')
+                ->latest()
+                ->get()
+                ->map(fn (Listing $listing) => [
+                    'id' => $listing->id,
+                    'title' => $listing->title,
+                    'typeLabel' => $listing->type_label,
+                    'icon' => $listing->icon,
+                    'postedAs' => $listing->artist?->name,
+                    'isActive' => $listing->is_active,
+                    'canRenew' => $listing->can_renew,
+                    'expiresLabel' => $listing->expires_at->isFuture()
+                        ? 'Open until '.$listing->expires_at->isoFormat('MMM D')
+                        : 'Ended '.$listing->expires_at->diffForHumans(),
+                    'url' => route('listings.show', $listing),
+                ]),
             'venues' => Auth::user()
                 ->submittedVenues()
                 ->orderBy('name')
@@ -137,6 +159,19 @@ class ArtistZoneController extends Controller
                     ->limit(10)
                     ->get()
             )->resolve($request),
+            // What this artist is looking for (members, gigs, a room).
+            'listings' => Listing::query()
+                ->active()
+                ->where('artist_id', $artist->id)
+                ->latest()
+                ->get()
+                ->map(fn (Listing $listing) => [
+                    'id' => $listing->id,
+                    'title' => $listing->title,
+                    'typeLabel' => $listing->type_label,
+                    'icon' => $listing->icon,
+                    'url' => route('listings.show', $listing),
+                ]),
             'sceneLinks' => SceneLinks::for(
                 $artist->hometown,
                 $artist->stateOrProvince,

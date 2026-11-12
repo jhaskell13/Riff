@@ -270,6 +270,7 @@ watch(() => props.selectedId, async (id) => {
             <p v-if="tab === 'shows' && windowLabel && showsHere.length" class="tab-note">{{ windowLabel }} · soonest first</p>
             <p v-else-if="tab === 'artists' && artistNote" class="tab-note">{{ artistNote }}</p>
             <p v-else-if="tab === 'venues' && venuesHere.length" class="tab-note">Places with music on — nearest first</p>
+            <p v-else-if="tab === 'listings' && listingsHere.length" class="tab-note">Bands, musicians and rooms looking — nearest first</p>
 
             <div v-if="countFor(tab) === 0" class="p-6 text-center text-sm text-riff-muted">{{ tabEmpty }}</div>
 
@@ -345,6 +346,31 @@ watch(() => props.selectedId, async (id) => {
                     </button>
                 </li>
             </ul>
+
+            <template v-if="tab === 'listings' && listingsHere.length">
+                <ul class="divide-y divide-riff-line">
+                    <li v-for="listing in listingsHere" :key="`listing-${listing.id}`">
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-riff-surface-2 focus-visible:bg-riff-surface-2 focus-visible:outline-none"
+                            :class="{ 'bg-riff-surface-2': placeKey(listing) === selectedPlaceKey }"
+                            @click="emit('select-place', listing)"
+                        >
+                            <q-avatar size="44px" class="bg-riff-listing" text-color="white">
+                                <q-icon :name="listing.icon" size="22px" />
+                            </q-avatar>
+                            <div class="min-w-0 flex-1">
+                                <div class="line-clamp-2 text-sm font-semibold break-words text-riff-text">{{ listing.title }}</div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">{{ listing.typeLabel }}<template v-if="listing.instruments.length"> · {{ listing.instruments.join(', ') }}</template></div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">{{ listing.postedBy ? `${listing.postedBy} · ` : '' }}{{ listing.area }} · {{ listing.postedLabel }}</div>
+                            </div>
+                            <span v-if="listing.distance !== null" class="w-12 shrink-0 self-start pt-0.5 text-right text-xs whitespace-nowrap text-riff-muted">
+                                {{ listing.distance }} {{ unit }}
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </template>
 
             <template v-if="tab === 'venues' && venuesHere.length">
                 <ul class="divide-y divide-riff-line">

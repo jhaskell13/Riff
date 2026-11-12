@@ -10,7 +10,7 @@ import { computed, reactive, watch } from 'vue';
 
 // The scene map shows every kind at once; hiding one is a filter, not a
 // mode, so a first visit sees artists, shows and venues together.
-export const ALL_KINDS = ['artists', 'shows', 'venues'];
+export const ALL_KINDS = ['artists', 'shows', 'venues', 'listings'];
 export const DEFAULT_WHEN = 'month';
 
 export const DEFAULT_FILTERS = {

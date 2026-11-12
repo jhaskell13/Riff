@@ -11,9 +11,6 @@ defineProps({
 });
 
 const mode = ref('create') // create | join
-const search = ref('')
-const searchResults = ref([])
-const selectedArtistId = ref(null);
 
 const form = useForm({
   name: '',
@@ -35,12 +32,10 @@ const form = useForm({
   photo: null,
 });
 
-// Join mode is still a stub: the join-request workflow is Phase 3 roadmap
-// work, so nothing here calls the server yet.
+// Join mode points at listings; the join-request workflow is Phase 4.
 
 const clearInputs = () => {
     form.reset();
-    search.value = '';
 }
 </script>
 
@@ -84,7 +79,7 @@ const clearInputs = () => {
                     class="mx-auto w-[75%] border border-gray-500"
                     :options="[
                         { label: 'Create Artist Identity', value: 'create' },
-                        { label: 'Request To Join Artist', value: 'join' }
+                        { label: 'Join an existing band', value: 'join' }
                     ]"
                 />
             </q-card-section>
@@ -123,52 +118,26 @@ const clearInputs = () => {
                 />
               </div>
 
-              <!-- JOIN MODE -->
-              <div v-else>
-
-                <q-input
-                  v-model="search"
-                  label="Search for an artist"
-                  rounded
-                  outlined
-                  bg-color="grey-8"
-                  color="grey-4"
-                  debounce="200"
-                />
-
-                <div v-if="searchResults.length" class="q-mt-sm">
-                  <q-list class="rounded-borders">
-                    <q-item
-                      v-for="artist in searchResults"
-                      :key="artist.id"
-                      clickable
-                      v-ripple
-                      @click="selectedArtistId = artist.id"
-                    >
-                      <q-item-section>
-                        <div class="text-grey-3 text-weight-medium">
-                          {{ artist.name }}
-                        </div>
-                        <div class="text-grey-6 text-caption">
-                          {{ artist.hometown }}
-                        </div>
-                      </q-item-section>
-
-                      <q-item-section side>
-                        <q-radio
-                          v-model="selectedArtistId"
-                          :val="artist.id"
-                          color="primary"
-                        />
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
+              <!-- JOIN MODE: joining an existing artist (request + approval) is
+                   Phase 4. Until then, bands looking for members post
+                   listings, and this points at them. -->
+              <div v-else class="text-grey-4">
+                <p class="text-body2 m-0">
+                  Bands looking for members post it on Riff. Find one near you, reply, and once you're in,
+                  any member can add you to the artist.
+                </p>
+                <div class="row gap-2 q-mt-md">
+                  <q-btn
+                    unelevated rounded no-caps color="deep-purple-5" icon="campaign"
+                    label="Bands looking for members near me" padding="xs lg"
+                    :href="route('map.index', { kinds: 'listings' })" type="a"
+                  />
+                  <q-btn
+                    outline rounded no-caps color="grey-4" icon="person_search"
+                    label="Post that I'm looking for a band" padding="xs lg"
+                    :href="route('listings.create', { type: 'band_wanted' })" type="a"
+                  />
                 </div>
-
-                <div v-else class="text-grey-6 text-caption">
-                  Type at least 2 characters to search.
-                </div>
-
               </div>
 
             </q-card-section>
@@ -176,6 +145,7 @@ const clearInputs = () => {
             <!-- Actions -->
             <q-card-actions align="right" class="q-px-md q-pb-md q-pt-none">
               <q-btn
+                v-if="mode === 'create'"
                 flat
                 rounded
                 dense
@@ -197,17 +167,6 @@ const clearInputs = () => {
                 @click="form.post(route('artists.store'))"
               />
 
-              <!-- Request to join button -->
-              <q-btn
-                v-else
-                unelevated
-                rounded
-                color="primary"
-                label="Send Request"
-                padding="xs lg"
-                :disable="!selectedArtistId"
-                :loading="form.processing"
-              />
             </q-card-actions>
 
           </q-card>

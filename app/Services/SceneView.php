@@ -86,6 +86,7 @@ class SceneView
 
         $shows = $this->scene->shows($sceneFilters((int) config('riff.scenes.max_shows')));
         $venues = $this->scene->venues($sceneFilters((int) config('riff.scenes.max_venues')));
+        $listings = $this->scene->listings($sceneFilters((int) config('riff.scenes.max_listings')));
 
         return [
             'place' => ['slug' => $place->slug, 'name' => $place->name, 'label' => $place->label],
@@ -96,6 +97,7 @@ class SceneView
             'shows' => $shows['data'],
             'showsTruncated' => $shows['meta']['truncated'],
             'venues' => $venues['data'],
+            'listings' => $listings['data'],
             'families' => $this->familiesHere($place, $origin, $radiusKm, $hiddenFor),
             'mapUrl' => route('map.index', array_filter([
                 'lat' => round($place->lat, 4),

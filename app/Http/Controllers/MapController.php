@@ -85,6 +85,18 @@ class MapController extends Controller
     }
 
     /**
+     * Active listings ("looking for") in the area. See SceneMapSearch.
+     */
+    public function listings(MapSceneRequest $request, SceneMapSearch $search): JsonResponse
+    {
+        $filters = $request->filters();
+
+        return response()
+            ->json($search->listings($filters))
+            ->header('Cache-Control', $filters->hiddenFor !== null ? 'private, no-store' : 'private, max-age=30');
+    }
+
+    /**
      * The compact card for one artist, opened from a marker or list row.
      * Hidden artists 404 here exactly as they are absent from artists().
      */
@@ -194,6 +206,7 @@ class MapController extends Controller
                 ['value' => 'artists', 'label' => 'Artists', 'icon' => 'groups'],
                 ['value' => 'shows', 'label' => 'Shows', 'icon' => 'event'],
                 ['value' => 'venues', 'label' => 'Venues', 'icon' => 'storefront'],
+                ['value' => 'listings', 'label' => 'Wanted', 'icon' => 'campaign'],
             ],
             'windows' => collect(ShowWindow::OPTIONS)
                 ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])

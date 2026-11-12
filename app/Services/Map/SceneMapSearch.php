@@ -3,9 +3,11 @@
 namespace App\Services\Map;
 
 use App\DTO\SceneFilters;
+use App\Http\Resources\ListingMarkerResource;
 use App\Http\Resources\ShowMarkerResource;
 use App\Http\Resources\VenueMarkerResource;
 use App\Models\LineupEntry;
+use App\Models\Listing;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Support\Geo;
@@ -62,6 +64,14 @@ class SceneMapSearch
     public function venues(SceneFilters $filters): array
     {
         return $this->cached($filters, 'venues', fn () => $this->runVenues($filters));
+    }
+
+    /**
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function listings(SceneFilters $filters): array
+    {
+        return $this->cached($filters, 'listings', fn () => $this->runListings($filters));
     }
 
     /**
@@ -232,6 +242,72 @@ class SceneMapSearch
         return $this->respond(
             $filters,
             $this->withDistances(VenueMarkerResource::collection($rows->take($filters->limit))->resolve(), $filters),
+            $truncated,
+            $area,
+        );
+    }
+
+    // ---- Listings ---------------------------------------------------------------
+
+    /**
+     * Active listings in the area, nearest first (then newest), like
+     * venues. All town-level points.
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    private function runListings(SceneFilters $filters): array
+    {
+        $area = Geo::confine($filters->bounds, $filters->origin->lat, $filters->origin->lng, $filters->radiusKm);
+
+        if ($area === false || $area === null) {
+            return $this->respond($filters, [], false, null);
+        }
+
+        [$distance, $bindings] = $this->distanceSquared($filters, 'lat', 'lng');
+
+        $query = Listing::query()
+            ->active()
+            ->whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->whereBetween('lat', [$area['south'], $area['north']])
+            ->whereBetween('lng', [$area['west'], $area['east']]);
+
+        if ($filters->radiusKm !== null) {
+            $degrees = $filters->radiusKm / Geo::KM_PER_DEGREE;
+            $query->whereRaw("{$distance} <= (? * 1.0)", [...$bindings, $degrees * $degrees]);
+        }
+
+        if ($filters->genreIds !== []) {
+            $query->whereIn('id', fn (QueryBuilder $pivot) => $pivot
+                ->select('listing_id')
+                ->from('listing_genre')
+                ->whereIn('genre_id', $filters->genreIds));
+        }
+
+        if ($filters->hiddenFor !== null) {
+            // A blocked artist's listings leave the blocker's map; a
+            // person's listing has no artist to block.
+            $query->where(fn (Builder $q) => $q
+                ->whereNull('artist_id')
+                ->orWhereNotIn('artist_id', fn (QueryBuilder $blocks) => $blocks
+                    ->select('artist_id')
+                    ->from('artist_blocks')
+                    ->where('user_id', $filters->hiddenFor)));
+        }
+
+        $rows = $query
+            ->with('artist:id,name')
+            ->orderByRaw($distance, $bindings)
+            ->orderByDesc('created_at')
+            ->orderBy('id')
+            ->limit($filters->limit + 1)
+            ->get();
+
+        $truncated = $rows->count() > $filters->limit;
+
+        return $this->respond(
+            $filters,
+            $this->withDistances(ListingMarkerResource::collection($rows->take($filters->limit))->resolve(), $filters),
             $truncated,
             $area,
         );

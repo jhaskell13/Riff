@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Artist;
+use App\Models\Genre;
 use App\Models\LineupEntry;
 use App\Models\Show;
 use App\Models\User;
@@ -92,6 +93,7 @@ class SceneSeeder extends Seeder
         }
 
         $this->rsvps();
+        $this->listings($artist);
 
         // Scene pages for every town that now has artists, venues or shows.
         Artisan::call('riff:sync-places');
@@ -198,6 +200,64 @@ class SceneSeeder extends Seeder
 
         foreach ($names as $name) {
             $show->lineup()->create(['name' => $name, 'position' => $position++]);
+        }
+    }
+
+    /**
+     * "Looking for" posts: a punk band after a drummer (posted as the
+     * band), a bassist after a band (posted as a person), a ska band after
+     * an opener, and a practice room — one ending in a few days, so the
+     * renew prompt has something to show.
+     *
+     * @param  \Closure(string): ?Artist  $artist
+     */
+    private function listings(\Closure $artist): void
+    {
+        $genres = Genre::pluck('id', 'name');
+        $listener = User::query()->where('email', '!=', 'test@example.com')->whereDoesntHave('artists')->first()
+            ?? User::factory()->create(['name' => 'Sam Okafor']);
+
+        $posts = [
+            ['members_wanted', 'The Silver Mill', null, 'New Britain', 'Drummer wanted — fast, short, loud',
+                'Our drummer moved to Philly. We play basements and VFW halls, practise Tuesdays in New Britain, and split everything evenly. Need someone who can hold 200bpm for 90 seconds at a time.',
+                ['drums'], ['Punk', 'Hardcore'], 30],
+            ['band_wanted', null, $listener, 'Hartford', 'Bassist looking for a band',
+                'Fifteen years on bass, own amp and a car. Into post-punk, shoegaze, anything with a groove. Can do two nights a week around Hartford.',
+                ['bass'], ['Indie', 'Shoegaze'], 30],
+            ['bill_wanted', 'Thread City Ska', null, 'Willimantic', 'Openers wanted for our spring shows',
+                'Booking a run of all-ages shows in the spring and want local openers — ska, punk, reggae, anything with energy. Message us with a link to your music.',
+                [], ['Ska', 'Reggae'], 30],
+            ['practice_space', 'Quiet Transit', null, 'Hartford', 'Sharing our rehearsal room',
+                'Soundproofed room above a print shop downtown, full backline. Free Mondays and Thursdays — looking for a band to split the rent.',
+                [], [], 4],
+        ];
+
+        foreach ($posts as [$type, $artistName, $person, $townName, $title, $body, $instruments, $genreNames, $days]) {
+            $byArtist = $artistName !== null ? $artist($artistName) : null;
+            $poster = $person ?? $byArtist?->members()->first();
+
+            if ($poster === null) {
+                continue;
+            }
+
+            $town = Towns::named($townName);
+            $listing = $poster->listings()->make([
+                'type' => $type,
+                'title' => $title,
+                'body' => $body,
+                'instruments' => $instruments,
+                'city' => $town['city'],
+                'state' => $town['state'],
+                'country' => 'USA',
+            ]);
+            // Town-level, as the geocoder would place it.
+            $listing->forceFill([
+                'artist_id' => $byArtist?->id,
+                'lat' => $town['lat'],
+                'lng' => $town['lng'],
+                'expires_at' => now()->addDays($days),
+            ])->save();
+            $listing->genres()->sync($genres->only($genreNames)->values()->all());
         }
     }
 

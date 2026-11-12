@@ -155,6 +155,48 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Listings ("looking for")
+    |--------------------------------------------------------------------------
+    |
+    | Structured, expiring posts: a band seeking a drummer, a bassist
+    | seeking a band, an act after an opener or a gig, a practice room.
+    | `as_artist` says whether a type is posted as one of the poster's
+    | artists: required, never (a person, not a band), or optional.
+    |
+    | Replies are relayed by email for now (ListingReplyMail): the poster's
+    | address is never shown, and the replier shares only the contact they
+    | type. An in-app messaging system will replace the relay (Phase 4);
+    | replies are stored so threads can move over.
+    |
+    */
+
+    'listings' => [
+        'types' => [
+            'members_wanted' => ['label' => 'Band seeking members', 'as_artist' => 'required', 'icon' => 'group_add'],
+            'band_wanted' => ['label' => 'Musician seeking a band', 'as_artist' => 'never', 'icon' => 'person_search'],
+            'bill_wanted' => ['label' => 'Looking for gigs or openers', 'as_artist' => 'required', 'icon' => 'event_available'],
+            'practice_space' => ['label' => 'Practice space', 'as_artist' => 'optional', 'icon' => 'meeting_room'],
+        ],
+        'instruments' => [
+            'vocals' => 'Vocals', 'guitar' => 'Guitar', 'bass' => 'Bass', 'drums' => 'Drums',
+            'keys' => 'Keys', 'synth' => 'Synth', 'horns' => 'Horns', 'strings' => 'Strings',
+            'dj' => 'DJ / turntables', 'production' => 'Production', 'other' => 'Other',
+        ],
+        // A listing runs this long, and can be renewed (for the same again)
+        // once it is within renew_window_days of ending, or after it has.
+        'days' => (int) env('RIFF_LISTING_DAYS', 30),
+        'renew_window_days' => 7,
+        'max_body' => 1000,
+        'rate_limit_per_minute' => (int) env('RIFF_LISTING_RATE_LIMIT', 3),
+        'rate_limit_per_day' => (int) env('RIFF_LISTING_DAILY_LIMIT', 10),
+        // Replies are mail to a real person: the tightest limits after
+        // reports.
+        'reply_rate_limit_per_minute' => (int) env('RIFF_LISTING_REPLY_RATE_LIMIT', 3),
+        'reply_rate_limit_per_day' => (int) env('RIFF_LISTING_REPLY_DAILY_LIMIT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Scenes
     |--------------------------------------------------------------------------
     |
@@ -187,6 +229,7 @@ return [
         'max_shows' => 20,
         'max_artists' => 24,
         'max_venues' => 12,
+        'max_listings' => 12,
     ],
 
     /*

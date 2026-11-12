@@ -77,6 +77,25 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('listings', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return [
+                Limit::perMinute(config('riff.listings.rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.listings.rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
+        // Each reply is an email to a real person.
+        RateLimiter::for('listing-replies', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return [
+                Limit::perMinute(config('riff.listings.reply_rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.listings.reply_rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
         RateLimiter::for('blocks', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

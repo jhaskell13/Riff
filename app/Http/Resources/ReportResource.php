@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Artist;
+use App\Models\Listing;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\Show;
@@ -96,6 +97,22 @@ class ReportResource extends JsonResource
                 'state' => $subject->trashed()
                     ? 'Taken down'
                     : ($subject->show_on_map ? null : 'Hidden from the map'),
+            ];
+        }
+
+        if ($subject instanceof Listing) {
+            return [
+                'kind' => 'listing',
+                'id' => $subject->id,
+                'title' => $subject->title,
+                'detail' => $subject->type_label.' · '.$subject->area.' · posted by '
+                    .($subject->artist?->name ?? $subject->user?->name ?? 'a deleted account'),
+                'body' => Str::limit($subject->body, 400, '…'),
+                'imageUrl' => null,
+                'url' => $subject->trashed() ? null : route('listings.show', $subject),
+                'state' => $subject->trashed()
+                    ? 'Taken down'
+                    : ($subject->closed_at !== null ? 'Closed by its poster' : ($subject->is_active ? null : 'Expired')),
             ];
         }
 

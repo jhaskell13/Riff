@@ -25,9 +25,11 @@ const description = computed(() => [
     plural(props.scene.artistTotal, 'artist', 'artists'),
     `${plural(props.scene.shows.length, 'show', 'shows')} this month`,
     plural(props.scene.venues.length, 'venue', 'venues'),
+    ...(props.scene.listings.length ? [`${plural(props.scene.listings.length, 'listing', 'listings')} looking for someone`] : []),
 ].join(', ') + ` around ${props.scene.place.label}, on Riff.`);
 
-const isEmpty = computed(() => !props.scene.artistTotal && !props.scene.shows.length && !props.scene.venues.length);
+const isEmpty = computed(() => !props.scene.artistTotal && !props.scene.shows.length
+    && !props.scene.venues.length && !props.scene.listings.length);
 
 const allUrl = computed(() => route('scenes.show', props.scene.place.slug));
 </script>
@@ -129,6 +131,30 @@ const allUrl = computed(() => route('scenes.show', props.scene.place.slug));
                             </li>
                         </ul>
                         <p v-else class="m-0 text-sm text-riff-muted">No active venues listed here yet.</p>
+                    </section>
+
+                    <!-- Looking for -->
+                    <section v-if="scene.listings.length" class="post-card p-4 lg:col-span-2" aria-labelledby="scene-listings">
+                        <h2 id="scene-listings" class="section-title">
+                            <q-icon name="campaign" size="18px" class="text-riff-listing" /> Looking for
+                            <span class="section-title__note">bands, musicians and rooms</span>
+                        </h2>
+                        <ul class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                            <li v-for="listing in scene.listings" :key="listing.id">
+                                <Link :href="listing.url" class="row-link items-start!">
+                                    <q-avatar size="36px" class="bg-riff-listing" text-color="white">
+                                        <q-icon :name="listing.icon" size="18px" />
+                                    </q-avatar>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-sm font-medium text-riff-text">{{ listing.title }}</div>
+                                        <div class="truncate text-xs text-riff-muted">
+                                            {{ listing.typeLabel }}<template v-if="listing.instruments.length"> · {{ listing.instruments.join(', ') }}</template>
+                                        </div>
+                                        <div class="truncate text-xs text-riff-muted">{{ listing.area }} · {{ listing.postedLabel }}</div>
+                                    </div>
+                                </Link>
+                            </li>
+                        </ul>
                     </section>
 
                     <!-- Who plays -->

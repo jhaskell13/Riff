@@ -47,7 +47,7 @@ const toggleKind = (kind) => {
     props.filters.kinds = props.options.kinds.map((k) => k.value).filter((k) => next.includes(k));
 };
 
-const kindColor = { artists: 'primary', shows: 'amber-8', venues: 'teal-6' };
+const kindColor = { artists: 'primary', shows: 'amber-8', venues: 'teal-6', listings: 'deep-purple-4' };
 const showsOn = computed(() => props.filters.kinds.includes('shows'));
 
 const genreOptions = computed(() => props.options.genres.map((g) => ({ label: g.name, value: g.slug })));
