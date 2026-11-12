@@ -155,6 +155,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Scenes
+    |--------------------------------------------------------------------------
+    |
+    | A scene is a place plus a genre family: /scenes/hartford-ct/punk. Scenes
+    | aren't stored; a place is (see Place and riff:sync-places) and a family
+    | is this list. The radius is a circle around the place's centre rather
+    | than its town line, because scenes cross town lines.
+    |
+    | Families are named by curated genre *names* (config riff.genres). A
+    | genre may sit in more than one family; every curated genre should sit
+    | in at least one (a test enforces it).
+    |
+    */
+
+    'scenes' => [
+        'radius_km' => (float) env('RIFF_SCENE_RADIUS_KM', 40),
+        'families' => [
+            'punk' => ['label' => 'Punk', 'genres' => ['Punk', 'Hardcore', 'Emo', 'Ska']],
+            'indie' => ['label' => 'Indie & alternative', 'genres' => ['Indie', 'Alternative', 'Shoegaze', 'Post-Rock']],
+            'rock' => ['label' => 'Rock & metal', 'genres' => ['Rock', 'Metal']],
+            'hip-hop' => ['label' => 'Hip-hop & R&B', 'genres' => ['Hip-Hop', 'R&B']],
+            'electronic' => ['label' => 'Electronic', 'genres' => ['Electronic', 'House', 'Techno', 'Ambient', 'Experimental']],
+            'folk' => ['label' => 'Folk & roots', 'genres' => ['Folk', 'Americana', 'Country', 'Bluegrass', 'Singer-Songwriter']],
+            'jazz' => ['label' => 'Jazz, soul & funk', 'genres' => ['Jazz', 'Blues', 'Soul', 'Funk', 'Gospel']],
+            'global' => ['label' => 'Latin, reggae & global', 'genres' => ['Latin', 'Reggae', 'Afrobeat', 'Ska']],
+            'pop' => ['label' => 'Pop', 'genres' => ['Pop']],
+            'classical' => ['label' => 'Classical', 'genres' => ['Classical']],
+        ],
+        // What a scene page lists, at most.
+        'max_shows' => 20,
+        'max_artists' => 24,
+        'max_venues' => 12,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Genres
     |--------------------------------------------------------------------------
     |

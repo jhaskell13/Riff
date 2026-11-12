@@ -136,6 +136,14 @@ const selectProps = {
                         </span>
                         <span class="shrink-0 text-xs text-riff-muted">{{ place.artistCount }}</span>
                     </button>
+                    <a
+                        v-if="place.sceneUrl"
+                        :href="place.sceneUrl"
+                        class="flex items-center gap-1 px-3 pb-2 pl-8 text-xs text-riff-muted no-underline hover:text-riff-text"
+                        @mousedown.prevent
+                    >
+                        <q-icon name="travel_explore" size="13px" /> See the {{ place.name }} scene
+                    </a>
                 </li>
             </ul>
         </div>

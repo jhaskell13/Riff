@@ -10,6 +10,7 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SceneController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ShowController;
 use App\Http\Controllers\ShowRsvpController;
@@ -161,6 +162,11 @@ Route::middleware('throttle:map')->group(function () {
     Route::get('shows/{show}', [ShowController::class, 'show'])
         ->whereNumber('show')
         ->name('shows.show');
+    // A scene: a place, optionally narrowed to one genre family. Unknown
+    // families 404 at the router.
+    Route::get('scenes/{place}/{family?}', [SceneController::class, 'show'])
+        ->whereIn('family', array_keys((array) config('riff.scenes.families')))
+        ->name('scenes.show');
 });
 
 Route::middleware('auth')->group(function () {

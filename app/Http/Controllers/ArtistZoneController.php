@@ -11,6 +11,7 @@ use App\Models\LineupEntry;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
+use App\Support\SceneLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -136,6 +137,11 @@ class ArtistZoneController extends Controller
                     ->limit(10)
                     ->get()
             )->resolve($request),
+            'sceneLinks' => SceneLinks::for(
+                $artist->hometown,
+                $artist->stateOrProvince,
+                $artist->genres->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            ),
             'canManage' => $user?->can('update', $artist) ?? false,
             'canFollow' => $user !== null,
             'isFollowing' => $user?->follows($artist) ?? false,

@@ -6,6 +6,7 @@ use App\Http\Requests\Venues\VenueRequest;
 use App\Http\Resources\ShowCardResource;
 use App\Http\Resources\VenueResource;
 use App\Models\Venue;
+use App\Support\SceneLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -59,6 +60,7 @@ class VenueController extends Controller
                     ->limit(20)
                     ->get()
             )->resolve($request),
+            'sceneLinks' => SceneLinks::for($venue->city, $venue->state),
             'canEdit' => $user?->can('update', $venue) ?? false,
             'canReport' => $user !== null,
         ]);

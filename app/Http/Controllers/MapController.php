@@ -7,6 +7,7 @@ use App\Http\Requests\Map\MapArtistsRequest;
 use App\Http\Requests\Map\MapSceneRequest;
 use App\Http\Resources\ArtistCardResource;
 use App\Models\Artist;
+use App\Models\Place;
 use App\Services\Map\ArtistMapSearch;
 use App\Services\Map\SceneMapSearch;
 use App\Support\GenreCatalog;
@@ -154,6 +155,18 @@ class MapController extends Controller
                 ])
                 ->all(),
         );
+
+        // Each town's scene page, where it has one (one query for all).
+        $scenes = Place::query()
+            ->whereIn('slug', array_map(fn (array $place) => Place::slugFor($place['name'], $place['region']), $places))
+            ->pluck('slug')
+            ->flip();
+
+        $places = array_map(function (array $place) use ($scenes) {
+            $slug = Place::slugFor($place['name'], $place['region']);
+
+            return [...$place, 'sceneUrl' => $scenes->has($slug) ? route('scenes.show', $slug) : null];
+        }, $places);
 
         return response()
             ->json(['data' => $places])

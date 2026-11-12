@@ -35,6 +35,11 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // "Hartford punk", "Everything in Hartford": into the local scene.
+    sceneLinks: {
+        type: Array,
+        default: () => [],
+    },
     canBlock: {
         type: Boolean,
         default: false,
@@ -175,6 +180,20 @@ const metaDescription = computed(() => {
                             <ShowList :shows="upcomingShows" empty="Nothing listed yet." />
                         </q-card-section>
 
+                        <q-card-section v-if="sceneLinks.length" class="q-pt-none">
+                            <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">The local scene</div>
+                            <div class="row gap-2">
+                                <Link
+                                    v-for="link in sceneLinks"
+                                    :key="link.url"
+                                    :href="link.url"
+                                    class="scene-link"
+                                >
+                                    <q-icon name="travel_explore" size="14px" /> {{ link.label }}
+                                </Link>
+                            </div>
+                        </q-card-section>
+
                         <q-card-section v-if="artist.biography">
                             <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-xs">About</div>
                             <div class="text-body2 text-grey-3 whitespace-pre-line">{{ artist.biography }}</div>
@@ -234,5 +253,22 @@ const metaDescription = computed(() => {
     background: #1e1e1e;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.scene-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border: 1px solid #3a3a3a;
+    border-radius: 9999px;
+    color: #bdbdbd;
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+.scene-link:hover {
+    border-color: #9e9e9e;
+    color: #eee;
 }
 </style>

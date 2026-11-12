@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Contracts\Geocodable;
+use App\Models\Artist;
+use App\Models\Place;
 use App\Models\User;
 use App\Services\Geocoder;
 use App\Support\MapCache;
@@ -59,6 +61,12 @@ class GeocodeAddress implements ShouldQueueAfterCommit
         // Users aren't on the map; everything else geocoded is.
         if (! $this->model instanceof User) {
             MapCache::bump();
+        }
+
+        // A newly geocoded artist's town gets a scene page straight away.
+        // Artists are always town-level, so the point is the town's centre.
+        if ($this->model instanceof Artist) {
+            Place::record($address[0], $address[1], $address[2], $point->lat, $point->lng);
         }
     }
 }

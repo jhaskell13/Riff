@@ -10,6 +10,7 @@ use App\Models\Venue;
 use Carbon\CarbonImmutable;
 use Database\Factories\Support\Towns;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 /**
  * Venues and shows around Greater Hartford, so the scene map has something
@@ -91,6 +92,9 @@ class SceneSeeder extends Seeder
         }
 
         $this->rsvps();
+
+        // Scene pages for every town that now has artists, venues or shows.
+        Artisan::call('riff:sync-places');
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Models\User;
 use Database\Factories\Support\Towns;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 /**
  * The development dataset. Order matters: the moderator exists before
@@ -59,5 +60,8 @@ class DatabaseSeeder extends Seeder
             ->count(25)
             ->recycle($users)
             ->create();
+
+        // Scene pages for the scattered artists' towns too.
+        Artisan::call('riff:sync-places');
     }
 }
