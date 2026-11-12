@@ -16,7 +16,8 @@ const props = defineProps({
     // when its kind is switched on.
     shows: { type: Array, default: () => [] },
     venues: { type: Array, default: () => [] },
-    kinds: { type: Array, default: () => ['artists', 'shows', 'venues'] },
+    listings: { type: Array, default: () => [] },
+    kinds: { type: Array, default: () => ['artists', 'shows', 'venues', 'listings'] },
     windowLabel: { type: String, default: '' },
     selectedPlaceKey: { type: String, default: null },
     meta: { type: Object, default: null },
@@ -33,11 +34,13 @@ const emit = defineEmits(['select', 'select-place', 'hover', 'retry', 'clear-fil
 const has = (kind) => props.kinds.includes(kind);
 const showsHere = computed(() => (has('shows') ? props.shows : []));
 const venuesHere = computed(() => (has('venues') ? props.venues : []));
+const listingsHere = computed(() => (has('listings') ? props.listings : []));
 const artistsHere = computed(() => (has('artists') ? props.artists : []));
 
 const unit = computed(() => props.meta?.unit ?? 'mi');
 const isEmpty = computed(() => !props.loading && !props.failed && !props.pristine
-    && artistsHere.value.length === 0 && showsHere.value.length === 0 && venuesHere.value.length === 0);
+    && artistsHere.value.length === 0 && showsHere.value.length === 0
+    && venuesHere.value.length === 0 && listingsHere.value.length === 0);
 
 // In cluster mode the list is a nearest-first sample, not everything in
 // view; say so rather than letting the count look wrong.
@@ -49,9 +52,10 @@ const TAB_META = {
     shows: { label: 'Shows', icon: 'event', color: 'text-riff-show' },
     artists: { label: 'Artists', icon: 'groups', color: 'text-riff-primary' },
     venues: { label: 'Venues', icon: 'storefront', color: 'text-riff-venue' },
+    listings: { label: 'Wanted', icon: 'campaign', color: 'text-riff-listing' },
 };
 // Shows first: "what's on" is the first question a scene answers.
-const TAB_ORDER = ['shows', 'artists', 'venues'];
+const TAB_ORDER = ['shows', 'artists', 'venues', 'listings'];
 
 const compact = (n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(n));
 
@@ -60,6 +64,7 @@ const countFor = (kind) => ({
     // The artists' true total (clusters included), not just the rows sent.
     artists: props.meta?.total ?? artistsHere.value.length,
     venues: venuesHere.value.length,
+    listings: listingsHere.value.length,
 }[kind]);
 
 const tabs = computed(() => TAB_ORDER.filter(has).map((kind) => ({
@@ -118,7 +123,7 @@ const onTabKey = (event, index) => {
 // A pick on the map shows its row: switch to that kind's tab.
 watch(() => props.selectedId, (id) => id && has('artists') && (tab.value = 'artists'));
 watch(() => props.selectedPlaceKey, (key) => {
-    const kind = key?.startsWith('show:') ? 'shows' : key?.startsWith('venue:') ? 'venues' : null;
+    const kind = { show: 'shows', venue: 'venues', listing: 'listings' }[key?.split(':')[0]] ?? null;
 
     if (kind && has(kind)) {
         tab.value = kind;
@@ -129,6 +134,7 @@ const tabEmpty = computed(() => ({
     shows: `No shows here ${props.windowLabel ? `in the ${props.windowLabel.toLowerCase()}` : 'yet'}.`,
     artists: 'No artists on the map here.',
     venues: 'No active venues here.',
+    listings: 'Nobody here is looking for anyone right now.',
 }[tab.value]));
 
 // In cluster mode the artist list is a nearest-first sample.
@@ -159,12 +165,20 @@ watch(() => props.selectedId, async (id) => {
 
 <template>
     <div class="flex h-full flex-col bg-riff-surface">
-        <!-- Tabs, one per kind switched on, each with its count -->
-        <div class="flex items-center gap-1 border-b border-riff-line py-1 pr-1 pl-2 text-xs text-riff-muted">
-            <span v-if="loading && pristine" class="flex min-w-0 flex-1 items-center gap-2 py-1 pl-2" aria-live="polite">
+        <!-- Tabs: full-width, underlined, one per kind switched on. Styled as
+             tabs on purpose -- not the filter bar's pill toggles, which
+             switch kinds on and off; these only choose what to list. -->
+        <div class="flex items-stretch border-b border-riff-line">
+            <div v-if="loading && pristine" class="flex flex-1 items-center gap-2 px-4 py-3 text-xs text-riff-muted" aria-live="polite">
                 <q-spinner size="14px" color="primary" /> Finding the scene…
-            </span>
-            <div v-else role="tablist" aria-label="What to list" class="flex min-w-0 flex-1 items-center gap-1">
+            </div>
+            <div
+                v-else
+                role="tablist"
+                aria-label="What to list"
+                class="grid min-w-0 flex-1"
+                :style="{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }"
+            >
                 <button
                     v-for="(t, index) in tabs"
                     :id="`list-tab-${t.kind}`"
@@ -173,29 +187,34 @@ watch(() => props.selectedId, async (id) => {
                     type="button"
                     role="tab"
                     class="list-tab"
-                    :class="{ 'list-tab--active': tab === t.kind }"
+                    :class="[`list-tab--${t.kind}`, { 'list-tab--active': tab === t.kind }]"
                     :aria-selected="tab === t.kind"
                     :aria-controls="`list-panel-${t.kind}`"
+                    :aria-label="`${t.label} (${t.count})`"
                     :tabindex="tab === t.kind ? 0 : -1"
                     @click="choose(t.kind)"
                     @keydown="onTabKey($event, index)"
                 >
-                    <q-icon :name="t.icon" size="15px" :class="t.color" />
-                    <span>{{ t.label }}</span>
-                    <span class="list-tab__count">{{ compact(t.count) }}</span>
+                    <span class="flex items-center gap-1">
+                        <q-icon :name="t.icon" size="16px" :class="t.color" />
+                        <span class="list-tab__count">{{ compact(t.count) }}</span>
+                    </span>
+                    <span class="list-tab__label">{{ t.label }}</span>
                 </button>
-                <q-spinner v-if="loading" size="14px" color="primary" class="ml-1" />
             </div>
-            <q-btn
-                flat dense round size="sm" color="grey-5"
-                class="collapse-btn"
-                aria-label="Hide the list"
-                @click="emit('collapse')"
-            >
-                <q-icon class="collapse-btn__wide" name="chevron_left" size="20px" />
-                <q-icon class="collapse-btn__narrow" name="expand_more" size="20px" />
-                <q-tooltip>Hide list</q-tooltip>
-            </q-btn>
+            <div class="flex shrink-0 items-center border-l border-riff-line px-1">
+                <q-spinner v-if="loading && !pristine" size="14px" color="primary" class="mr-1" />
+                <q-btn
+                    flat dense round size="sm" color="grey-5"
+                    class="collapse-btn"
+                    aria-label="Hide the list"
+                    @click="emit('collapse')"
+                >
+                    <q-icon class="collapse-btn__wide" name="chevron_left" size="20px" />
+                    <q-icon class="collapse-btn__narrow" name="expand_more" size="20px" />
+                    <q-tooltip>Hide list</q-tooltip>
+                </q-btn>
+            </div>
         </div>
 
         <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto">
@@ -360,21 +379,23 @@ watch(() => props.selectedId, async (id) => {
 
 <style scoped>
 .list-tab {
-    display: inline-flex;
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 4px 7px;
     border: 0;
-    border-radius: 9999px;
     background: transparent;
     color: var(--color-riff-muted);
-    font-size: 0.8rem;
-    white-space: nowrap;
     cursor: pointer;
 }
 
 .list-tab:hover {
     background: var(--color-riff-surface-2);
+    color: var(--color-riff-text);
 }
 
 .list-tab:focus-visible {
@@ -382,19 +403,39 @@ watch(() => props.selectedId, async (id) => {
     outline-offset: -2px;
 }
 
-.list-tab--active {
-    background: var(--color-riff-surface-2);
-    color: var(--color-riff-text);
-    font-weight: 600;
+/* The underline is the tab cue -- the filter bar's kind toggles are
+   filled pills, so the two never read as the same control. */
+.list-tab::after {
+    content: '';
+    position: absolute;
+    right: 10%;
+    bottom: -1px;
+    left: 10%;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: transparent;
 }
 
+.list-tab--active {
+    color: var(--color-riff-text);
+}
+
+.list-tab--active.list-tab--artists::after { background: var(--color-riff-primary); }
+.list-tab--active.list-tab--shows::after { background: var(--color-riff-show); }
+.list-tab--active.list-tab--venues::after { background: var(--color-riff-venue); }
+.list-tab--active.list-tab--listings::after { background: var(--color-riff-listing); }
+
 .list-tab__count {
-    min-width: 1.5em;
-    padding: 0 6px;
-    border-radius: 9999px;
-    background: rgb(255 255 255 / 0.08);
-    font-size: 0.7rem;
-    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.list-tab__label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .tab-note {
