@@ -35,17 +35,17 @@ class PilotSeedTest extends TestCase
         $onMap = Artist::query()->visibleOnMap()->geolocated()->get();
 
         // Dense enough to be worth looking at, and all of it in one area.
-        $this->assertGreaterThanOrEqual(20, $onMap->count());
+        $this->assertGreaterThanOrEqual(16, $onMap->count());
         $this->assertTrue($onMap->every(fn (Artist $artist) => $artist->stateOrProvince === 'CT'));
 
         // Several acts per town is the point: that is what the map's
         // same-town clustering exists for.
-        $this->assertGreaterThanOrEqual(3, $onMap->where('hometown', 'Hartford')->count());
+        $this->assertGreaterThanOrEqual(5, $onMap->where('hometown', 'Hartford')->count());
 
         // A profile is only worth stopping on if it has something on it.
         $this->assertTrue($onMap->every(fn (Artist $artist) => filled($artist->biography)));
-        $this->assertGreaterThanOrEqual(12, $onMap->whereNotNull('music_provider')->count());
-        $this->assertGreaterThanOrEqual(20, $onMap->whereNotNull('image_path')->count());
+        $this->assertGreaterThanOrEqual(9, $onMap->whereNotNull('music_provider')->count());
+        $this->assertGreaterThanOrEqual(16, $onMap->whereNotNull('image_path')->count());
     }
 
     public function test_every_seeded_genre_is_one_the_filters_offer(): void

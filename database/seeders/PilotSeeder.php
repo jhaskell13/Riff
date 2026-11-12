@@ -11,98 +11,27 @@ use App\Support\ModerationAction;
 use App\Support\OnboardingIntent;
 use App\Support\ReportStatus;
 use Database\Factories\Support\Towns;
+use Database\Seeders\Support\PilotScene;
 use Database\Seeders\Support\PlaceholderPhoto;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
- * One local scene, dense enough to demonstrate Riff with: Greater Hartford,
- * several acts per town, plus listeners, posts, and a report queue in both
- * states. Idempotent -- an act that already exists by name is left alone.
+ * The pilot scene: Greater Hartford and the towns around it, seeded from
+ * the researched dataset in database/seeders/data/pilot-scene.json — real
+ * Connecticut acts (factual bios, verified links) plus a handful of
+ * invented ones. Idempotent: an act that already exists by name is left
+ * alone. Demo and local development only; see the JSON's _meta.
  *
- * Every act is invented on purpose. Real local bands never agreed to be
- * listed, and the music links are public placeholders, not these acts' own
- * work; a real pilot import must carry neither.
+ * Consent boundary: anything that *attributes* something to an act — feed
+ * posts in its voice, entries in the report queue, hidden/archived states —
+ * is seeded onto the fictional acts only. Real acts get a profile, a
+ * factual bio, generated placeholder art (never their real photos), and
+ * only music links verified during research.
  */
 class PilotSeeder extends Seeder
 {
-    /**
-     * name, type, town, genres, bio, has playable link. Several acts share
-     * a town on purpose -- same-town clustering needs something to cluster.
-     *
-     * @var list<array{0: string, 1: string, 2: string, 3: list<string>, 4: string, 5: bool}>
-     */
-    private const ACTS = [
-        ['The Paper Harbor', 'band', 'Hartford', ['Indie', 'Rock'],
-            'Four-piece out of Hartford. We played our first show at a pizza place on Park Street and have been trying to get back to that energy ever since.', true],
-        ['Quiet Transit', 'band', 'Hartford', ['Post-Rock', 'Ambient'],
-            'Instrumental, loud at the end. We rehearse in a converted office above a print shop downtown.', true],
-        ['Marisol Vega', 'solo', 'Hartford', ['Latin', 'Soul'],
-            'Singer and guitarist. I grew up between Hartford and Ponce and the songs come out somewhere in the middle.', true],
-        ['DJ Lowtide', 'dj', 'Hartford', ['House', 'Electronic'],
-            'Records every other Friday at a bar on Pratt Street. Mostly house, some disco, nothing before midnight.', true],
-        ['Asylum Hill Choir', 'band', 'Hartford', ['Gospel', 'Soul'],
-            'Twelve voices, one organ, no amplification worth mentioning. We sing at churches and community halls across the city.', false],
-        ['Mirrorwork', 'producer', 'Hartford', ['Techno', 'Electronic'],
-            'Hardware techno made in a storage unit. Profile is here; the pin is not, by choice.', true],
-
-        ['Northern Avenue', 'band', 'West Hartford', ['Americana', 'Folk'],
-            'Three of us, two guitars, and a pedal steel borrowed indefinitely. Songs about the Connecticut River and the people who leave it.', true],
-        ['Cassette Beats', 'producer', 'West Hartford', ['Hip-Hop', 'Electronic'],
-            'Sample-led beats, mostly made between night shifts. Open to vocalists -- send me something.', true],
-
-        ['The Silver Mill', 'band', 'New Britain', ['Punk', 'Hardcore'],
-            'Fast, short, loud. We book our own shows in basements and VFW halls and split the door evenly.', true],
-        ['Benny R.', 'rapper', 'New Britain', ['Hip-Hop'],
-            'New Britain raised. Two tapes down, third one coming whenever it is finished. Everything recorded in my brother\'s bedroom.', true],
-        ['Hollow Season', 'band', 'New Britain', ['Emo', 'Shoegaze'],
-            'Loud guitars and quiet singing, in that order. Started as a two-piece in a dorm and grew by one every year.', false],
-
-        ['Wire & Orchard', 'band', 'Middletown', ['Folk', 'Bluegrass'],
-            'Banjo, fiddle, upright bass, and whoever else turns up. We play porches, farmers markets, and the occasional actual venue.', true],
-        ['Glass Parade', 'band', 'Middletown', ['Alternative', 'Indie'],
-            'Formed out of two bands that broke up the same summer. New record tracked live in a barn in Durham.', true],
-
-        ['Tapehead Audio', 'producer', 'Manchester', ['Experimental', 'Ambient'],
-            'Tape loops and broken pedals. I also mix for other local acts, which pays better than this does.', false],
-        ['The Crooked Pines', 'band', 'Manchester', ['Country', 'Americana'],
-            'Honky-tonk in a state that has no business with it. Weekly residency at a place that lets us play too long.', true],
-
-        ['Delia Hart', 'solo', 'Bristol', ['Singer-Songwriter', 'Folk'],
-            'Songs written at a kitchen table in Bristol, played anywhere that will have them. Happy to drive an hour for a show.', true],
-        ['Static Union', 'band', 'Bristol', ['Metal', 'Rock'],
-            'Four people who met at a guitar shop. We are louder than the room every time, and we are working on that.', false],
-
-        ['Sunken Radio', 'band', 'Glastonbury', ['Shoegaze', 'Indie'],
-            'Two guitars through more reverb than is reasonable. Recording at home, mixing badly, enjoying it.', true],
-        ['Jo Prentice', 'solo', 'Glastonbury', ['Jazz', 'Blues'],
-            'Piano and voice, standards and originals. Thirty years of weddings has not worn it off yet.', true],
-
-        ['The Second Hour', 'band', 'Meriden', ['Jazz', 'Funk'],
-            'A horn section that plays whatever the rhythm section starts. We are a different band at 1am than at 10pm.', true],
-        ['Aperture', 'producer', 'Meriden', ['Ambient', 'Electronic'],
-            'Long-form ambient records made overnight. Always looking for people to play with.', false],
-
-        ['Campus Radio Ghosts', 'band', 'Storrs', ['Indie', 'Experimental'],
-            'We met at the student station and never gave the keys back. Shows most months -- check the socials.', true],
-
-        ['Thread City Ska', 'band', 'Willimantic', ['Ska', 'Reggae'],
-            'Eight of us, named for the mills. If there is a street festival within an hour of Willimantic, we have played it.', true],
-
-        ['Pale Lantern', 'band', 'Enfield', ['Alternative', 'Post-Rock'],
-            'Quiet band, slow songs. We keep a profile for bookings but we would rather not be a pin on a map.', false],
-
-        ['The Winter Ledger', 'band', 'Wallingford', ['Indie', 'Folk'],
-            'On hold while two of us are out of state. Archived rather than deleted, which is the point of archiving.', false],
-    ];
-
-    /** Acts that keep a profile but no pin, to show that the choice exists. */
-    private const HIDDEN_FROM_MAP = ['Mirrorwork', 'Pale Lantern'];
-
-    /** Archived (soft-deleted), recoverable from the Artist Zone. */
-    private const ARCHIVED = ['The Winter Ledger'];
-
     public function run(): void
     {
         $this->call(GenreSeeder::class);
@@ -110,8 +39,8 @@ class PilotSeeder extends Seeder
         $genreIds = Genre::pluck('id', 'name');
         $artists = collect();
 
-        foreach (self::ACTS as [$name, $type, $townName, $genres, $bio, $hasMusic]) {
-            $existing = Artist::withTrashed()->firstWhere('name', $name);
+        foreach (PilotScene::acts() as $act) {
+            $existing = Artist::withTrashed()->firstWhere('name', $act['name']);
 
             if ($existing !== null) {
                 $artists->push($existing);
@@ -119,29 +48,32 @@ class PilotSeeder extends Seeder
                 continue;
             }
 
-            $town = Towns::named($townName);
+            $town = Towns::named($act['town']);
 
             $artist = Artist::factory()
-                ->when($hasMusic, fn ($factory) => $factory->withMusic())
+                // Placeholder tracks only on fictional acts; real acts get
+                // their own verified link or none at all.
+                ->when($act['placeholder_music'] ?? false, fn ($factory) => $factory->withMusic())
                 ->create([
-                    'name' => $name,
-                    'artist_type' => $type,
+                    'name' => $act['name'],
+                    'artist_type' => $act['type'],
                     'hometown' => $town['city'],
                     'stateOrProvince' => $town['state'],
                     'country' => 'USA',
                     'lat' => $town['lat'],
                     'lng' => $town['lng'],
-                    'biography' => $bio,
-                    'show_on_map' => ! in_array($name, self::HIDDEN_FROM_MAP, true),
+                    'biography' => $act['bio'],
+                    'show_on_map' => ! ($act['hidden_from_map'] ?? false),
+                    ...(isset($act['music_url']) ? ['music_url' => $act['music_url']] : []),
                 ]);
 
-            $artist->genres()->sync($genreIds->only($genres)->values()->all());
+            $artist->genres()->sync($genreIds->only($act['genres'])->values()->all());
 
             PlaceholderPhoto::attach($artist);
 
             $artist->members()->attach($this->memberFor($artist, $town));
 
-            if (in_array($name, self::ARCHIVED, true)) {
+            if ($act['archived'] ?? false) {
                 $artist->delete();
             }
 
@@ -149,10 +81,12 @@ class PilotSeeder extends Seeder
         }
 
         $onMap = $artists->filter(fn (Artist $artist) => $artist->show_on_map && ! $artist->trashed());
+        $fictional = $onMap->whereIn('name', PilotScene::fictionalActNames());
 
         $this->listeners($onMap);
-        $this->posts($onMap);
-        $this->reports($onMap);
+        // Posts speak as the act and reports accuse one: fictional only.
+        $this->posts($fictional);
+        $this->reports($fictional);
     }
 
     /** The member account behind an act, local to the same town. */
