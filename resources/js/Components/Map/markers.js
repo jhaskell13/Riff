@@ -40,6 +40,56 @@ export function artistIcon(artist, { active = false } = {}) {
 }
 
 /**
+ * A show: a small calendar leaf with the day of the month, so a glance at
+ * the map says *when* as well as where. Shows cluster separately from
+ * artists, so the shape never has to be told apart inside a bubble.
+ */
+export function showIcon(show, { active = false } = {}) {
+    const pin = document.createElement('div');
+    pin.className = `riff-pin riff-pin--show${active ? ' riff-pin--active' : ''}`;
+
+    const leaf = document.createElement('span');
+    leaf.className = 'riff-pin__date';
+
+    const month = document.createElement('span');
+    month.className = 'riff-pin__month';
+    month.textContent = show.month ?? '';
+
+    const day = document.createElement('span');
+    day.className = 'riff-pin__day';
+    day.textContent = show.day ?? '';
+
+    leaf.append(month, day);
+    pin.appendChild(leaf);
+
+    return L.divIcon({
+        html: pin,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+    });
+}
+
+/** A venue: a storefront on the venue colour. */
+export function venueIcon(venue, { active = false } = {}) {
+    const pin = document.createElement('div');
+    pin.className = `riff-pin riff-pin--venue${active ? ' riff-pin--active' : ''}`;
+
+    const glyph = document.createElement('i');
+    glyph.className = 'material-icons';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.textContent = 'storefront';
+    pin.appendChild(glyph);
+
+    return L.divIcon({
+        html: pin,
+        className: '',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+    });
+}
+
+/**
  * Size grows with the count but flattens out, so a 5,000-artist bubble
  * stays roughly the size of a 500-artist one instead of covering a city.
  */
@@ -47,10 +97,14 @@ function bubbleSize(count) {
     return Math.round(Math.min(64, 30 + Math.log10(Math.max(count, 1)) * 14));
 }
 
-export function clusterIcon(count) {
+/**
+ * Count bubble. `kind` tints it to match its pins: each kind clusters on
+ * its own, so a count always means one thing.
+ */
+export function clusterIcon(count, kind = 'artists') {
     const size = bubbleSize(count);
     const bubble = document.createElement('div');
-    bubble.className = 'riff-cluster';
+    bubble.className = kind === 'artists' ? 'riff-cluster' : `riff-cluster riff-cluster--${kind}`;
     bubble.style.width = `${size}px`;
     bubble.style.height = `${size}px`;
     bubble.style.fontSize = `${count >= 1000 ? 11 : 13}px`;
@@ -89,6 +143,14 @@ export function youIcon() {
  * browser tooltip.
  */
 export function markerLabel(artist, unit) {
+    if (artist.kind === 'show') {
+        return [artist.title, `${artist.dateLabel}, ${artist.timeLabel}`, artist.place].filter(Boolean).join(' — ');
+    }
+
+    if (artist.kind === 'venue') {
+        return [artist.name, artist.kindLabel, artist.area].filter(Boolean).join(' — ');
+    }
+
     const parts = [artist.name, artist.location];
 
     if (artist.distance !== null && artist.distance !== undefined) {

@@ -12,6 +12,13 @@ const rows = {};
  */
 const props = defineProps({
     artists: { type: Array, default: () => [] },
+    // The scene: upcoming shows (soonest first) and venues, each only
+    // when its kind is switched on.
+    shows: { type: Array, default: () => [] },
+    venues: { type: Array, default: () => [] },
+    kinds: { type: Array, default: () => ['artists', 'shows', 'venues'] },
+    windowLabel: { type: String, default: '' },
+    selectedPlaceKey: { type: String, default: null },
     meta: { type: Object, default: null },
     loading: { type: Boolean, default: false },
     failed: { type: Boolean, default: false },
@@ -21,33 +28,48 @@ const props = defineProps({
     canFollow: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['select', 'hover', 'retry', 'clear-filters', 'collapse']);
+const emit = defineEmits(['select', 'select-place', 'hover', 'retry', 'clear-filters', 'collapse']);
+
+const has = (kind) => props.kinds.includes(kind);
+const showsHere = computed(() => (has('shows') ? props.shows : []));
+const venuesHere = computed(() => (has('venues') ? props.venues : []));
+const artistsHere = computed(() => (has('artists') ? props.artists : []));
 
 const unit = computed(() => props.meta?.unit ?? 'mi');
-const isEmpty = computed(() => !props.loading && !props.failed && !props.pristine && props.artists.length === 0);
+const isEmpty = computed(() => !props.loading && !props.failed && !props.pristine
+    && artistsHere.value.length === 0 && showsHere.value.length === 0 && venuesHere.value.length === 0);
 
 // In cluster mode the list is a nearest-first sample, not everything in
 // view; say so rather than letting the count look wrong.
 const sampled = computed(() => props.meta?.mode === 'clusters');
 
+const plural = (count, one, many) => `${count.toLocaleString()} ${count === 1 ? one : many}`;
+
+// One line for the whole scene: "3 shows · 12 artists · 2 venues".
 const summary = computed(() => {
+    const parts = [];
+
+    if (has('shows')) parts.push(plural(showsHere.value.length, 'show', 'shows'));
+    if (has('artists') && props.meta) parts.push(plural(props.meta.total, 'artist', 'artists'));
+    if (has('venues')) parts.push(plural(venuesHere.value.length, 'venue', 'venues'));
+
+    return parts.join(' · ');
+});
+
+// In cluster mode the artist list is a nearest-first sample.
+const artistNote = computed(() => {
     if (!props.meta) {
         return '';
     }
 
-    const total = props.meta.total;
-    const noun = total === 1 ? 'artist' : 'artists';
-
     if (sampled.value) {
-        return `${total.toLocaleString()} ${noun} here — showing the ${props.meta.returned} nearest`;
+        return `Showing the ${props.meta.returned} nearest`;
     }
 
-    if (props.meta.truncated) {
-        return `Showing ${props.meta.returned} of ${total.toLocaleString()} ${noun}`;
-    }
-
-    return `${total.toLocaleString()} ${noun}`;
+    return props.meta.truncated ? `Showing ${props.meta.returned} of ${props.meta.total.toLocaleString()}` : '';
 });
+
+const placeKey = (place) => `${place.kind}:${place.id}`;
 
 // Keep the selected row visible when the selection came from the map.
 watch(() => props.selectedId, (id) => {
@@ -63,7 +85,7 @@ watch(() => props.selectedId, (id) => {
         <div class="flex items-center gap-2 border-b border-riff-line py-2 pr-1 pl-4 text-xs text-riff-muted">
             <q-spinner v-if="loading" size="14px" color="primary" />
             <span aria-live="polite" class="min-w-0 flex-1">
-                {{ loading && pristine ? 'Finding artists…' : summary }}
+                {{ loading && pristine ? 'Finding the scene…' : summary }}
             </span>
             <q-btn
                 flat dense round size="sm" color="grey-5"
@@ -92,7 +114,7 @@ watch(() => props.selectedId, (id) => {
             <!-- Error -->
             <div v-else-if="failed" class="p-6 text-center">
                 <q-icon name="cloud_off" size="32px" class="text-riff-muted" />
-                <p class="mt-2 text-sm text-riff-text">Couldn't load artists for this area.</p>
+                <p class="mt-2 text-sm text-riff-text">Couldn't load this area.</p>
                 <q-btn
                     unelevated rounded no-caps color="primary" label="Try again"
                     padding="xs lg" class="mt-3" @click="emit('retry')"
@@ -104,7 +126,7 @@ watch(() => props.selectedId, (id) => {
                 <q-icon :name="isFiltered ? 'filter_alt_off' : 'travel_explore'" size="32px" class="text-riff-muted" />
 
                 <template v-if="isFiltered">
-                    <p class="mt-2 text-sm text-riff-text">No artists match these filters here.</p>
+                    <p class="mt-2 text-sm text-riff-text">Nothing matches these filters here.</p>
                     <q-btn
                         outline rounded no-caps color="grey-5" label="Clear filters"
                         padding="xs lg" class="mt-3" @click="emit('clear-filters')"
@@ -112,7 +134,7 @@ watch(() => props.selectedId, (id) => {
                 </template>
 
                 <template v-else>
-                    <p class="mt-2 text-sm text-riff-text">No artists on the map here yet.</p>
+                    <p class="mt-2 text-sm text-riff-text">Nothing on the map here yet.</p>
                     <p class="mt-1 text-xs text-riff-muted">
                         Zoom out to widen the search — or if you make music here, be the first.
                     </p>
@@ -125,9 +147,46 @@ watch(() => props.selectedId, (id) => {
                 </template>
             </div>
 
-            <!-- Results -->
-            <ul v-else class="divide-y divide-riff-line">
-                <li v-for="artist in artists" :key="artist.id" :ref="(el) => (rows[artist.id] = el)">
+            <!-- Results: the scene, soonest first -->
+            <div v-else>
+            <template v-if="showsHere.length">
+                <h3 class="section-head">
+                    <q-icon name="event" size="14px" class="text-riff-show" /> Shows
+                    <span v-if="windowLabel" class="font-normal normal-case">· {{ windowLabel }}</span>
+                </h3>
+                <ul class="divide-y divide-riff-line">
+                    <li v-for="show in showsHere" :key="`show-${show.id}`">
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-riff-surface-2 focus-visible:bg-riff-surface-2 focus-visible:outline-none"
+                            :class="{ 'bg-riff-surface-2': placeKey(show) === selectedPlaceKey }"
+                            @click="emit('select-place', show)"
+                        >
+                            <div class="date-chip shrink-0">
+                                <span class="date-chip__month">{{ show.month }}</span>
+                                <span class="date-chip__day">{{ show.day }}</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="line-clamp-2 text-sm font-semibold break-words text-riff-text">{{ show.title }}</div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">{{ show.dateLabel }} · {{ show.timeLabel }}</div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">
+                                    <q-icon v-if="show.isOneOff" name="cottage" size="12px" /> {{ show.place }}
+                                </div>
+                            </div>
+                            <span v-if="show.distance !== null" class="w-12 shrink-0 self-start pt-0.5 text-right text-xs whitespace-nowrap text-riff-muted">
+                                {{ show.distance }} {{ unit }}
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </template>
+
+            <h3 v-if="artistsHere.length" class="section-head">
+                <q-icon name="groups" size="14px" class="text-riff-primary" /> Artists
+                <span v-if="artistNote" class="font-normal normal-case">· {{ artistNote }}</span>
+            </h3>
+            <ul v-if="artistsHere.length" class="divide-y divide-riff-line">
+                <li v-for="artist in artistsHere" :key="artist.id" :ref="(el) => (rows[artist.id] = el)">
                     <button
                         type="button"
                         class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-riff-surface-2 focus-visible:bg-riff-surface-2 focus-visible:outline-none"
@@ -170,11 +229,84 @@ watch(() => props.selectedId, (id) => {
                     </button>
                 </li>
             </ul>
+
+            <template v-if="venuesHere.length">
+                <h3 class="section-head">
+                    <q-icon name="storefront" size="14px" class="text-riff-venue" /> Venues
+                </h3>
+                <ul class="divide-y divide-riff-line">
+                    <li v-for="venue in venuesHere" :key="`venue-${venue.id}`">
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-riff-surface-2 focus-visible:bg-riff-surface-2 focus-visible:outline-none"
+                            :class="{ 'bg-riff-surface-2': placeKey(venue) === selectedPlaceKey }"
+                            @click="emit('select-place', venue)"
+                        >
+                            <q-avatar size="44px" class="bg-riff-venue" text-color="white">
+                                <q-icon name="storefront" size="22px" />
+                            </q-avatar>
+                            <div class="min-w-0 flex-1">
+                                <div class="line-clamp-2 text-sm font-semibold break-words text-riff-text">{{ venue.name }}</div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">{{ venue.kindLabel }} · {{ venue.area }}</div>
+                                <div class="line-clamp-1 text-xs text-riff-muted">
+                                    {{ venue.upcomingCount ? `${venue.upcomingCount} upcoming` : 'No shows listed yet' }}
+                                </div>
+                            </div>
+                            <span v-if="venue.distance !== null" class="w-12 shrink-0 self-start pt-0.5 text-right text-xs whitespace-nowrap text-riff-muted">
+                                {{ venue.distance }} {{ unit }}
+                            </span>
+                        </button>
+                    </li>
+                </ul>
+            </template>
+            </div>
         </div>
     </div>
 </template>
 
 <style scoped>
+.section-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 8px 16px 6px;
+    border-bottom: 1px solid var(--color-riff-line);
+    background: var(--color-riff-surface);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-riff-muted);
+}
+
+.date-chip {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--color-riff-show) 18%, transparent);
+    color: var(--color-riff-show);
+    line-height: 1;
+}
+
+.date-chip__month {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.date-chip__day {
+    font-size: 17px;
+    font-weight: 700;
+}
+
 .collapse-btn__narrow {
     display: none;
 }

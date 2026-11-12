@@ -9,9 +9,10 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import FilterBar from '@/Components/Map/FilterBar.vue';
 import ResultList from '@/Components/Map/ResultList.vue';
 import ArtistCardPanel from '@/Components/Map/ArtistCardPanel.vue';
+import PlaceCardPanel from '@/Components/Map/PlaceCardPanel.vue';
 import WelcomeOverlay from '@/Components/Map/WelcomeOverlay.vue';
-import { artistIcon, clusterIcon, markerLabel, youIcon } from '@/Components/Map/markers';
-import { useArtistCard, useMapArtists } from '@/Composables/useMapData';
+import { artistIcon, clusterIcon, markerLabel, showIcon, venueIcon, youIcon } from '@/Components/Map/markers';
+import { useArtistCard, useMapArtists, useMapFeed } from '@/Composables/useMapData';
 import { useMapFilters } from '@/Composables/useMapFilters';
 
 const props = defineProps({
@@ -22,9 +23,38 @@ const props = defineProps({
     maxMarkers: { type: Number, default: 500 },
 });
 
-const { filters, initialView, activeCount, isFiltered, reset, toQuery, syncUrl } = useMapFilters();
-const { markers, clusters, meta, loading, failed, pristine, fetchArtists, retry, cancel } = useMapArtists();
+const { filters, initialView, activeCount, isFiltered, reset, toQuery, toSceneQuery, syncUrl, includesKind } = useMapFilters();
+const { markers, clusters, meta, loading: artistsLoading, failed: artistsFailed, pristine: artistsPristine, fetchArtists, retry: retryArtists, cancel, clear: clearArtists } = useMapArtists();
+// The scene: shows and venues, each from its own endpoint, drawn on the
+// same map as the artists. See SceneMapSearch.
+const showsFeed = useMapFeed('map.shows');
+const venuesFeed = useMapFeed('map.venues');
+const artistsFeed = { loading: artistsLoading, failed: artistsFailed, pristine: artistsPristine };
 const card = useArtistCard();
+
+// One loading / failed / pristine state for the whole scene, over the
+// kinds that are switched on.
+const activeFeeds = computed(() => [
+    includesKind('artists') && artistsFeed,
+    includesKind('shows') && showsFeed,
+    includesKind('venues') && venuesFeed,
+].filter(Boolean));
+const loading = computed(() => activeFeeds.value.some((feed) => feed.loading.value));
+const failed = computed(() => activeFeeds.value.some((feed) => feed.failed.value));
+const pristine = computed(() => activeFeeds.value.some((feed) => feed.pristine.value));
+const retry = () => {
+    if (includesKind('artists')) retryArtists();
+    if (includesKind('shows')) showsFeed.retry();
+    if (includesKind('venues')) venuesFeed.retry();
+};
+
+// A selected show or venue (its pin payload); exclusive with selectedId.
+const selectedPlace = ref(null);
+const placeKey = (place) => `${place.kind}:${place.id}`;
+const selectedPlaceKey = computed(() => (selectedPlace.value ? placeKey(selectedPlace.value) : null));
+const nearbyCount = computed(() => (includesKind('artists') ? meta.value?.returned ?? 0 : 0)
+    + (includesKind('shows') ? showsFeed.markers.value.length : 0)
+    + (includesKind('venues') ? venuesFeed.markers.value.length : 0));
 
 const selectedId = ref(null);
 const hoveredId = ref(null);
@@ -42,6 +72,8 @@ const radiusOrigin = ref(null);
 let map = null;
 let markerLayer = null;
 let clusterLayer = null;
+let showLayer = null;
+let venueLayer = null;
 let radiusCircle = null;
 let youMarker = null;
 let resizeTimer = null;
@@ -124,8 +156,53 @@ const buildParams = () => {
     return params;
 };
 
+/**
+ * Shows and venues always follow the map -- a name search is artists
+ * only, and fits the map to them; these then fill in around it.
+ */
+const buildSceneParams = () => {
+    const params = { ...toSceneQuery() };
+
+    if (filters.radius && radiusOrigin.value) {
+        params.lat = radiusOrigin.value.lat;
+        params.lng = radiusOrigin.value.lng;
+        params.radius = filters.radius;
+        params.unit = props.filterOptions.unit;
+
+        return params;
+    }
+
+    const bounds = map.getBounds();
+    const centre = map.getCenter();
+
+    return {
+        ...params,
+        south: bounds.getSouth(),
+        north: bounds.getNorth(),
+        west: bounds.getWest(),
+        east: bounds.getEast(),
+        lat: centre.lat,
+        lng: centre.lng,
+    };
+};
+
 const load = (options) => {
-    fetchArtists(buildParams(), options);
+    if (includesKind('artists')) {
+        fetchArtists(buildParams(), options);
+    } else {
+        clearArtists();
+    }
+
+    // After buildParams, which settles the radius origin.
+    const sceneParams = buildSceneParams();
+
+    for (const [kind, feed] of [['shows', showsFeed], ['venues', venuesFeed]]) {
+        if (includesKind(kind)) {
+            feed.fetch(sceneParams, options);
+        } else {
+            feed.clear();
+        }
+    }
 
     const centre = map.getCenter();
     syncUrl({ lat: centre.lat, lng: centre.lng, zoom: map.getZoom() });
@@ -205,6 +282,53 @@ const drawMarkers = () => {
         marker.options.title = label;
         marker.getElement()?.setAttribute('title', label);
     });
+};
+
+/**
+ * Show and venue pins, diffed like the artists' for the same reason: a
+ * pan usually returns the same places, and rebuilding would snap shut a
+ * cluster the listener just opened. Keyed "kind:id".
+ */
+const placeMarkers = new Map();
+const placeData = new Map();
+
+const setPlaceActive = (key, active) => {
+    placeMarkers.get(key)?.getElement()?.querySelector('.riff-pin')?.classList.toggle('riff-pin--active', active);
+};
+
+const syncPlaces = (layer, items, icon) => {
+    const next = new Map(items.map((item) => [placeKey(item), item]));
+    next.forEach((item, key) => placeData.set(key, item));
+
+    const ours = [...placeMarkers.keys()].filter((key) => placeMarkers.get(key).__riffLayer === layer);
+    const gone = ours.filter((key) => !next.has(key));
+    const added = [...next.keys()].filter((key) => !placeMarkers.has(key));
+
+    if (gone.length) {
+        layer.removeLayers(gone.map((key) => placeMarkers.get(key)));
+        gone.forEach((key) => {
+            placeMarkers.delete(key);
+            placeData.delete(key);
+        });
+    }
+
+    if (added.length) {
+        layer.addLayers(added.map((key) => {
+            const item = next.get(key);
+            const marker = L.marker([item.lat, item.lng], {
+                icon: icon(item, { active: key === selectedPlaceKey.value }),
+                keyboard: true,
+                title: markerLabel(item, unit.value),
+                alt: markerLabel(item, unit.value),
+                riseOnHover: true,
+            });
+            marker.__riffLayer = layer;
+            marker.on('click', () => selectPlace(placeData.get(key), { pan: false }));
+            placeMarkers.set(key, marker);
+
+            return marker;
+        }));
+    }
 };
 
 /**
@@ -290,6 +414,9 @@ watch([markers, clusters], () => {
     }
 });
 
+watch(showsFeed.markers, (items) => showLayer && syncPlaces(showLayer, items, showIcon));
+watch(venuesFeed.markers, (items) => venueLayer && syncPlaces(venueLayer, items, venueIcon));
+
 watch(hoveredId, (id, previous) => {
     if (previous && previous !== selectedId.value) setPinState(previous, null);
     if (id && id !== selectedId.value) setPinState(id, 'hover');
@@ -329,6 +456,8 @@ const selectArtist = (artist, { pan = true } = {}) => {
         setPinState(selectedId.value, null);
     }
 
+    clearPlace();
+
     selectedId.value = artist.id;
     setPinState(artist.id, 'active');
     panelOpen.value = true;
@@ -365,6 +494,43 @@ const selectArtist = (artist, { pan = true } = {}) => {
     }
 
     markerLayer.zoomToShowLayer(marker, () => setPinState(artist.id, 'active'));
+};
+
+/** A show or venue: its card is built from the pin, no request. */
+const selectPlace = (place, { pan = true } = {}) => {
+    closeCard();
+    clearPlace();
+
+    selectedPlace.value = place;
+    setPlaceActive(placeKey(place), true);
+    panelOpen.value = true;
+
+    const marker = placeMarkers.get(placeKey(place));
+    const layer = marker?.__riffLayer;
+
+    if (!pan || !marker || !layer?.hasLayer(marker)) {
+        return;
+    }
+
+    const parent = layer.getVisibleParent(marker);
+
+    if (parent && parent !== marker && opensInPlace(parent)) {
+        layer.once('spiderfied', () => setPlaceActive(placeKey(place), true));
+        map.panTo(parent.getLatLng(), { animate: !reduceMotion });
+        parent.spiderfy();
+
+        return;
+    }
+
+    layer.zoomToShowLayer(marker, () => setPlaceActive(placeKey(place), true));
+};
+
+const clearPlace = () => {
+    if (selectedPlace.value) {
+        setPlaceActive(placeKey(selectedPlace.value), false);
+    }
+
+    selectedPlace.value = null;
 };
 
 const closeCard = () => {
@@ -465,7 +631,7 @@ watch(() => filters.radius, (radius) => {
     }
 });
 
-watch(() => ({ ...filters, genres: [...filters.genres], types: [...filters.types] }), () => {
+watch(() => ({ ...filters, kinds: [...filters.kinds], genres: [...filters.genres], types: [...filters.types] }), () => {
     if (!map) {
         return;
     }
@@ -545,8 +711,39 @@ onMounted(() => {
         cluster.zoomToBounds({ padding: [48, 48] });
     });
     clusterLayer = L.layerGroup();
+
+    // Shows and venues cluster on their own, so a count always means one
+    // kind; their bubbles are tinted to match their pins.
+    const placeLayer = (kind) => {
+        const layer = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 40,
+            spiderfyDistanceMultiplier: 1.6,
+            animate: !reduceMotion,
+            zoomToBoundsOnClick: false,
+            spiderLegPolylineOptions: { weight: 1.5, color: '#9e9e9e', opacity: 0.7 },
+            iconCreateFunction: (group) => clusterIcon(group.getChildCount(), kind),
+        });
+        layer.on('clusterclick', ({ layer: cluster }) => {
+            if (opensInPlace(cluster)) {
+                cluster.spiderfy();
+
+                return;
+            }
+
+            cluster.zoomToBounds({ padding: [48, 48] });
+        });
+
+        return layer;
+    };
+    // Venues lowest, shows highest: tonight's show at a venue sits on top
+    // of the venue's own pin, where it's easy to tap.
+    venueLayer = placeLayer('venues');
+    showLayer = placeLayer('shows');
+    map.addLayer(venueLayer);
     map.addLayer(markerLayer);
     map.addLayer(clusterLayer);
+    map.addLayer(showLayer);
 
     if (props.hasOwnLocation) {
         showYouAreHere(props.center.lat, props.center.lng, 'Your area');
@@ -570,6 +767,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
     clearTimeout(resizeTimer);
     cancel();
+    showsFeed.cancel();
+    venuesFeed.cancel();
     map?.remove();
     map = null;
 });
@@ -602,8 +801,15 @@ onBeforeUnmount(() => {
             <div class="map-body">
                 <!-- Side panel: list, or the selected artist -->
                 <aside class="map-aside" :class="{ 'map-aside--closed': !panelOpen }" :inert="panelOpen ? undefined : true">
+                    <PlaceCardPanel
+                        v-if="selectedPlace"
+                        :place="selectedPlace"
+                        :unit="unit"
+                        @close="clearPlace"
+                        @collapse="panelOpen = false"
+                    />
                     <ArtistCardPanel
-                        v-if="selectedId"
+                        v-else-if="selectedId"
                         :card="card.card.value"
                         :loading="card.loading.value"
                         :failed="card.failed.value"
@@ -617,6 +823,11 @@ onBeforeUnmount(() => {
                     <ResultList
                         v-else
                         :artists="markers"
+                        :shows="showsFeed.markers.value"
+                        :venues="venuesFeed.markers.value"
+                        :kinds="filters.kinds"
+                        :window-label="showsFeed.meta.value?.window?.label ?? ''"
+                        :selected-place-key="selectedPlaceKey"
                         :meta="meta"
                         :loading="loading"
                         :failed="failed"
@@ -625,6 +836,7 @@ onBeforeUnmount(() => {
                         :is-filtered="isFiltered"
                         :can-follow="canFollow"
                         @select="selectArtist"
+                        @select-place="selectPlace"
                         @hover="(id) => (hoveredId = id)"
                         @retry="retry"
                         @clear-filters="clearFilters"
@@ -633,7 +845,7 @@ onBeforeUnmount(() => {
                 </aside>
 
                 <div class="map-canvas">
-                    <div id="map" class="h-full w-full" role="application" aria-label="Map of nearby artists"></div>
+                    <div id="map" class="h-full w-full" role="application" aria-label="Map of the local scene: artists, shows and venues"></div>
 
                     <!-- Transient messages: location, default area -->
                     <transition name="fade">
@@ -652,7 +864,7 @@ onBeforeUnmount(() => {
                         </div>
                     </transition>
 
-                    <div v-if="meta?.mode === 'clusters'" class="map-hint">
+                    <div v-if="includesKind('artists') && meta?.mode === 'clusters'" class="map-hint">
                         <q-icon name="zoom_in" size="16px" class="q-mr-xs" />
                         Zoom in to see individual artists
                     </div>
@@ -663,12 +875,12 @@ onBeforeUnmount(() => {
                         v-show="!panelOpen"
                         type="button"
                         class="map-reopen"
-                        :aria-label="`Show the artist list (${meta?.returned ?? 0} here)`"
+                        :aria-label="`Show the list (${nearbyCount} here)`"
                         @click="panelOpen = true"
                     >
                         <q-icon class="map-reopen__wide" name="chevron_right" size="20px" />
                         <q-icon class="map-reopen__narrow" name="expand_less" size="18px" />
-                        <span class="map-reopen__count">{{ meta?.returned ?? 0 }}</span>
+                        <span class="map-reopen__count">{{ nearbyCount }}</span>
                         <span class="map-reopen__word">nearby</span>
                     </button>
                 </div>

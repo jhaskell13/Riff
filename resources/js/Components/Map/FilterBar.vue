@@ -30,6 +30,26 @@ const radiusOptions = computed(() => [
     ...props.options.radiusOptions.map((value) => ({ label: `${value} ${props.options.unit}`, value })),
 ]);
 
+// Each kind toggles independently; the last one on can't be switched
+// off, or the map would show nothing and look broken.
+const toggleKind = (kind) => {
+    const on = props.filters.kinds.includes(kind);
+
+    if (on && props.filters.kinds.length === 1) {
+        return;
+    }
+
+    const next = on
+        ? props.filters.kinds.filter((k) => k !== kind)
+        : [...props.filters.kinds, kind];
+
+    // Kept in the canonical order so the URL is stable.
+    props.filters.kinds = props.options.kinds.map((k) => k.value).filter((k) => next.includes(k));
+};
+
+const kindColor = { artists: 'primary', shows: 'amber-8', venues: 'teal-6' };
+const showsOn = computed(() => props.filters.kinds.includes('shows'));
+
 const genreOptions = computed(() => props.options.genres.map((g) => ({ label: g.name, value: g.slug })));
 const typeOptions = computed(() => props.options.types.map((t) => ({ label: t.label, value: t.value })));
 
@@ -120,8 +140,37 @@ const selectProps = {
             </ul>
         </div>
 
+        <!-- Kinds: everything is on by default; these narrow the scene -->
+        <div class="wide-only shrink-0 items-center gap-1" role="group" aria-label="Show on the map">
+            <q-chip
+                v-for="kind in options.kinds"
+                :key="kind.value"
+                clickable
+                dense
+                :outline="!filters.kinds.includes(kind.value)"
+                :color="filters.kinds.includes(kind.value) ? kindColor[kind.value] : 'grey-7'"
+                :text-color="filters.kinds.includes(kind.value) ? 'white' : 'grey-5'"
+                :icon="kind.icon"
+                :label="kind.label"
+                :aria-pressed="filters.kinds.includes(kind.value)"
+                class="m-0"
+                @click="toggleKind(kind.value)"
+            />
+        </div>
+
         <!-- Inline controls on wide screens -->
         <div class="wide-only shrink-0 items-center gap-2">
+            <q-select
+                v-if="showsOn"
+                v-model="filters.when"
+                v-bind="selectProps"
+                :options="options.windows"
+                option-label="label" option-value="value"
+                label="Shows"
+                class="w-36"
+                popup-content-class="riff-select-menu"
+                aria-label="Which shows"
+            />
             <q-select
                 v-model="filters.genres"
                 v-bind="selectProps"
@@ -235,6 +284,21 @@ const selectProps = {
                 </q-card-section>
                 <q-separator color="grey-9" />
                 <q-card-section class="q-gutter-md">
+                    <div class="flex flex-wrap gap-1" role="group" aria-label="Show on the map">
+                        <q-chip
+                            v-for="kind in options.kinds"
+                            :key="kind.value"
+                            clickable
+                            :outline="!filters.kinds.includes(kind.value)"
+                            :color="filters.kinds.includes(kind.value) ? kindColor[kind.value] : 'grey-7'"
+                            :text-color="filters.kinds.includes(kind.value) ? 'white' : 'grey-5'"
+                            :icon="kind.icon"
+                            :label="kind.label"
+                            :aria-pressed="filters.kinds.includes(kind.value)"
+                            @click="toggleKind(kind.value)"
+                        />
+                    </div>
+                    <q-select v-if="showsOn" v-model="filters.when" v-bind="selectProps" :options="options.windows" option-label="label" option-value="value" label="Shows" popup-content-class="riff-select-menu" />
                     <q-select v-model="filters.genres" v-bind="selectProps" :options="genreOptions" multiple use-chips label="Genres" popup-content-class="riff-select-menu">
                         <template #selected-item="{ opt, index, removeAtIndex, tabindex }">
                             <q-chip dense removable color="grey-8" text-color="grey-2" :tabindex="tabindex" :remove-aria-label="`Remove ${opt.label}`" @remove="removeAtIndex(index)">{{ opt.label }}</q-chip>
