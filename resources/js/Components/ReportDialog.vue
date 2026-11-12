@@ -8,7 +8,7 @@ import { router, usePage } from '@inertiajs/vue3';
  */
 const props = defineProps({
     modelValue: { type: Boolean, default: false },
-    // 'artist' | 'post'
+    // 'artist' | 'post' | 'venue' | 'show' (ReportStoreRequest::SUBJECTS)
     type: { type: String, required: true },
     id: { type: Number, required: true },
     subjectName: { type: String, default: 'this' },

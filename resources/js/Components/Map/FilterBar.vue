@@ -30,6 +30,38 @@ const radiusOptions = computed(() => [
     ...props.options.radiusOptions.map((value) => ({ label: `${value} ${props.options.unit}`, value })),
 ]);
 
+// Each kind toggles independently; the last one on can't be switched
+// off, or the map would show nothing and look broken.
+const toggleKind = (kind) => {
+    const on = props.filters.kinds.includes(kind);
+
+    if (on && props.filters.kinds.length === 1) {
+        return;
+    }
+
+    const next = on
+        ? props.filters.kinds.filter((k) => k !== kind)
+        : [...props.filters.kinds, kind];
+
+    // Kept in the canonical order so the URL is stable.
+    props.filters.kinds = props.options.kinds.map((k) => k.value).filter((k) => next.includes(k));
+};
+
+const kindColor = { artists: 'primary', shows: 'amber-8', venues: 'teal-6', listings: 'deep-purple-4' };
+const showsOn = computed(() => props.filters.kinds.includes('shows'));
+const kindsNarrowed = computed(() => props.filters.kinds.length < props.options.kinds.length);
+
+// "All", "Shows & Venues", or "3 of 4" when the names would crowd the bar.
+const kindSummary = computed(() => {
+    if (!kindsNarrowed.value) {
+        return 'All on map';
+    }
+
+    const labels = props.options.kinds.filter((k) => props.filters.kinds.includes(k.value)).map((k) => k.label);
+
+    return labels.length <= 2 ? labels.join(' & ') : `${labels.length} of ${props.options.kinds.length}`;
+});
+
 const genreOptions = computed(() => props.options.genres.map((g) => ({ label: g.name, value: g.slug })));
 const typeOptions = computed(() => props.options.types.map((t) => ({ label: t.label, value: t.value })));
 
@@ -116,12 +148,92 @@ const selectProps = {
                         </span>
                         <span class="shrink-0 text-xs text-riff-muted">{{ place.artistCount }}</span>
                     </button>
+                    <a
+                        v-if="place.sceneUrl"
+                        :href="place.sceneUrl"
+                        class="flex items-center gap-1 px-3 pb-2 pl-8 text-xs text-riff-muted no-underline hover:text-riff-text"
+                        @mousedown.prevent
+                    >
+                        <q-icon name="travel_explore" size="13px" /> See the {{ place.name }} scene
+                    </a>
                 </li>
             </ul>
         </div>
 
+        <!-- Kinds: one pill on wide screens (the four toggles crowded the
+             bar). Dots show what's on at a glance; the menu toggles each. -->
+        <q-btn
+            class="wide-only shrink-0"
+            outline
+            rounded
+            no-caps
+            dense
+            color="grey-6"
+            padding="2px 12px"
+            :aria-label="`Show on the map: ${kindSummary}`"
+        >
+            <span class="flex items-center gap-2 text-grey-3">
+                <span class="flex items-center gap-1" aria-hidden="true">
+                    <span
+                        v-for="kind in options.kinds"
+                        :key="kind.value"
+                        class="kind-dot"
+                        :class="[`kind-dot--${kind.value}`, { 'kind-dot--off': !filters.kinds.includes(kind.value) }]"
+                    />
+                </span>
+                <span class="text-sm">{{ kindSummary }}</span>
+                <q-icon name="arrow_drop_down" size="18px" />
+            </span>
+            <q-menu anchor="bottom left" self="top left" class="bg-riff-surface-2">
+                <q-list dark dense style="min-width: 200px" role="group" aria-label="Show on the map">
+                    <q-item-label header class="text-grey-5">Show on the map</q-item-label>
+                    <q-item
+                        v-for="kind in options.kinds"
+                        :key="kind.value"
+                        clickable
+                        :aria-pressed="filters.kinds.includes(kind.value)"
+                        :disable="filters.kinds.length === 1 && filters.kinds.includes(kind.value)"
+                        @click="toggleKind(kind.value)"
+                    >
+                        <q-item-section side>
+                            <q-checkbox
+                                :model-value="filters.kinds.includes(kind.value)"
+                                dense
+                                :color="kindColor[kind.value]"
+                                tabindex="-1"
+                                @update:model-value="toggleKind(kind.value)"
+                            />
+                        </q-item-section>
+                        <q-item-section avatar class="min-w-0 pr-2">
+                            <q-icon :name="kind.icon" :color="kindColor[kind.value]" size="18px" />
+                        </q-item-section>
+                        <q-item-section class="text-grey-2">{{ kind.label }}</q-item-section>
+                    </q-item>
+                    <q-separator dark />
+                    <q-item
+                        clickable
+                        :disable="!kindsNarrowed"
+                        @click="filters.kinds = options.kinds.map((k) => k.value)"
+                    >
+                        <q-item-section class="text-grey-4">Show everything</q-item-section>
+                    </q-item>
+                </q-list>
+            </q-menu>
+        </q-btn>
+
         <!-- Inline controls on wide screens -->
         <div class="wide-only shrink-0 items-center gap-2">
+            <q-select
+                v-if="showsOn"
+                v-model="filters.when"
+                v-bind="selectProps"
+                :options="options.windows"
+                option-label="label" option-value="value"
+                label="Shows"
+                class="w-36"
+                popup-content-class="riff-select-menu"
+                aria-label="Which shows"
+            />
             <q-select
                 v-model="filters.genres"
                 v-bind="selectProps"
@@ -235,6 +347,21 @@ const selectProps = {
                 </q-card-section>
                 <q-separator color="grey-9" />
                 <q-card-section class="q-gutter-md">
+                    <div class="flex flex-wrap gap-1" role="group" aria-label="Show on the map">
+                        <q-chip
+                            v-for="kind in options.kinds"
+                            :key="kind.value"
+                            clickable
+                            :outline="!filters.kinds.includes(kind.value)"
+                            :color="filters.kinds.includes(kind.value) ? kindColor[kind.value] : 'grey-7'"
+                            :text-color="filters.kinds.includes(kind.value) ? 'white' : 'grey-5'"
+                            :icon="kind.icon"
+                            :label="kind.label"
+                            :aria-pressed="filters.kinds.includes(kind.value)"
+                            @click="toggleKind(kind.value)"
+                        />
+                    </div>
+                    <q-select v-if="showsOn" v-model="filters.when" v-bind="selectProps" :options="options.windows" option-label="label" option-value="value" label="Shows" popup-content-class="riff-select-menu" />
                     <q-select v-model="filters.genres" v-bind="selectProps" :options="genreOptions" multiple use-chips label="Genres" popup-content-class="riff-select-menu">
                         <template #selected-item="{ opt, index, removeAtIndex, tabindex }">
                             <q-chip dense removable color="grey-8" text-color="grey-2" :tabindex="tabindex" :remove-aria-label="`Remove ${opt.label}`" @remove="removeAtIndex(index)">{{ opt.label }}</q-chip>
@@ -279,4 +406,19 @@ const selectProps = {
         display: none;
     }
 }
+
+.kind-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+}
+
+.kind-dot--off {
+    opacity: 0.2;
+}
+
+.kind-dot--artists { background: var(--color-riff-primary); }
+.kind-dot--shows { background: var(--color-riff-show); }
+.kind-dot--venues { background: var(--color-riff-venue); }
+.kind-dot--listings { background: var(--color-riff-listing); }
 </style>

@@ -1,0 +1,595 @@
+{
+    "_meta": {
+        "purpose": "Demo seed data for the Greater Hartford pilot scene. Researched from public sources so the demo looks like the real Connecticut scene instead of a directory of invented names.",
+        "researched_at": "2026-11-11",
+        "rules": [
+            "DEMO AND LOCAL DEVELOPMENT ONLY. None of the real acts or venues listed here agreed to be on Riff; this file must never seed a public or production database (the seeders refuse production).",
+            "Entries with \"real\": true describe real acts/venues from public sources: factual third-person bios, public street addresses for public venues, and only music links verified during research.",
+            "Entries with \"real\": false are invented. Everything that attributes a state or action to its subject stays on fictional entries ONLY: hidden/archived profiles, seeded reports and the moderation queue, feed posts written in the artist's voice, listings, lineup slots shown as pending/declined, and cancelled shows.",
+            "Shows are plausible compositions (real bands at venues they could play, dated relative to seeding), not real events. Member accounts behind every act are invented.",
+            "No real DIY space is listed: a private venue's whole point is that Riff never holds its address, and outing one's existence is harm the privacy rules exist to prevent. The DIY space here is fictional."
+        ],
+        "sources": [
+            "https://ctvisit.com/articles/great-venues-live-music-and-concerts-connecticut",
+            "https://ctconcertcenterapp.com/blog/live-music-hartford/",
+            "https://www.archstreettavern.com/",
+            "https://today.uconn.edu/2025/07/scene-summer-uconn-film-student-documenting-underground-music-in-connecticut/",
+            "https://en.wikipedia.org/wiki/Anxious_(band)",
+            "https://en.wikipedia.org/wiki/Boundaries_(band)",
+            "https://en.wikipedia.org/wiki/Make_Do_and_Mend_(band)",
+            "https://themetaldad.com/2025/12/29/top-connecticut-albums-of-2025/",
+            "https://thelonesomewhile.bandcamp.com/album/the-lost-of-us",
+            "https://cheem.bandcamp.com/music",
+            "https://www.bandsintown.com/a/2780365-perennial",
+            "https://ctmirror.org/2025/01/10/fifty-years-of-homegrown-hip-hop-culture-in-ct/",
+            "https://blackeyedsallys.com/events/joeys-batts-hip-hop-for-the-homeless/",
+            "https://www.newhavenindependent.org/2023/03/23/cafe_9_switches_owners_state_house_to_close/",
+            "https://www.newhavenarts.org/arts-paper/articles/local-music-venues-push-for-federal-help",
+            "https://www.indieonthemove.com/venues/the-buttonwood-tree-performing-arts-cultural-center-middletown-connecticut",
+            "https://www.yelp.com/biz/bridge-street-live-collinsville",
+            "https://www.newhavenindependent.org/2025/09/08/ct_folk_festival_brings_mellow_vibes/",
+            "https://www.jambase.com/article/twiddle-levitt-pavilion-setlists-videos",
+            "https://westendblend.bandcamp.com/track/get-by",
+            "https://eggylivemusic.bandcamp.com/album/live-at-pacific-standard-tavern-ft-the-west-end-blend-horns-92915",
+            "https://residualgroove.bandcamp.com",
+            "https://www.tripadvisor.com/Restaurant_Review-g33804-d21273613-Reviews-or15-Parkville_Market-Hartford_Connecticut.html"
+        ]
+    },
+    "acts": [
+        {
+            "real": true,
+            "name": "Boundaries",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Metal",
+                "Hardcore"
+            ],
+            "bio": "Metalcore out of Hartford, formed in 2015 and heavier with every record — Your Receding Warmth, Burying the Brightness, and Death Is Little More on Unbeaten Records."
+        },
+        {
+            "real": true,
+            "name": "The Lonesome While",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Punk",
+                "Indie"
+            ],
+            "music_url": "https://thelonesomewhile.bandcamp.com",
+            "bio": "Hartford punk and indie rock. The Lost of Us (2025) collected a decade of songs that nearly stayed on the shelf — one of the city's underrated gems."
+        },
+        {
+            "real": true,
+            "name": "Perennial",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Punk",
+                "Experimental"
+            ],
+            "bio": "Art-punk three-piece — electric guitar, electric organ, drums — splitting the difference between mod pop, post-hardcore and 60s soul. A Stereogum Best New Artist of 2024; Modernism is the latest."
+        },
+        {
+            "real": true,
+            "name": "West End Blend",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Funk",
+                "Soul"
+            ],
+            "music_url": "https://westendblend.bandcamp.com",
+            "bio": "Eight-piece funk and soul powerhouse from Hartford fronted by Erica T. Bryan — a Northeast club and festival staple for a decade."
+        },
+        {
+            "real": true,
+            "name": "Joey Batts & Them",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Hip-Hop",
+                "Rock"
+            ],
+            "bio": "Alternative hip-hop with a live band, from Hartford. Joey Batts taught in Hartford public schools for years and runs Hip Hop for the Homeless, a statewide benefit tour, every December."
+        },
+        {
+            "real": true,
+            "name": "Make Do and Mend",
+            "type": "band",
+            "town": "West Hartford",
+            "genres": [
+                "Punk",
+                "Rock"
+            ],
+            "bio": "Melodic post-hardcore from West Hartford, active again after the long quiet stretch."
+        },
+        {
+            "real": true,
+            "name": "Anxious",
+            "type": "band",
+            "town": "Fairfield",
+            "genres": [
+                "Emo",
+                "Hardcore"
+            ],
+            "bio": "Melodic hardcore and emo from Fairfield County. The second LP, Bambi, came out on Run for Cover in February 2025."
+        },
+        {
+            "real": true,
+            "name": "Cheem",
+            "type": "band",
+            "town": "Trumbull",
+            "genres": [
+                "Pop",
+                "Alternative"
+            ],
+            "music_url": "https://cheem.bandcamp.com",
+            "bio": "Nu pop from nu England: Trumbull's own, splicing 2000s pop, metal and post-hardcore. Fast Fashion and Faster Fashion say it all."
+        },
+        {
+            "real": true,
+            "name": "Ovlov",
+            "type": "band",
+            "town": "Newtown",
+            "genres": [
+                "Indie",
+                "Rock"
+            ],
+            "bio": "Fuzz-heavy indie rock from Newtown and a New England basement-show fixture for well over a decade."
+        },
+        {
+            "real": true,
+            "name": "Hatebreed",
+            "type": "band",
+            "town": "Bridgeport",
+            "genres": [
+                "Hardcore",
+                "Metal"
+            ],
+            "bio": "The biggest name in Connecticut hardcore, out of Bridgeport and New Haven since 1994."
+        },
+        {
+            "real": true,
+            "name": "The Meadows Brothers",
+            "type": "band",
+            "town": "Chester",
+            "genres": [
+                "Americana",
+                "Folk"
+            ],
+            "bio": "Brothers Ian and Dustin Meadows out of Chester: homegrown, folked-up, countrified, rock-n-rolled roots music. In the Land of Steady Habits (2025) is the new one."
+        },
+        {
+            "real": true,
+            "name": "Eggy",
+            "type": "band",
+            "town": "New Haven",
+            "genres": [
+                "Rock",
+                "Funk"
+            ],
+            "music_url": "https://eggylivemusic.bandcamp.com",
+            "bio": "Four-piece jam band from New Haven — funk, psychedelic rock and blues, heavy on the live tapes."
+        },
+        {
+            "real": true,
+            "name": "Residual Groove",
+            "type": "band",
+            "town": "Bridgeport",
+            "genres": [
+                "Rock",
+                "Funk"
+            ],
+            "music_url": "https://residualgroove.bandcamp.com",
+            "bio": "Bridgeport jam-rock that has gigged every room in the state."
+        },
+        {
+            "real": false,
+            "name": "The Silver Mill",
+            "type": "band",
+            "town": "New Britain",
+            "genres": [
+                "Punk",
+                "Hardcore"
+            ],
+            "placeholder_music": true,
+            "bio": "Fast, short, loud. We book our own shows in basements and VFW halls and split the door evenly."
+        },
+        {
+            "real": false,
+            "name": "Quiet Transit",
+            "type": "band",
+            "town": "Hartford",
+            "genres": [
+                "Post-Rock",
+                "Ambient"
+            ],
+            "placeholder_music": true,
+            "bio": "Instrumental, loud at the end. We rehearse in a converted office above a print shop downtown."
+        },
+        {
+            "real": false,
+            "name": "Marisol Vega",
+            "type": "solo",
+            "town": "Hartford",
+            "genres": [
+                "Latin",
+                "Soul"
+            ],
+            "placeholder_music": true,
+            "bio": "Singer and guitarist. I grew up between Hartford and Ponce and the songs come out somewhere in the middle."
+        },
+        {
+            "real": false,
+            "name": "DJ Lowtide",
+            "type": "dj",
+            "town": "Hartford",
+            "genres": [
+                "House",
+                "Electronic"
+            ],
+            "placeholder_music": true,
+            "bio": "Records every other Friday at a bar on Pratt Street. Mostly house, some disco, nothing before midnight."
+        },
+        {
+            "real": false,
+            "name": "Thread City Ska",
+            "type": "band",
+            "town": "Willimantic",
+            "genres": [
+                "Ska",
+                "Reggae"
+            ],
+            "placeholder_music": true,
+            "bio": "Eight of us, named for the mills. If there is a street festival within an hour of Willimantic, we have played it."
+        },
+        {
+            "real": false,
+            "name": "Mirrorwork",
+            "type": "producer",
+            "town": "Hartford",
+            "genres": [
+                "Techno",
+                "Electronic"
+            ],
+            "placeholder_music": true,
+            "hidden_from_map": true,
+            "bio": "Hardware techno made in a storage unit. Profile is here; the pin is not, by choice."
+        },
+        {
+            "real": false,
+            "name": "Pale Lantern",
+            "type": "band",
+            "town": "Enfield",
+            "genres": [
+                "Alternative",
+                "Post-Rock"
+            ],
+            "hidden_from_map": true,
+            "bio": "Quiet band, slow songs. We keep a profile for bookings but we would rather not be a pin on a map."
+        },
+        {
+            "real": false,
+            "name": "The Winter Ledger",
+            "type": "band",
+            "town": "Wallingford",
+            "genres": [
+                "Indie",
+                "Folk"
+            ],
+            "archived": true,
+            "bio": "On hold while two of us are out of state. Archived rather than deleted, which is the point of archiving."
+        }
+    ],
+    "venues": [
+        {
+            "real": true,
+            "name": "Arch Street Tavern",
+            "kind": "bar",
+            "town": "Hartford",
+            "street": "85 Arch St",
+            "age_policy": null,
+            "description": "Live music inside a turn-of-the-century carriage factory downtown — jam, funk and regional acts most weekends, with a full bar and kitchen."
+        },
+        {
+            "real": true,
+            "name": "The Webster",
+            "kind": "club",
+            "town": "Hartford",
+            "street": "31 Webster St",
+            "age_policy": "varies",
+            "description": "Hartford's enduring rock club: the main theater upstairs and the Underground downstairs for rising hardcore, metal, punk and hip-hop bills."
+        },
+        {
+            "real": true,
+            "name": "Black-Eyed Sally's",
+            "kind": "bar",
+            "town": "Hartford",
+            "street": "350 Asylum St",
+            "age_policy": null,
+            "description": "Blues, jazz and soul over barbecue — a downtown landmark and a regular stop on the Hip Hop for the Homeless tour."
+        },
+        {
+            "real": true,
+            "name": "Real Art Ways",
+            "kind": "other",
+            "town": "Hartford",
+            "street": "56 Arbor St",
+            "age_policy": "all_ages",
+            "description": "Arts organization in Frog Hollow programming experimental and genre-crossing performance alongside film and galleries."
+        },
+        {
+            "real": true,
+            "name": "Parkville Market",
+            "kind": "other",
+            "town": "Hartford",
+            "street": "1400 Park St",
+            "age_policy": "all_ages",
+            "description": "Connecticut's first food hall, with live bands on the regular — Fiesta Fridays especially."
+        },
+        {
+            "real": true,
+            "name": "Infinity Hall Hartford",
+            "kind": "hall",
+            "town": "Hartford",
+            "street": "32 Front St",
+            "age_policy": null,
+            "description": "A roughly 500-cap room in the Front Street district with a famously good PA."
+        },
+        {
+            "real": true,
+            "name": "Cafe Nine",
+            "kind": "bar",
+            "town": "New Haven",
+            "street": "250 State St",
+            "age_policy": "21_plus",
+            "description": "The musician's living room at State and Crown — local bills most nights of the week, still locally owned."
+        },
+        {
+            "real": true,
+            "name": "Space Ballroom",
+            "kind": "club",
+            "town": "Hamden",
+            "street": "295 Treadwell St",
+            "age_policy": "varies",
+            "description": "Hamden's mid-size independent room, splitting its calendar between touring indie acts and Connecticut bands."
+        },
+        {
+            "real": true,
+            "name": "The Buttonwood Tree",
+            "kind": "hall",
+            "town": "Middletown",
+            "street": "605 Main St",
+            "age_policy": "all_ages",
+            "description": "Community-run, not-for-profit listening room on Main Street — about fifty seats, folk and jazz on weekends, open mics on Mondays and Thursdays."
+        },
+        {
+            "real": true,
+            "name": "Bridge Street Live",
+            "kind": "hall",
+            "town": "Collinsville",
+            "street": "41 Bridge St",
+            "age_policy": null,
+            "description": "Intimate room on the Farmington River for blues, folk and regional acts."
+        },
+        {
+            "real": false,
+            "name": "Basement Signal",
+            "kind": "diy",
+            "town": "New Britain",
+            "street": null,
+            "age_policy": "all_ages",
+            "description": "A basement with a running calendar. Ask a punk for the address; be good to the neighbours."
+        },
+        {
+            "real": false,
+            "name": "The Old Foundry",
+            "kind": "club",
+            "town": "Bristol",
+            "street": "400 Ingot St",
+            "age_policy": "21_plus",
+            "dormant": true,
+            "description": "Hasn't listed a show in over a year — off the map until it does, though its page is still here."
+        }
+    ],
+    "shows": [
+        {
+            "when": "today",
+            "time": "21:00",
+            "host": "The Lonesome While",
+            "confirmed": [
+                "Perennial"
+            ],
+            "venue": "The Webster",
+            "price": "$12",
+            "doors": "20:00"
+        },
+        {
+            "when": "friday",
+            "time": "20:00",
+            "host": "The Silver Mill",
+            "pending": [
+                "Quiet Transit"
+            ],
+            "names": [
+                "Gutter Vows"
+            ],
+            "venue": "Basement Signal",
+            "price": "$5–10 sliding"
+        },
+        {
+            "when": "saturday",
+            "time": "19:30",
+            "host": "Boundaries",
+            "confirmed": [
+                "Anxious"
+            ],
+            "venue": "The Webster",
+            "price": "$18 adv"
+        },
+        {
+            "when": "saturday",
+            "time": "20:00",
+            "host": "The Meadows Brothers",
+            "venue": "The Buttonwood Tree",
+            "price": "$15"
+        },
+        {
+            "when": "sunday",
+            "time": "15:00",
+            "host": "Thread City Ska",
+            "names": [
+                "The Porch Lights"
+            ],
+            "location": {
+                "label": "Backyard on the north end",
+                "town": "Willimantic",
+                "note": "Ask a punk, or DM the band"
+            },
+            "price": "Free — bring a chair"
+        },
+        {
+            "when": "next-friday",
+            "time": "18:00",
+            "host": "Joey Batts & Them",
+            "venue": "Parkville Market",
+            "title": "Fiesta Friday takeover",
+            "price": "Free"
+        },
+        {
+            "when": "days",
+            "days": 7,
+            "time": "22:00",
+            "host": "DJ Lowtide",
+            "venue": "Arch Street Tavern",
+            "cancelled": true
+        },
+        {
+            "when": "days",
+            "days": 8,
+            "time": "20:00",
+            "host": "Cheem",
+            "confirmed": [
+                "The Lonesome While"
+            ],
+            "venue": "Space Ballroom",
+            "price": "$15 adv / $18 door"
+        },
+        {
+            "when": "days",
+            "days": 10,
+            "time": "21:00",
+            "host": "Eggy",
+            "venue": "Arch Street Tavern",
+            "price": "$10"
+        },
+        {
+            "when": "days",
+            "days": 13,
+            "time": "20:00",
+            "host": "West End Blend",
+            "venue": "Black-Eyed Sally's",
+            "price": "$12"
+        },
+        {
+            "when": "days",
+            "days": 16,
+            "time": "20:00",
+            "host": "Perennial",
+            "venue": "Cafe Nine",
+            "price": "$10"
+        },
+        {
+            "when": "days",
+            "days": 19,
+            "time": "19:00",
+            "host": "Residual Groove",
+            "venue": "Bridge Street Live",
+            "price": "$15"
+        },
+        {
+            "when": "days",
+            "days": 22,
+            "time": "19:00",
+            "host": "Hatebreed",
+            "venue": "The Webster",
+            "price": "$29.50"
+        },
+        {
+            "when": "days",
+            "days": 24,
+            "time": "19:30",
+            "host": "Make Do and Mend",
+            "venue": "The Webster",
+            "price": "$20 adv"
+        },
+        {
+            "when": "days",
+            "days": 27,
+            "time": "17:00",
+            "host": "Marisol Vega",
+            "location": {
+                "label": "Riverfront park bandshell",
+                "town": "Glastonbury",
+                "note": "Rain moves it indoors — check back here"
+            },
+            "price": "Free"
+        }
+    ],
+    "listings": [
+        {
+            "type": "members_wanted",
+            "artist": "The Silver Mill",
+            "town": "New Britain",
+            "title": "Drummer wanted — fast, short, loud",
+            "body": "Our drummer moved to Philly. We play basements and VFW halls, practise Tuesdays in New Britain, and split everything evenly. Need someone who can hold 200bpm for 90 seconds at a time.",
+            "instruments": [
+                "drums"
+            ],
+            "genres": [
+                "Punk",
+                "Hardcore"
+            ],
+            "days": 30
+        },
+        {
+            "type": "band_wanted",
+            "artist": null,
+            "town": "Hartford",
+            "title": "Bassist looking for a band",
+            "body": "Fifteen years on bass, own amp and a car. Into post-punk, shoegaze, anything with a groove. Can do two nights a week around Hartford.",
+            "instruments": [
+                "bass"
+            ],
+            "genres": [
+                "Indie",
+                "Shoegaze"
+            ],
+            "days": 30
+        },
+        {
+            "type": "bill_wanted",
+            "artist": "Thread City Ska",
+            "town": "Willimantic",
+            "title": "Openers wanted for our spring shows",
+            "body": "Booking a run of all-ages shows in the spring and want local openers — ska, punk, reggae, anything with energy. Message us with a link to your music.",
+            "instruments": [],
+            "genres": [
+                "Ska",
+                "Reggae"
+            ],
+            "days": 30
+        },
+        {
+            "type": "practice_space",
+            "artist": "Quiet Transit",
+            "town": "Hartford",
+            "title": "Sharing our rehearsal room",
+            "body": "Soundproofed room above a print shop downtown, full backline. Free Mondays and Thursdays — looking for a band to split the rent.",
+            "instruments": [],
+            "genres": [],
+            "days": 4
+        }
+    ]
+}

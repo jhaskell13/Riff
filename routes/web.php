@@ -5,11 +5,19 @@ use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistPhotoController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
+use App\Http\Controllers\LineupEntryController;
+use App\Http\Controllers\ListingController;
+use App\Http\Controllers\ListingReplyController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SceneController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ShowController;
+use App\Http\Controllers\ShowRsvpController;
 use App\Http\Controllers\StreamController;
+use App\Http\Controllers\VenueController;
 use Illuminate\Support\Facades\Route;
 
 // Deployment infrastructure may probe /health; keep alongside Laravel's /up.
@@ -31,6 +39,9 @@ Route::middleware('throttle:map')->group(function () {
     Route::get('map/artists/{artist}', [MapController::class, 'card'])
         ->whereNumber('artist')
         ->name('map.artists.card');
+    Route::get('map/shows', [MapController::class, 'shows'])->name('map.shows');
+    Route::get('map/venues', [MapController::class, 'venues'])->name('map.venues');
+    Route::get('map/listings', [MapController::class, 'listings'])->name('map.listings');
     Route::get('map/places', [MapController::class, 'places'])->name('map.places');
 });
 
@@ -77,7 +88,73 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('artists/{artist}/follow', [ArtistFollowController::class, 'destroy'])
         ->middleware('throttle:follows')
         ->name('artists.unfollow');
-    Route::resource('artists', ArtistZoneController::class);
+    // show is public and registered below, outside this group.
+    Route::resource('artists', ArtistZoneController::class)->except(['show']);
+
+    // Venues: established places that host music regularly. The public
+    // page is registered below, outside this group, after venues/create.
+    Route::get('venues/create', [VenueController::class, 'create'])->name('venues.create');
+    Route::post('venues', [VenueController::class, 'store'])
+        ->middleware('throttle:venues')
+        ->name('venues.store');
+    Route::get('venues/{venue}/edit', [VenueController::class, 'edit'])
+        ->whereNumber('venue')
+        ->name('venues.edit');
+    // Edits are throttled too: each address change is a paid geocode and
+    // empties the shared map cache.
+    Route::match(['put', 'patch'], 'venues/{venue}', [VenueController::class, 'update'])
+        ->whereNumber('venue')
+        ->middleware('throttle:venues')
+        ->name('venues.update');
+
+    // Shows: listed by a host artist's members. The public page is
+    // registered below, outside this group.
+    Route::get('shows/create', [ShowController::class, 'create'])->name('shows.create');
+    Route::post('shows', [ShowController::class, 'store'])
+        ->middleware('throttle:shows')
+        ->name('shows.store');
+    Route::whereNumber('show')->group(function () {
+        Route::get('shows/{show}/edit', [ShowController::class, 'edit'])->name('shows.edit');
+        Route::match(['put', 'patch'], 'shows/{show}', [ShowController::class, 'update'])
+            ->middleware('throttle:shows')
+            ->name('shows.update');
+        Route::post('shows/{show}/cancel', [ShowController::class, 'cancel'])->name('shows.cancel');
+        Route::post('shows/{show}/rsvp', [ShowRsvpController::class, 'store'])
+            ->middleware('throttle:follows')
+            ->name('shows.rsvp');
+        Route::delete('shows/{show}/rsvp', [ShowRsvpController::class, 'destroy'])
+            ->middleware('throttle:follows')
+            ->name('shows.unrsvp');
+    });
+
+    // Listings ("looking for"). The public page is registered below.
+    Route::get('listings/create', [ListingController::class, 'create'])->name('listings.create');
+    Route::post('listings', [ListingController::class, 'store'])
+        ->middleware('throttle:listings')
+        ->name('listings.store');
+    Route::whereNumber('listing')->group(function () {
+        Route::get('listings/{listing}/edit', [ListingController::class, 'edit'])->name('listings.edit');
+        Route::match(['put', 'patch'], 'listings/{listing}', [ListingController::class, 'update'])
+            ->middleware('throttle:listings')
+            ->name('listings.update');
+        Route::post('listings/{listing}/renew', [ListingController::class, 'renew'])->name('listings.renew');
+        Route::post('listings/{listing}/close', [ListingController::class, 'close'])->name('listings.close');
+        Route::post('listings/{listing}/replies', [ListingReplyController::class, 'store'])
+            ->middleware('throttle:listing-replies')
+            ->name('listings.replies.store');
+    });
+
+    // Lineup consent: an artist answering for its own slot on a bill.
+    Route::whereNumber('entry')->middleware('throttle:follows')->group(function () {
+        Route::post('lineup/{entry}/confirm', [LineupEntryController::class, 'confirm'])->name('lineup.confirm');
+        Route::post('lineup/{entry}/decline', [LineupEntryController::class, 'decline'])->name('lineup.decline');
+    });
+
+    // Name lookups for the show form's pickers.
+    Route::middleware('throttle:map')->prefix('search')->group(function () {
+        Route::get('artists', [SearchController::class, 'artists'])->name('search.artists');
+        Route::get('venues', [SearchController::class, 'venues'])->name('search.venues');
+    });
 
     // Live Stream broadcast management
     Route::prefix('streams')->group(function () {
@@ -90,6 +167,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{stream}/start', [StreamController::class, 'start'])->name('stream.start');
         Route::post('/{stream}/end', [StreamController::class, 'end'])->name('stream.end');
     });
+});
+
+// Artist profiles are public: a shared link must work logged out. These sit
+// after the auth group so artists/create and the other zone routes match
+// first, and the numeric route sits before the slug route so an old
+// /artists/{id} link redirects (slugs are never all digits).
+Route::middleware('throttle:map')->group(function () {
+    // A distinct parameter name: {artist} here would collide with the slug
+    // route below (binding fields are stripped from the URI, so both would
+    // key as artists/{artist} and the later one wins).
+    Route::get('artists/{artistId}', [ArtistZoneController::class, 'redirectToSlug'])
+        ->whereNumber('artistId')
+        ->name('artists.show.id');
+    Route::get('artists/{artist:slug}', [ArtistZoneController::class, 'show'])
+        ->name('artists.show');
+    Route::get('venues/{venue:slug}', [VenueController::class, 'show'])
+        ->name('venues.show');
+    Route::get('shows/{show}', [ShowController::class, 'show'])
+        ->whereNumber('show')
+        ->name('shows.show');
+    Route::get('listings/{listing}', [ListingController::class, 'show'])
+        ->whereNumber('listing')
+        ->name('listings.show');
+    // A scene: a place, optionally narrowed to one genre family. Unknown
+    // families 404 at the router.
+    Route::get('scenes/{place}/{family?}', [SceneController::class, 'show'])
+        ->whereIn('family', array_keys((array) config('riff.scenes.families')))
+        ->name('scenes.show');
 });
 
 Route::middleware('auth')->group(function () {

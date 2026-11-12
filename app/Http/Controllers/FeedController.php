@@ -26,7 +26,7 @@ class FeedController extends Controller
                         ->from('artist_blocks')
                         ->where('user_id', $request->user()->id))))
             // image_path, not image_url: the latter is an accessor over it.
-            ->with(['user:id,name', 'artist:id,name,image_path'])
+            ->with(['user:id,name', 'artist:id,name,slug,image_path'])
             ->latest('published_at')
             ->latest('id')
             ->paginate(15);

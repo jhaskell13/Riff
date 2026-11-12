@@ -26,6 +26,16 @@ return [
             'lng' => (float) env('RIFF_MAP_DEFAULT_LNG', -72.6850932),
         ],
         'max_markers' => (int) env('RIFF_MAP_MAX_MARKERS', 500),
+        // Shows and venues per response. Shows are bounded by their date
+        // window and venues are few, so these are browser-clustered from a
+        // capped list rather than grid-clustered on the server.
+        'max_scene_markers' => (int) env('RIFF_MAP_MAX_SCENE_MARKERS', 300),
+        // Used for the shows' "when" window when the browser sends no
+        // timezone. The pilot is in Connecticut.
+        'default_timezone' => env('RIFF_MAP_DEFAULT_TIMEZONE', 'America/New_York'),
+        // A venue with no show in this many days (and not newly added)
+        // drops off the map; its page stays.
+        'venue_dormant_days' => (int) env('RIFF_MAP_VENUE_DORMANT_DAYS', 180),
         'list_limit' => (int) env('RIFF_MAP_LIST_LIMIT', 100),
         'search_limit' => (int) env('RIFF_MAP_SEARCH_LIMIT', 50),
         'cluster_grid' => (int) env('RIFF_MAP_CLUSTER_GRID', 16),
@@ -69,6 +79,157 @@ return [
             'other' => 'Other',
         ],
         'max_genres' => (int) env('RIFF_ARTIST_MAX_GENRES', 3),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Venues
+    |--------------------------------------------------------------------------
+    |
+    | A venue is an established place that hosts music *regularly*: a club,
+    | a bar with live music, a small hall, a record store with in-stores, a
+    | named DIY space with a running calendar. One-off locations (a backyard,
+    | a park, a house party) are not venues — they belong to the show itself,
+    | so nothing lingers on the map after the night is over.
+    |
+    | Address visibility is two states, not three: a "public" venue gives a
+    | street address and is pinned at it; a "private" venue gives no street
+    | at all and is pinned at its town. Riff cannot leak an address it never
+    | stored. DIY spaces default to private.
+    |
+    */
+
+    'venues' => [
+        'kinds' => [
+            'club' => 'Club / music venue',
+            'bar' => 'Bar with live music',
+            'hall' => 'Hall / small theater',
+            'record_store' => 'Record store',
+            'cafe' => 'Café / coffee house',
+            'diy' => 'DIY space',
+            'other' => 'Other',
+        ],
+        'private_by_default' => ['diy'],
+        // Community-submitted, so a spam target: a few per minute and a
+        // daily ceiling per account.
+        'rate_limit_per_minute' => (int) env('RIFF_VENUE_RATE_LIMIT', 3),
+        'rate_limit_per_day' => (int) env('RIFF_VENUE_DAILY_LIMIT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Age policies
+    |--------------------------------------------------------------------------
+    |
+    | Shared by venues and shows: a show inherits its venue's policy unless
+    | it states its own. All-ages is first-class information in a scene app.
+    |
+    */
+
+    'age_policies' => [
+        'all_ages' => 'All ages',
+        '18_plus' => '18+',
+        '21_plus' => '21+',
+        'varies' => 'Varies by show',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Shows
+    |--------------------------------------------------------------------------
+    |
+    | A show is listed by the members of its host artist. Other Riff artists
+    | on the bill must confirm before they appear (see LineupEntry). A show
+    | counts as "upcoming" until still_on_hours after it starts, so tonight's
+    | show doesn't vanish from listings the moment the doors open.
+    |
+    */
+
+    'shows' => [
+        'max_lineup' => (int) env('RIFF_SHOW_MAX_LINEUP', 12),
+        'max_days_ahead' => (int) env('RIFF_SHOW_MAX_DAYS_AHEAD', 365),
+        'still_on_hours' => (int) env('RIFF_SHOW_STILL_ON_HOURS', 4),
+        'rate_limit_per_minute' => (int) env('RIFF_SHOW_RATE_LIMIT', 5),
+        'rate_limit_per_day' => (int) env('RIFF_SHOW_DAILY_LIMIT', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Listings ("looking for")
+    |--------------------------------------------------------------------------
+    |
+    | Structured, expiring posts: a band seeking a drummer, a bassist
+    | seeking a band, an act after an opener or a gig, a practice room.
+    | `as_artist` says whether a type is posted as one of the poster's
+    | artists: required, never (a person, not a band), or optional.
+    |
+    | Replies are relayed by email for now (ListingReplyMail): the poster's
+    | address is never shown, and the replier shares only the contact they
+    | type. An in-app messaging system will replace the relay (Phase 4);
+    | replies are stored so threads can move over.
+    |
+    */
+
+    'listings' => [
+        'types' => [
+            'members_wanted' => ['label' => 'Band seeking members', 'as_artist' => 'required', 'icon' => 'group_add'],
+            'band_wanted' => ['label' => 'Musician seeking a band', 'as_artist' => 'never', 'icon' => 'person_search'],
+            'bill_wanted' => ['label' => 'Looking for gigs or openers', 'as_artist' => 'required', 'icon' => 'event_available'],
+            'practice_space' => ['label' => 'Practice space', 'as_artist' => 'optional', 'icon' => 'meeting_room'],
+        ],
+        'instruments' => [
+            'vocals' => 'Vocals', 'guitar' => 'Guitar', 'bass' => 'Bass', 'drums' => 'Drums',
+            'keys' => 'Keys', 'synth' => 'Synth', 'horns' => 'Horns', 'strings' => 'Strings',
+            'dj' => 'DJ / turntables', 'production' => 'Production', 'other' => 'Other',
+        ],
+        // A listing runs this long, and can be renewed (for the same again)
+        // once it is within renew_window_days of ending, or after it has.
+        'days' => (int) env('RIFF_LISTING_DAYS', 30),
+        'renew_window_days' => 7,
+        'max_body' => 1000,
+        'rate_limit_per_minute' => (int) env('RIFF_LISTING_RATE_LIMIT', 3),
+        'rate_limit_per_day' => (int) env('RIFF_LISTING_DAILY_LIMIT', 10),
+        // Replies are mail to a real person: the tightest limits after
+        // reports.
+        'reply_rate_limit_per_minute' => (int) env('RIFF_LISTING_REPLY_RATE_LIMIT', 3),
+        'reply_rate_limit_per_day' => (int) env('RIFF_LISTING_REPLY_DAILY_LIMIT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scenes
+    |--------------------------------------------------------------------------
+    |
+    | A scene is a place plus a genre family: /scenes/hartford-ct/punk. Scenes
+    | aren't stored; a place is (see Place and riff:sync-places) and a family
+    | is this list. The radius is a circle around the place's centre rather
+    | than its town line, because scenes cross town lines.
+    |
+    | Families are named by curated genre *names* (config riff.genres). A
+    | genre may sit in more than one family; every curated genre should sit
+    | in at least one (a test enforces it).
+    |
+    */
+
+    'scenes' => [
+        'radius_km' => (float) env('RIFF_SCENE_RADIUS_KM', 40),
+        'families' => [
+            'punk' => ['label' => 'Punk', 'genres' => ['Punk', 'Hardcore', 'Emo', 'Ska']],
+            'indie' => ['label' => 'Indie & alternative', 'genres' => ['Indie', 'Alternative', 'Shoegaze', 'Post-Rock']],
+            'rock' => ['label' => 'Rock & metal', 'genres' => ['Rock', 'Metal']],
+            'hip-hop' => ['label' => 'Hip-hop & R&B', 'genres' => ['Hip-Hop', 'R&B']],
+            'electronic' => ['label' => 'Electronic', 'genres' => ['Electronic', 'House', 'Techno', 'Ambient', 'Experimental']],
+            'folk' => ['label' => 'Folk & roots', 'genres' => ['Folk', 'Americana', 'Country', 'Bluegrass', 'Singer-Songwriter']],
+            'jazz' => ['label' => 'Jazz, soul & funk', 'genres' => ['Jazz', 'Blues', 'Soul', 'Funk', 'Gospel']],
+            'global' => ['label' => 'Latin, reggae & global', 'genres' => ['Latin', 'Reggae', 'Afrobeat', 'Ska']],
+            'pop' => ['label' => 'Pop', 'genres' => ['Pop']],
+            'classical' => ['label' => 'Classical', 'genres' => ['Classical']],
+        ],
+        // What a scene page lists, at most.
+        'max_shows' => 20,
+        'max_artists' => 24,
+        'max_venues' => 12,
+        'max_listings' => 12,
     ],
 
     /*

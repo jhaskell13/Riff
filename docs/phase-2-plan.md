@@ -1,0 +1,176 @@
+# Phase 2 implementation plan — put the whole scene on the map
+
+Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–7 are built.**
+
+This turns Phase 2 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. Each step ships on its own, keeps CI green on all three database drivers, and leaves the app better even if we pause after it. Order matters: venues before shows (shows reference venues), shows before map layers (a layer needs data), layers before scenes (a scene is a composed view of the layers), and listings last among the features because they reuse the area/genre machinery everything else establishes.
+
+Conventions that apply to every step, per CLAUDE.md: policies gate every state-changing route; persist only `validated()` and create owned rows through relations; "enum" columns are strings validated by `Rule::in` (the CI matrix exists because real drivers reject what SQLite tolerates); every new surface joins `ReportStoreRequest::SUBJECTS` and `ModerationAction`; new Inertia pages require `npm run build` before `php artisan test`; model `@property` docblocks stay current; all tests offline.
+
+---
+
+## Step 1 — Public artist pages with slugs — ✅ BUILT (November 2026)
+
+**Why first:** smallest step, unblocks sharing, and every later feature (lineups, scene views, listings) links to artist pages that must work for guests.
+
+- Add `artists.slug`: unique, generated from name at creation with a numeric suffix on collision (`the-casket-girls-2`), never all digits (the numeric id redirect would shadow it). Backfill in the migration. **Links are permanent, slugs follow the name:** a rename mints a new slug and parks the old one in `artist_slugs`, where it 301-redirects forever (`Artist::resolveRouteBinding` resolves historical slugs; the controller answers with the canonical URL). Renaming back reclaims the parked slug, and a parked slug is never handed to another artist. Model-managed via creating/updating hooks and `App\Support\ArtistSlugs`; not fillable.
+- Routing: the public page is `GET /artists/{artist:slug}` (`artists.show`), registered *outside* the auth group but *after* the auth-only artist-zone routes so `artists/create` never matches as a slug. Old numeric id URLs 301-redirect via a sibling route whose parameter is deliberately `{artistId}` — Laravel strips binding fields from URIs, so `{artist}` and `{artist:slug}` would collide as the same route. No route closures (the deploy runs `route:cache`). Management (index, create, edit, update, destroy, restore, photo, follow, block) stays behind `auth`/`verified` exactly as now.
+- `ArtistZoneController@show` currently calls `$user->can(...)` on a possibly-null user — rework for guests: `canManage`/`isFollowing`/`isBlocked` become false, and the Follow button for guests links to `register?intent=fan` (same pattern as the map card). Archived artists stay 404 for the public, visible to members via the zone.
+- Rate-limit the public page (reuse the `map` limiter or a sibling `profiles` limiter — decide by what the limiter protects: this is the same public-read class as the map, so sharing `map` is fine).
+- Share meta (OpenGraph title/description/image from the profile) so links unfurl.
+- Tests: guest sees profile, guest never sees manage controls, id URL redirects, archived 404s for guests, slug collision, rename keeps slug.
+
+**Done when:** a logged-out person opens a shared `/artists/<slug>` link and sees the full profile with a working music embed and a register-to-follow prompt.
+
+## Step 2 — Venues — ✅ BUILT (November 2026)
+
+Revised on review: **a venue is an established place that hosts music regularly** (club, live-music bar, small hall, record store, café, a *named* DIY space with a running calendar). A one-off backyard, park, or house show is **not** a venue: its location belongs to the show (Step 3), so nothing lingers on the map after the night is over. Houses are no longer a venue kind.
+
+- `venues` table: `name`, `slug` (same rename-safe slugs as artists, via the shared `HasHistoricalSlugs` trait + `venue_slugs`), `kind` (`club`/`bar`/`hall`/`record_store`/`cafe`/`diy`/`other`, labels in `config('riff.venues.kinds')`), `address_visibility`, `street_address`, `city`/`state`/`country` (clean names, not the artists table's historical `hometown`/`stateOrProvince`), `age_policy`, `website`, `description`, `lat`/`lng`, `show_on_map`, `submitted_by`, soft deletes, and the covering `venues_map_index` ready for Step 4.
+- **Address privacy is two states and "never stored", not rounding.** A `public` venue requires a street address and is geocoded at its door (the geocoder gained an optional street component; everything else in Riff stays town-level). A `private` venue stores **no street at all** — the model's `saving` hook nulls it whatever the request sent — and is pinned at its town's centre like artists are. Riff can't leak an address it doesn't hold. DIY spaces default to private (`config('riff.venues.private_by_default')`). Going private clears the pin immediately and re-geocodes at town level. Public output goes through `VenueResource`, which only ever emits `public_address`.
+- Community-submitted by any verified user, published immediately, `venues` limiter (3/minute and 20/day per account). One venue per name per town (case-insensitive) so shows have a single row to point at. `slug`, coordinates, `show_on_map`, and `submitted_by` are not fillable — a submitter can't undo a moderator's hide.
+- `VenuePolicy`: public view; any verified user creates; only the submitter edits (claiming is Phase 4).
+- Moderation: `venue` joins `ReportStoreRequest::SUBJECTS`; `ModerationAction` gains `hide_venue` (off the map, page stays — for a venue that closed) and `archive_venue` (soft delete, page 404s — for spam). Both recoverable; the queue summarises venues by `public_address` only.
+- Pages: public `Venues/Show` (OpenGraph meta, report button for signed-in viewers, "the address is shared by the hosts" for private venues), `Venues/Create` and `Venues/Edit` sharing `Components/VenueFields.vue`, whose opening banner explains venue vs. one-off show. The Artist Zone gained "Venues you added" with an Add a venue button.
+- Also fixed in passing: a name that slugs to a route word (`create`, `edit`, `new`) now gets a suffix (`create-band`) — before, an artist called "Create" was unreachable behind `/artists/create`.
+- Not yet: venues on the map (Step 4), upcoming shows on the venue page (Step 3), pilot venues in the seeder (Step 7).
+
+**Done when:** a user adds a named DIY space, its page shows only the town with no street stored anywhere, and a moderator can hide or take it down from a report. ✅
+
+## Step 3 — Shows — ✅ BUILT (November 2026)
+
+- **Place:** a show is at a `venue_id` **or** at its own one-off location (`location_name`, `city`/`state`/`country`, `location_note`) — exactly one, enforced by the request (`prohibits`/`required_without`) and by the model's `saving` hook, which clears a venue show's own location columns. One-off locations are geocoded at town level only (`Show` carries the `GeocodableObserver` rules itself, conditioned on being one-off) and never create a venue row. The form's one-off branch tells the poster not to type a street.
+- **Time:** stored in UTC with the show's IANA `timezone`; the form sends local date + clock time + timezone (defaulting to the browser's), and every surface renders in the *show's* timezone — "8 PM" means 8 PM where the show is, for every viewer. New or moved times must be in the future (a typo fix on tonight's listing is fine), within a year, doors before start.
+- **Host:** every member listing has a `host_artist_id` — one of the poster's artists (checked with `ArtistPolicy::update`), always on its own bill, fixed after creation. Only the host's members edit or cancel. Imported listings (Step 8) will have no host.
+- **Lineup consent** (`lineup_entries`, `App\Services\Lineup`): an artist the poster belongs to is confirmed at once (membership is consent); any other Riff artist starts **pending** and appears on no public surface until its own members confirm from the Artist Zone; free-text acts not on Riff need no one's consent. Declining (or dropping out later) removes the artist from every public surface; a declined artist isn't re-asked by ordinary edits. **A material change — date, time, or place — puts every other artist back to pending**: confirming "Friday at the Lantern Room" isn't consent to "Saturday in a backyard". The host can't decline its own slot (it cancels instead). Pending and declined acts are never named, even in the generated title.
+- **Cancel vs. take down:** hosts *cancel* (`cancelled_at`) — the page stays up with a banner, because people holding the link need to know, and the show leaves every listing. Moderators *take down* (`remove_show`, soft delete) — the page 404s. An archived host's shows leave the listings too.
+- **"Upcoming"** = starts later, or started within `riff.shows.still_on_hours` (4h) — tonight's show doesn't vanish when the doors open. Past shows keep their page with a "has already happened" banner.
+- **Going / interested** (`show_rsvps`): private by default; counts are public, names only for fans who opt in. Not for guests (register prompt with `intent=fan`), cancelled, or past shows. `follows` limiter.
+- **Surfaces:** public show page `GET /shows/{id}` (OpenGraph meta, ticket link, age policy falling back to the venue's, "listed by"); upcoming shows on artist pages (with "List a show" for members) and venue pages; in the Artist Zone, a Shows card with pending invitations (confirm/decline) and the user's hosted shows, plus a per-artist "List a show" button. Lineup and venue pickers use small authenticated lookups (`/search/artists`, `/search/venues`) rather than the map search, because an artist hidden from the map still plays shows.
+- `show` joins `ReportStoreRequest::SUBJECTS`; the moderation queue summarises a show by bill, time, place, and host. `shows` limiter: 5/minute, 30/day.
+- Not yet: shows on the map (Step 4), the "this spot keeps hosting — make it a DIY venue?" nudge (deferred; nothing automates it), notifications to an artist when they're added to a bill or re-asked after a change (Phase 3 notifications — for now the invite waits in the Artist Zone), un-cancelling (list it again), and the blocked-lineup rule (lands with the map in Step 4).
+
+**Done when:** a band lists Friday's show with another Riff band on the bill, the second band confirms from their zone, both artist pages and the venue page show it, and a fan can mark "going" without their name appearing. ✅
+
+## Step 4 — One scene map: Shows and Venues join Artists — ✅ BUILT (November 2026)
+
+No switchable layers (revised on review): artists, shows, and venues render **together by default**, and kind toggles sit in the filter bar beside genre, so hiding venues is just another filter. One `/map` URL carries kinds, filters, and the date window (`?kinds=shows,venues&when=weekend&genres=punk`), and a URL carrying any of them suppresses the welcome overlay like any other filter.
+
+**What was built**
+- `GET /map/shows` and `GET /map/venues` (public, `map` limiter) beside `/map/artists`. Each kind keeps its own endpoint, query and resource; the client fetches the enabled kinds in parallel. The "where" parsing is shared by all three (`ParsesMapArea` trait, `Geo::confine`), so a viewport or radius means the same thing everywhere.
+- **Shows** (`SceneMapSearch::shows`): listed shows in the area within a **date window** — tonight, this weekend, next 7 days, next 30 days (default) — computed in the *viewer's* timezone (the client sends `tz`; "this weekend" before Friday starts on Friday), opening 4 hours back so tonight's show stays on after doors. A show is placed at its venue, or at its own town-level point if it's one-off; a show at a taken-down venue has no point and leaves the map. Ordered soonest first, nearest within a day.
+- **Venues** (`SceneMapSearch::venues`): `show_on_map`, geolocated, in the area. **Dormant venues fade:** no non-cancelled show in `riff.map.venue_dormant_days` (180) and not added within that window → off the map, page stays. The "newly added" grace was added here — without it a venue would be invisible until its first show was listed.
+- **Genre filter carries over:** a show matches if a *confirmed* act on the bill has the genre (a pending invite doesn't make a bill punk); a venue matches if it has such a show coming up — the genre lives on the acts, not the room. The artist-only filters (type, has music/photo, followed, sort) don't apply to shows or venues, and a name search stays artists-only — shows and venues follow the viewport around it.
+- **Blocking:** a show is hidden from a blocking viewer only when every Riff act on the confirmed bill is blocked (free-text acts don't count); such viewers bypass the cache, like the artists' `hiddenFor`.
+- **UI:** shows get a calendar-leaf pin with the day of the month (amber), venues a storefront pin (teal), artists keep theirs (red). Each kind has its **own cluster group**, tinted to match, so a count always means one kind; venues draw lowest and shows highest, so tonight's show sits on top of its venue. The list has Shows / Artists / Venues sections; picking a show or venue opens a card built from its pin (no extra request) with a link to its page.
+- **Demo data:** `SceneSeeder` (run by `DatabaseSeeder` after the pilot) adds seven invented venues around Greater Hartford — including a private DIY space and a dormant one that has faded — and a month of shows on the pilot's acts relative to the seeding date: tonight, the weekend, a backyard and a park show, a pending lineup slot, an in-store, a cancellation. Idempotent; not yet the full Step 7 pilot data.
+
+**Deviations from the original plan**
+- **One cache version, not one per kind.** A show pin depends on its artists (names, genres) and its venue, so per-kind versions would have to be bumped across kinds anyway. Show, Venue, and LineupEntry events and `GeocodeAddress` all bump `MapCache`.
+- **No server-side grid clusters for shows and venues.** Both return a capped (`riff.map.max_scene_markers`, 300), nearest-first list that the browser clusters. Benchmarked on 2,007 venues and 20,010 shows (SQLite, uncached): town views 5–17 ms; zoomed out across the region, shows tonight 14 ms, venues 64 ms, and shows this month 168 ms with the cap hit (~3,300 matched). That last case is the trigger for adding server clustering for shows if real density approaches it. When the cap bites, the map shows the *soonest* 300 shows.
+- **Fixed along the way:** PDO binds floats as strings, and SQLite never converts a string compared against an expression — so `coalesce(venue, show)` comparisons matched nothing, and the existing artist radius filter had silently been only its bounding box on SQLite. Bound values compared to expressions are now forced numeric (`? * 1.0`, portable to MySQL/Postgres), with a regression test that fails without the fix.
+
+**Not yet**
+- Hover-highlighting between list rows and show/venue pins (artists have it).
+- A venue-kind filter (club, bar, DIY…).
+- Searching venues or shows by name.
+- Not checked in a real browser: headless Chromium couldn't start in the dev environment (missing system libraries), so the UI is verified by build and API tests only.
+
+**Done when:** opening the map shows artists, this week's shows, and venues together; narrowing to "shows this weekend" is two filter taps whose URL is shareable; and the private DIY space renders at its town, never its door. ✅ (pending a visual pass in a browser)
+
+## Step 5 — Scene views — ✅ BUILT (November 2026)
+
+*Also in this round, from Step 4 review:* the map's side list is now **tabbed by kind** (Shows / Artists / Venues, each with its count, only for kinds switched on). It opens on the first kind with anything in it, stays on whatever tab the listener picks, switches to the right tab when a pin is picked on the map, and supports the arrow keys (ARIA tabs pattern).
+
+**What was built**
+- **`GET /scenes/{place}/{family?}`** (public, `map` limiter): `/scenes/hartford-ct` shows everything, `/scenes/hartford-ct/punk` one genre family. The page has three parts: *Coming up* (the next 30 days, soonest first), *Where it happens* (venues), and *Who plays* (artists, nearest first, "the 24 nearest of 46" when capped). It covers a **radius** of the town's centre (`riff.scenes.radius_km`, 40 km ≈ 25 mi; per-place override column), not the town line. Family chips link between the scenes in a town, with counts; an artist in two genres of one family counts once. There's an empty state that invites artists in, "See it on the map" (pre-filtered to the family's genres), and OpenGraph meta ("6 artists, 2 shows this month, 2 venues around Hartford, CT").
+- **Composed from the map's own searches** (`App\Services\SceneView` → `ArtistMapSearch` and `SceneMapSearch` with a radius and no viewport), so "punk", "blocked", "upcoming" and "dormant" mean exactly what they mean on the map. The whole page payload is cached under `MapCache::version()`, except for a viewer who blocks someone, as on the map.
+- **Genre families** (`config('riff.scenes.families')`, `App\Support\SceneFamilies`): ten families named by curated genre *names*. A genre may sit in two (Ska is in Punk and in Latin, reggae & global). A test fails if any curated genre isn't in a family. Unknown families 404 at the router.
+- **Places** (`places` table, `App\Models\Place`): a town with a scene page. The slug is deterministic (`Place::slugFor(city, region)` → `hartford-ct`), so anything that knows a town can link to it. Rows come from stored *town-level* coordinates only (artists, private venues, one-off shows; a public venue's street point is skipped) — never geocoded. They're written by `riff:sync-places` (idempotent, daily via the scheduler, and run by the seeders) and by `GeocodeAddress` the moment an artist in a new town is placed. Rows are never deleted, so a scene link never breaks; it just goes empty.
+- **Ways in:** artist pages ("The local scene: Hartford punk · Everything in Hartford", one link per family the artist's genres fall in), venue pages ("Everything in Hartford"), and the map's town suggestions ("See the Hartford scene"). Each appears only when the town has a scene page.
+
+**Deviations from the original plan**
+- No static map strip on the page; a "See it on the map" button opens the real map, already filtered. This avoids loading a second Leaflet instance for a picture.
+- `GET /map/places` still aggregates artists (cached) rather than reading the table; it now just adds each town's `sceneUrl`. Switching it over buys nothing until places come from sources the map's search doesn't cover.
+- A scene page's "coming up" is always the next 30 days in the pilot's timezone (the page has no viewer timezone); the map's window control is where to narrow it.
+
+**Not yet**
+- Listings on scene pages (Step 6 adds them here).
+- A directory of scenes. Deliberately left out — Riff starts from a place, not an index.
+- Scenes have no curators or pages of their own; per the roadmap, they only become stored entities if pilots show the need.
+- The family chips' counting reads the radius's bounding box and applies the circle in PHP. That's fine at town scale; it would want SQL aggregation if a single scene grew to thousands of artists.
+
+**Done when:** `/scenes/hartford-ct/punk` is a link someone can text a friend, and it answers "who plays, what's on, where" without sign-in. ✅ (in the seeded data: 6 punk artists, both punk bills, and the two rooms hosting them)
+
+## Step 6 — Listings ("looking for") — ✅ BUILT (November 2026)
+
+*Also in this round, from Step 5 review:*
+- **Cluster tints never applied.** The kind variants were declared before the base `.riff-cluster` rule at equal specificity, so every bubble was red. Fixed. Every kind now also differs by **shape and glyph**, not colour alone: artists are round/teardrop, shows a calendar tile / rounded square, venues a hexagon, listings a speech bubble.
+- **Kinds no longer stack.** A show at its venue, or a private venue at a town's centre among its artists, put different kinds on the same point where they couldn't be clicked apart. markercluster only separates markers *within* a group, so each kind now has a **fixed quadrant slot** around its point (`KIND_SLOTS` in `markers.js`: artists up-left, shows up-right, venues down-left, listings down-right). Pins and clusters both use it, so mixed kinds form a small 2×2 grid instead of a pile. The trade-off is that a lone pin sits a few pixels off its true point; everything but a public venue is a town centre anyway.
+- **List tabs** are now full-width underlined tabs (icon and count over a short label, an equal column each), visibly different from the filter bar's filled pill toggles, with room for four kinds. I chose this over a dropdown, which would hide the other kinds behind a click.
+
+**What was built**
+- `listings` (+ `listing_genre`, `listing_replies`). The **types** live in `config('riff.listings.types')`: *band seeking members* and *gigs or openers wanted* are posted as one of the poster's artists (membership checked via `ArtistPolicy::update`); *musician seeking a band* is posted as a person; *practice space* can be either. Each listing has instruments, up to 3 genres, a **town-level** location (prefilled from the artist or the user, shown publicly as a town only) and a 30-day run.
+- **Lifecycle:** *renew* (only within 7 days of the end, or after it), *close* ("found someone" — off every surface, page kept), with expiry as a query scope (`Listing::active()`), not a cron job. The poster and the artist's members manage a listing. The type is fixed after posting, because replies were made to that kind of post.
+- **Replies, relayed by email (interim):** one per person per listing, never to your own, and a contact is required (without it the poster couldn't answer). The `ListingReplyMail` email sets **no Reply-To**: the poster's address is never shown, and the replier's only as the contact they typed. It's a **plain HTML** view, not a markdown mailable — markdown mail parses the whole template, so a reply could have injected links into the poster's inbox. Replies are stored so threads can move into in-app messaging (Phase 4). `listing-replies` limiter: 3/min, 20/day.
+- **Surfaces:** a fourth map kind (`GET /map/listings`; genre filter and blocking apply; a blocked artist's listings leave the blocker's map) with a *Listings* list tab and card; the public listing page (`/listings/{id}`) with the reply form (guests are prompted to join); a *Looking for* section on scene pages and artist pages; *Looking for* management in the Artist Zone. The old artist-create "join" stub now points at bands looking for members and at posting "I'm looking for a band".
+- **Moderation:** `listing` is reportable; `remove_listing` soft-deletes (the page 404s).
+- **Demo data:** `SceneSeeder` adds four listings — The Silver Mill after a drummer, a bassist after a band, Thread City Ska after openers, and Quiet Transit's shared room (ending in 4 days, to show renewal).
+
+**Not yet**
+- Replies can't be reported, and a poster can't block a replier. The relay exposes only what the replier chose to share, but harassment by reply has no in-app recourse yet. This belongs with in-app messaging (Phase 4); the email tells posters to report the listing page in the meantime.
+- No `/listings` browse page: the map tab and scene pages cover discovery by place.
+
+## Proposed (not built): making scenes easier to find
+
+From Step 5 review: scene pages feel hidden. Options, roughly in order of value for effort:
+
+1. **A scene banner on the map.** When the map settles over a town that has a scene page (the view's centre is within a place's radius), show a slim bar along the top of the map or list: "You're looking at the Hartford scene — 9 shows this month · 46 artists → See the scene". It becomes "Hartford punk" when a genre filter matches a family. Cheap: places are a small table, and the client can pick the nearest one. This is the strongest funnel, because it meets people where they already are.
+2. **"See the scene" in every map card.** Artist, show, venue and listing cards get the same link the full pages have ("More in Hartford punk").
+3. **Turn on the map's genre filter → offer the family.** Choosing *Punk* or *Hardcore* surfaces "Hartford punk scene →" next to the filter — the clearest moment of intent.
+4. **The welcome overlay ends in a scene.** For a first-time guest, "Explore Hartford's scene" is a better first step than an empty map, especially on a phone.
+5. **Scene in the nav.** A "Scene" item that resolves to the viewer's own town (signed-in users have one; guests use the map's centre or default area).
+6. **Share affordance.** A share button on scene pages (native share sheet on phones). Scene links are the most shareable thing Riff has, and the unfurl metadata is already in place.
+
+Recommended first: 1 and 2 together (small, and every map session passes through them), then 3. Measure scene-page visits that came from the map before doing 4–5.
+
+## Step 7 — Pilot seed data + docs — ✅ BUILT (November 2026)
+
+**Revised on review (owner decision): the pilot seeds from researched real-world data,** not pure invention — the demo should look like the actual Connecticut scene. `database/seeders/data/pilot-scene.json` is a checked-in snapshot (sources and research date in `_meta`): 13 real acts across the pilot's genres — Boundaries, The Lonesome While, Perennial, West End Blend and Joey Batts & Them in Hartford; Make Do and Mend, Anxious, Cheem, Ovlov, Hatebreed, The Meadows Brothers, Eggy, Residual Groove around the state — and 10 real venues at their public addresses (The Webster, Arch Street Tavern, Black-Eyed Sally's, Real Art Ways, Parkville Market, Infinity Hall, Cafe Nine, Space Ballroom, The Buttonwood Tree, Bridge Street Live). `PilotSeeder` and `SceneSeeder` read the file; both stay idempotent and CI's seed-twice check still passes.
+
+**The consent boundary** (the dataset's rules, enforced by `PilotDatasetTest`): real entries get factual third-person bios, generated placeholder art, and only links verified during research (link-out Bandcamp pages — never a playable embed that could put someone else's audio on their profile). Everything *attributed* to its subject stays on the fictional entries kept for exactly that purpose: the report queue (now including a venue and a listing report), artist-voice feed posts, all four listings, the pending lineup slot, the cancellation, the hidden and archived profiles, and placeholder music. The private DIY space is fictional on purpose — Riff must not out a real one — and the shows are plausible compositions dated relative to seeding, not real events. The seeders refuse production, and the README says why.
+
+**Left out, knowingly:** the imported-source show demo (waits for Step 8, which would make it real rather than staged); acts I couldn't place in a town from sources (skipped rather than guessed); real DIY spaces and thin-public-presence individuals (skipped on principle). The dataset doubles as the recruiting shortlist when the real pilot outreach starts.
+
+**Done when:** `php artisan migrate:fresh --seed` demos the entire Phase 2 loop, and CI's seed-twice check still passes on all three drivers. ✅
+
+## Phase 2 audit (November 2026)
+
+Three independent reviews (security/authorization, performance/queries, frontend/correctness) of the whole phase, then fixes with regression tests. No high-severity findings. Fixed:
+- **Security:** a free-text lineup act can't carry a Riff artist's name (consent bypass); renaming or moving a venue re-asks confirmed acts on its upcoming shows; a listing's artist can't change on edit; archived artists' listings never fall back to the member's name; public profiles don't serialise membership pivots; edit routes are throttled like creation.
+- **Performance:** moderation-queue N+1 on listing reports; foreign-key indexes SQLite/Postgres don't add themselves; venue cache shared with blocking viewers; the Artist Zone's ended-listing list is bounded.
+- **UI/correctness:** active show/listing pins lost their contents (CSS order again); the list keeps its tab across card opens; distance units with artists off; URL radius with artists off; `?when=` whitelisted; kept pins redraw on change; venue-mode "pick a venue" error; editing a show with an archived act; a poster who left the band can edit; long slugs truncated; Riff-less bills not hidden from blockers.
+
+**Deliberately left (low value at pilot scale, noted for later):** a show's free-text *title* can still name a band (titles are free expression; the bill is what consent governs); the venue duplicate check scans (`lower()` can't use the index — fine for hundreds of venues); a show save bumps the map cache once per lineup entry; slug generation queries per collision; the show page uses four RSVP queries.
+
+## Step 8 — Imported events (optional, last)
+
+- A queued `riff:import-events` command maps `EventProvider` results into `shows` rows (`source = 'imported'`, deduped on `provider`+`provider_ref`, venue matched by name+town or left as `location_note`). Labelled everywhere, never outranking member shows, degrades to a no-op when the provider is down. Ticketmaster only where it adds local coverage; the contract stays open for venue-calendar providers.
+- This step is genuinely optional for the pilot — a real scene's shows should come from Step 3. Build it only if seeded coverage looks thin when recruiting starts.
+
+---
+
+## Decisions already made (flag now if you disagree)
+
+1. ~~Slugs are permanent~~ **Revised on review: links are permanent, slugs follow the name.** A rename mints a new slug; old slugs and old numeric id URLs 301-redirect forever, and a parked slug is never given to another artist.
+2. **Venues publish immediately** and are moderated reactively (report → hide), because pre-moderation would block show submission on moderator latency.
+3. ~~Switchable map layers~~ **Revised on review: one unified scene map.** All kinds render together by default with filter-bar toggles and a single shareable `/map` URL; the data endpoints stay separate per kind (`/map/shows`, `/map/venues`) for index, cache, and request-shape reasons.
+4. **Places are a table** synced from stored coordinates by an idempotent command — never geocoded at request time.
+5. ~~Address privacy is rounding~~ **Revised in Step 2: privacy by not storing.** Venues are public (street stored, pinned at the door) or private (no street stored, pinned at the town). One-off show locations are always town-level with no street. Nothing needs rounding because nothing precise is held.
+8. **Venues are recurring places; one-off locations belong to shows** (from Step 2 review). Houses aren't a venue kind; a named DIY space with a running calendar is.
+9. **Dormant venues fade from the map** (Step 4): a venue with no upcoming show and none in the last ~6 months drops off the default map view while its page stays — the same "nothing lingers" rule that keeps one-off locations off the map after the night.
+6. **Listing replies store a row** even though delivery is email, so the one-reply rule works and threads can migrate to in-app messaging in Phase 4.
+7. **A show is hidden from a blocking viewer only when every Riff artist on the lineup is blocked.**
+
+## Suggested checkpoints
+
+Steps 1–7 are built; only Step 8 (imported events, optional) remains. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.

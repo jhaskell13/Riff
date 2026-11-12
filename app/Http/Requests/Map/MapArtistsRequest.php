@@ -3,9 +3,8 @@
 namespace App\Http\Requests\Map;
 
 use App\DTO\MapFilters;
-use App\DTO\MapPoint;
+use App\Http\Requests\Map\Concerns\ParsesMapArea;
 use App\Support\GenreCatalog;
-use App\Support\Geo;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -22,6 +21,8 @@ use Illuminate\Validation\Validator;
  */
 class MapArtistsRequest extends FormRequest
 {
+    use ParsesMapArea;
+
     private const LIST_FIELDS = ['genres', 'types'];
 
     /**
@@ -54,19 +55,8 @@ class MapArtistsRequest extends FormRequest
 
     public function rules(): array
     {
-        $bounds = ['south', 'north', 'west', 'east'];
-
         return [
-            'south' => ['nullable', 'numeric', 'between:-90,90', 'required_with:'.implode(',', $bounds)],
-            'north' => ['nullable', 'numeric', 'between:-90,90', 'required_with:'.implode(',', $bounds), 'gte:south'],
-            'west' => ['nullable', 'numeric', 'between:-180,180', 'required_with:'.implode(',', $bounds)],
-            'east' => ['nullable', 'numeric', 'between:-180,180', 'required_with:'.implode(',', $bounds), 'gte:west'],
-
-            // Distance origin; also the radius center.
-            'lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:lng,radius'],
-            'lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:lat,radius'],
-            'radius' => ['nullable', 'numeric', 'gt:0'],
-            'unit' => ['nullable', Rule::in(['mi', 'km'])],
+            ...$this->areaRules(),
 
             'q' => ['nullable', 'string', 'min:2', 'max:100'],
             'genres' => ['nullable', 'array', 'max:10'],
@@ -94,13 +84,7 @@ class MapArtistsRequest extends FormRequest
                     $validator->errors()->add('south', 'Give a map area, a radius, or a search term.');
                 }
 
-                if ($this->filled('radius')) {
-                    $max = Geo::fromKm(config('riff.map.max_radius_km'), $this->unit());
-
-                    if ((float) $this->input('radius') > $max) {
-                        $validator->errors()->add('radius', 'The radius may not be more than '.floor($max).' '.$this->unit().'.');
-                    }
-                }
+                $this->checkRadius($validator);
 
                 if ($this->boolean('followed') && $this->user() === null) {
                     $validator->errors()->add('followed', 'Sign in to see the artists you follow.');
@@ -111,16 +95,7 @@ class MapArtistsRequest extends FormRequest
 
     public function filters(): MapFilters
     {
-        $bounds = null;
-
-        if ($this->filled('south')) {
-            $bounds = Geo::snapBounds([
-                'south' => (float) $this->input('south'),
-                'west' => (float) $this->input('west'),
-                'north' => (float) $this->input('north'),
-                'east' => (float) $this->input('east'),
-            ]);
-        }
+        $bounds = $this->snappedBounds();
 
         $genres = $this->input('genres', []);
         $types = $this->input('types', []);
@@ -130,7 +105,7 @@ class MapArtistsRequest extends FormRequest
         return new MapFilters(
             bounds: $bounds,
             origin: $this->origin($bounds),
-            radiusKm: $this->filled('radius') ? Geo::toKm((float) $this->input('radius'), $this->unit()) : null,
+            radiusKm: $this->radiusKm(),
             unit: $this->unit(),
             genreIds: GenreCatalog::idsForSlugs($genres),
             types: $types,
@@ -144,34 +119,5 @@ class MapArtistsRequest extends FormRequest
             // cache; that is nearly nobody.
             hiddenFor: $this->user()?->hasBlocks() ? $this->user()->id : null,
         );
-    }
-
-    public function unit(): string
-    {
-        return $this->input('unit')
-            ?? $this->user()?->distance_unit
-            ?? config('riff.distance.default_unit');
-    }
-
-    /**
-     * Where distances are measured from: the explicit point, else the
-     * viewport center, else the viewer's own area, else the default.
-     *
-     * Rounded to three decimals (~100 m). Riff only knows towns, so more
-     * precision means nothing; it would also leak a browser's exact
-     * geolocation into logs and make every request a distinct cache key.
-     *
-     * @param  array{south: float, west: float, north: float, east: float}|null  $bounds
-     */
-    private function origin(?array $bounds): MapPoint
-    {
-        [$lat, $lng] = match (true) {
-            $this->filled('lat') => [(float) $this->input('lat'), (float) $this->input('lng')],
-            $bounds !== null => [($bounds['south'] + $bounds['north']) / 2, ($bounds['west'] + $bounds['east']) / 2],
-            $this->user()?->lat !== null => [$this->user()->lat, $this->user()->lng],
-            default => [config('riff.map.default_center.lat'), config('riff.map.default_center.lng')],
-        };
-
-        return new MapPoint(round($lat, 3), round($lng, 3));
     }
 }

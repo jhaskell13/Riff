@@ -117,4 +117,23 @@ final class Geo
 
         return ($result['south'] > $result['north'] || $result['west'] > $result['east']) ? null : $result;
     }
+
+    /**
+     * The rectangle a map query is confined to: the viewport, the radius's
+     * bounding box, or their overlap. Null means unconfined; false means
+     * the two do not overlap (the query describes nowhere).
+     *
+     * @param  array{south: float, west: float, north: float, east: float}|null  $bounds
+     * @return array{south: float, west: float, north: float, east: float}|null|false
+     */
+    public static function confine(?array $bounds, float $originLat, float $originLng, ?float $radiusKm): array|null|false
+    {
+        $radiusBox = $radiusKm !== null ? self::boundingBox($originLat, $originLng, $radiusKm) : null;
+
+        return match (true) {
+            $bounds !== null && $radiusBox !== null => self::intersect($bounds, $radiusBox) ?? false,
+            $bounds !== null => $bounds,
+            default => $radiusBox,
+        };
+    }
 }

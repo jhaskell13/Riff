@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Contracts\Geocodable;
+use App\Contracts\HasPublicSlug;
+use App\Models\Concerns\HasHistoricalSlugs;
 use App\Observers\GeocodableObserver;
 use App\Services\MusicLink;
 use App\Support\MapCache;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * @property int $id
  * @property string $name
+ * @property string|null $slug
  * @property string $artist_type
  * @property string $hometown
  * @property string $stateOrProvince
@@ -36,9 +40,9 @@ use Illuminate\Support\Facades\Storage;
  * @property-read string $address
  */
 #[ObservedBy([GeocodableObserver::class])]
-class Artist extends Model implements Geocodable
+class Artist extends Model implements Geocodable, HasPublicSlug
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasHistoricalSlugs, SoftDeletes;
 
     /**
      * image_path and music_provider are deliberately absent: the first is
@@ -89,6 +93,31 @@ class Artist extends Model implements Geocodable
         foreach (['saved', 'deleted', 'restored'] as $event) {
             static::$event(fn () => MapCache::bump());
         }
+    }
+
+    /**
+     * Shows this artist's members listed. Shows it merely plays are
+     * Show::featuring($artist).
+     *
+     * @return HasMany<Show, $this>
+     */
+    public function hostedShows(): HasMany
+    {
+        return $this->hasMany(Show::class, 'host_artist_id');
+    }
+
+    /** @return HasMany<ArtistSlug, $this> */
+    public function slugHistory(): HasMany
+    {
+        return $this->hasMany(ArtistSlug::class);
+    }
+
+    /**
+     * "1994" the band becomes 1994-band.
+     */
+    public function slugFallback(): string
+    {
+        return $this->artist_type ?: 'artist';
     }
 
     /**

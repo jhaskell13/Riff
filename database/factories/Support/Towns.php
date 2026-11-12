@@ -45,6 +45,11 @@ class Towns
         ['Hamden', 'CT', 41.3959, -72.8968],
         ['Milford', 'CT', 41.2223, -73.0565],
         ['Glastonbury', 'CT', 41.7123, -72.6082],
+        ['Trumbull', 'CT', 41.2428, -73.2007],
+        ['Fairfield', 'CT', 41.1408, -73.2613],
+        ['Newtown', 'CT', 41.4145, -73.3037],
+        ['Chester', 'CT', 41.4026, -72.4512],
+        ['Collinsville', 'CT', 41.8126, -72.9205],
         ['Putnam', 'CT', 41.9151, -71.9093],
 
         // Massachusetts

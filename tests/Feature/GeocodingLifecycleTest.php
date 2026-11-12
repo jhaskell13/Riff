@@ -35,7 +35,9 @@ class GeocodingLifecycleTest extends TestCase
 
     public function test_changing_an_artists_hometown_requeues_geocoding(): void
     {
-        $artist = Artist::factory()->create();
+        // Pinned: the factory picks a random town, and if it picked the
+        // destination the update would change nothing.
+        $artist = Artist::factory()->create(['hometown' => 'Hartford']);
 
         Queue::fake();
         $artist->update(['hometown' => 'New Haven']);
@@ -45,7 +47,7 @@ class GeocodingLifecycleTest extends TestCase
 
     public function test_an_address_change_immediately_invalidates_stale_coordinates(): void
     {
-        $artist = Artist::factory()->create(['lat' => 41.5, 'lng' => -72.5]);
+        $artist = Artist::factory()->create(['hometown' => 'Hartford', 'lat' => 41.5, 'lng' => -72.5]);
 
         Queue::fake();
         $artist->update(['hometown' => 'New Haven']);
@@ -90,7 +92,10 @@ class GeocodingLifecycleTest extends TestCase
 
     public function test_changing_a_users_city_requeues_geocoding(): void
     {
-        $user = User::factory()->create();
+        // Pinned: Providence is one of the factory's random towns, so an
+        // unpinned user was already there about 1 run in 56 (it surfaced on
+        // the MySQL leg, but it is not driver-specific).
+        $user = User::factory()->create(['city' => 'Hartford']);
 
         Queue::fake();
         $user->update(['city' => 'Providence']);

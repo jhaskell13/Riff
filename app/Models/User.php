@@ -148,6 +148,28 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /**
+     * Venues this user added. Create through this relation so the
+     * submitter can't be mass-assigned.
+     *
+     * @return HasMany<Venue, $this>
+     */
+    public function submittedVenues(): HasMany
+    {
+        return $this->hasMany(Venue::class, 'submitted_by');
+    }
+
+    /**
+     * "Looking for" posts this user made. Create through this relation so
+     * the poster can't be mass-assigned.
+     *
+     * @return HasMany<Listing, $this>
+     */
+    public function listings(): HasMany
+    {
+        return $this->hasMany(Listing::class);
+    }
+
+    /**
      * Guess a distance unit from a stated country. Nearly everywhere uses
      * kilometres, so the imperial list is the exception table.
      */

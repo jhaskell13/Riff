@@ -8,6 +8,7 @@ use App\Models\User;
 use Database\Factories\Support\Towns;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 /**
  * The development dataset. Order matters: the moderator exists before
@@ -38,6 +39,9 @@ class DatabaseSeeder extends Seeder
         // Greater Hartford: the pilot area, dense enough to demonstrate.
         $this->call(PilotSeeder::class);
 
+        // Venues and a month of shows on the pilot's acts, for the scene map.
+        $this->call(SceneSeeder::class);
+
         // The wider region, so panning away from the pilot still shows a
         // populated map. A slice carries a real playable link.
         $scattered = Artist::factory()->count(45)->create()
@@ -56,5 +60,8 @@ class DatabaseSeeder extends Seeder
             ->count(25)
             ->recycle($users)
             ->create();
+
+        // Scene pages for the scattered artists' towns too.
+        Artisan::call('riff:sync-places');
     }
 }

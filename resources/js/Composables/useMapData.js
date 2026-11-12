@@ -1,14 +1,16 @@
 import { ref, shallowRef } from 'vue';
 
 /**
- * Talks to the map API.
+ * Talks to one map endpoint (artists, shows, venues or listings — each kind has its
+ * own, with its own query shape and cache).
+
  *
  * Panning fires constantly, so every fetch is debounced and the previous
  * one is aborted: only the newest viewport is ever in flight, and a slow
  * earlier response can never overwrite a newer one. An aborted request is
  * not an error and must not flip the UI into its error state.
  */
-export function useMapArtists() {
+export function useMapFeed(routeName) {
     const markers = shallowRef([]);
     const clusters = shallowRef(null);
     const meta = ref(null);
@@ -29,7 +31,7 @@ export function useMapArtists() {
         loading.value = true;
 
         try {
-            const response = await fetch(`${route('map.artists')}?${new URLSearchParams(params)}`, {
+            const response = await fetch(`${route(routeName)}?${new URLSearchParams(params)}`, {
                 headers: { Accept: 'application/json' },
                 signal: controller.signal,
             });
@@ -77,8 +79,23 @@ export function useMapArtists() {
         controller?.abort();
     };
 
-    return { markers, clusters, meta, loading, failed, pristine, fetchArtists, retry, cancel };
+    /**
+     * Turn a kind off: drop its pins and settle its state, so a hidden
+     * kind never reads as loading or failed.
+     */
+    const clear = () => {
+        cancel();
+        markers.value = [];
+        clusters.value = null;
+        meta.value = null;
+        loading.value = false;
+        failed.value = false;
+    };
+
+    return { markers, clusters, meta, loading, failed, pristine, fetch: fetchArtists, fetchArtists, retry, cancel, clear };
 }
+
+export const useMapArtists = () => useMapFeed('map.artists');
 
 /**
  * The expanded card for one artist. Cards are cached for the session: a

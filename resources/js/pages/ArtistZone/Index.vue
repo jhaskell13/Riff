@@ -2,6 +2,7 @@
 import { useForm, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ShowList from '@/Components/ShowList.vue';
 
 const props = defineProps({
     artists: {
@@ -12,10 +13,49 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Venues this user added; they edit them until a venue is claimed
+    // (Phase 4).
+    // Pending lineup slots on other artists' bills, for one of this
+    // user's artists to confirm or decline.
+    showInvites: {
+        type: Array,
+        default: () => [],
+    },
+    // Upcoming shows this user's artists host.
+    hostedShows: {
+        type: Array,
+        default: () => [],
+    },
+    venues: {
+        type: Array,
+        default: () => [],
+    },
+    // Listings this user manages, open or ended (closed ones drop off).
+    listings: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const renewListing = (listing) => router.post(route('listings.renew', listing.id), {}, { preserveScroll: true });
+const closeListing = (listing) => {
+    if (confirm(`Close "${listing.title}"? It comes off the map and scene pages.`)) {
+        router.post(route('listings.close', listing.id), {}, { preserveScroll: true });
+    }
+};
 
 // Artists carry a genre list now rather than a single string.
 const genreNames = (artist) => (artist.genres ?? []).map((genre) => genre.name).join(', ');
+
+const answering = ref(null);
+
+const answer = (invite, decision) => {
+    answering.value = invite.id;
+    router.post(route(`lineup.${decision}`, invite.id), {}, {
+        preserveScroll: true,
+        onFinish: () => (answering.value = null),
+    });
+};
 
 const restore = (artist) => {
     if (confirm(`Restore ${artist.name}? The identity becomes visible on Riff again.`)) {
@@ -88,9 +128,18 @@ const archive = (artist) => {
                                         color="primary"
                                         icon="visibility"
                                         size="xs"
-                                        @click="router.visit(route('artists.show', artist.id))"
+                                        @click="router.visit(route('artists.show', artist.slug))"
                                     >
                                         <q-tooltip>View profile</q-tooltip>
+                                    </q-btn>
+                                    <q-btn
+                                        round
+                                        color="primary"
+                                        icon="event"
+                                        size="xs"
+                                        @click="router.visit(route('shows.create', { artist: artist.id }))"
+                                    >
+                                        <q-tooltip>List a show</q-tooltip>
                                     </q-btn>
                                     <q-btn
                                         round
@@ -128,6 +177,136 @@ const archive = (artist) => {
                                 @click="router.visit(route('artists.create'))"
                             />
                         </q-card-section>
+                    </q-card>
+
+                    <q-card v-if="artists.length > 0" class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="text-subtitle1 text-weight-medium text-grey-3">Shows</div>
+                            <q-btn
+                                unelevated
+                                rounded
+                                color="primary"
+                                icon="add"
+                                label="List a show"
+                                padding="xs lg"
+                                class="ml-auto"
+                                @click="router.visit(route('shows.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="showInvites.length">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div class="text-subtitle2 text-weight-medium text-orange-4 q-mb-xs">Waiting for you to confirm</div>
+                                <p class="text-caption text-grey-6 m-0 q-mb-sm">
+                                    You're named on these bills. You appear on a show only once you confirm.
+                                </p>
+                                <div v-for="invite in showInvites" :key="invite.id" class="q-mb-md">
+                                    <div class="text-caption text-grey-5 q-mb-xs">
+                                        {{ invite.hostName }} added <strong>{{ invite.artistName }}</strong>
+                                    </div>
+                                    <ShowList :shows="[invite.show]" />
+                                    <div class="row justify-end gap-2 q-mt-xs">
+                                        <q-btn flat rounded dense no-caps color="grey-5" label="Decline" :loading="answering === invite.id" @click="answer(invite, 'decline')" />
+                                        <q-btn unelevated rounded dense no-caps color="primary" label="Confirm" padding="xs md" :loading="answering === invite.id" @click="answer(invite, 'confirm')" />
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
+                        <q-separator color="grey-9" />
+                        <q-card-section>
+                            <div class="text-subtitle2 text-weight-medium text-grey-4 q-mb-sm">Your upcoming shows</div>
+                            <ShowList :shows="hostedShows" empty="No shows listed yet." />
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="leading-tight">
+                                <div class="text-subtitle1 text-weight-medium text-grey-3">Looking for</div>
+                                <p class="text-caption text-grey-6 m-0">
+                                    Members, a band, gigs, a room. Listings run 30 days; replies come to your email.
+                                </p>
+                            </div>
+                            <q-btn
+                                unelevated rounded color="deep-purple-5" icon="add" label="Post a listing"
+                                padding="xs lg" class="ml-auto"
+                                @click="router.visit(route('listings.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="listings.length">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div v-for="listing in listings" :key="listing.id" class="flex items-center mt-4 first:mt-0">
+                                    <q-avatar size="36px" color="deep-purple-5" text-color="white">
+                                        <q-icon :name="listing.icon" size="20px" />
+                                    </q-avatar>
+                                    <div class="col q-ml-md">
+                                        <div class="text-subtitle2 text-grey-2">{{ listing.title }}</div>
+                                        <div class="text-caption" :class="listing.isActive ? 'text-grey-6' : 'text-orange-4'">
+                                            {{ listing.typeLabel }}<template v-if="listing.postedAs"> · as {{ listing.postedAs }}</template> · {{ listing.expiresLabel }}
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <q-btn round color="primary" icon="visibility" size="xs" @click="router.visit(listing.url)">
+                                            <q-tooltip>View</q-tooltip>
+                                        </q-btn>
+                                        <q-btn v-if="listing.canRenew" round color="deep-purple-5" icon="update" size="xs" @click="renewListing(listing)">
+                                            <q-tooltip>Renew for 30 days</q-tooltip>
+                                        </q-btn>
+                                        <q-btn round color="grey-8" icon="check" size="xs" @click="closeListing(listing)">
+                                            <q-tooltip>Found someone — close it</q-tooltip>
+                                        </q-btn>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
+                    </q-card>
+
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section class="row flex-nowrap! items-center gap-3">
+                            <div class="leading-tight">
+                                <div class="text-subtitle1 text-weight-medium text-grey-3">Venues you added</div>
+                                <p class="text-caption text-grey-6 m-0">
+                                    Places that host music regularly. One-off shows don't need one.
+                                </p>
+                            </div>
+                            <q-btn
+                                unelevated
+                                rounded
+                                color="primary"
+                                icon="add"
+                                label="Add a venue"
+                                padding="xs lg"
+                                class="ml-auto"
+                                @click="router.visit(route('venues.create'))"
+                            />
+                        </q-card-section>
+                        <template v-if="venues.length > 0">
+                            <q-separator color="grey-9" />
+                            <q-card-section>
+                                <div
+                                    v-for="venue in venues"
+                                    :key="venue.id"
+                                    class="flex items-center mt-4 first:mt-0"
+                                >
+                                    <q-avatar size="36px" color="grey-9" text-color="grey-5">
+                                        <q-icon name="storefront" size="20px" />
+                                    </q-avatar>
+                                    <div class="col q-ml-md">
+                                        <div class="text-subtitle2 text-grey-2">{{ venue.name }}</div>
+                                        <div class="text-caption text-grey-6">{{ venue.kindLabel }} • {{ venue.area }}</div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <q-btn round color="primary" icon="visibility" size="xs" @click="router.visit(route('venues.show', venue.slug))">
+                                            <q-tooltip>View venue</q-tooltip>
+                                        </q-btn>
+                                        <q-btn round color="primary" icon="edit" size="xs" @click="router.visit(route('venues.edit', venue.id))">
+                                            <q-tooltip>Edit</q-tooltip>
+                                        </q-btn>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </template>
                     </q-card>
 
                     <q-card v-if="archivedArtists.length > 0" class="post-card q-pb-md q-mb-xl">

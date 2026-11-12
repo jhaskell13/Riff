@@ -8,7 +8,15 @@ import { computed, reactive, watch } from 'vue';
  * added an entry per movement would make the back button useless.
  */
 
+// The scene map shows every kind at once; hiding one is a filter, not a
+// mode, so a first visit sees artists, shows and venues together.
+export const ALL_KINDS = ['artists', 'shows', 'venues', 'listings'];
+export const DEFAULT_WHEN = 'month';
+const WINDOWS = ['tonight', 'weekend', 'week', 'month'];
+
 export const DEFAULT_FILTERS = {
+    kinds: ALL_KINDS,
+    when: DEFAULT_WHEN,
     q: '',
     genres: [],
     types: [],
@@ -28,8 +36,14 @@ export function useMapFilters() {
     const onClient = typeof window !== 'undefined';
     const params = new URLSearchParams(onClient ? window.location.search : '');
 
+    const kindsParam = asList(params.get('kinds')).filter((kind) => ALL_KINDS.includes(kind));
+
     const filters = reactive({
         ...DEFAULT_FILTERS,
+        // Kept in ALL_KINDS order so the URL and comparisons are stable.
+        kinds: kindsParam.length ? ALL_KINDS.filter((kind) => kindsParam.includes(kind)) : [...ALL_KINDS],
+        // Whitelisted like kinds: a bad value would 422 every scene feed.
+        when: WINDOWS.includes(params.get('when')) ? params.get('when') : DEFAULT_WHEN,
         q: params.get('q') ?? '',
         genres: asList(params.get('genres')),
         types: asList(params.get('types')),
@@ -49,8 +63,13 @@ export function useMapFilters() {
         }
         : null;
 
+    const kindsNarrowed = computed(() => filters.kinds.length < ALL_KINDS.length);
+    const includesKind = (kind) => filters.kinds.includes(kind);
+
     const activeCount = computed(() =>
-        (filters.q ? 1 : 0)
+        (kindsNarrowed.value ? 1 : 0)
+        + (filters.when !== DEFAULT_WHEN ? 1 : 0)
+        + (filters.q ? 1 : 0)
         + filters.genres.length
         + filters.types.length
         + (filters.radius ? 1 : 0)
@@ -61,7 +80,26 @@ export function useMapFilters() {
 
     const isFiltered = computed(() => activeCount.value > 0);
 
-    const reset = () => Object.assign(filters, { ...DEFAULT_FILTERS, genres: [], types: [] });
+    const reset = () => Object.assign(filters, { ...DEFAULT_FILTERS, kinds: [...ALL_KINDS], genres: [], types: [] });
+
+    /**
+     * Parameters for /map/shows and /map/venues: genres carry over (a punk
+     * filter means punk bills and the rooms hosting them); the artist-only
+     * filters don't. The timezone makes "this weekend" the viewer's own.
+     */
+    const toSceneQuery = () => {
+        const query = { when: filters.when };
+
+        if (filters.genres.length) query.genres = filters.genres.join(',');
+
+        try {
+            query.tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+            // The server falls back to the pilot's timezone.
+        }
+
+        return query;
+    };
 
     /**
      * Only the parameters the API cares about, omitting anything left at
@@ -82,13 +120,23 @@ export function useMapFilters() {
         return query;
     };
 
+    /** What the URL carries: the artist query plus the scene's own state. */
+    const toUrlQuery = () => {
+        const query = toQuery();
+
+        if (kindsNarrowed.value) query.kinds = filters.kinds.join(',');
+        if (filters.when !== DEFAULT_WHEN) query.when = filters.when;
+
+        return query;
+    };
+
     // The last viewport written to the URL, so a filter change rewrites
     // the query without discarding where the listener is looking.
     let lastView = initialView;
 
     const syncUrl = (view) => {
         lastView = view ?? lastView;
-        const next = new URLSearchParams(toQuery());
+        const next = new URLSearchParams(toUrlQuery());
 
         if (lastView) {
             next.set('lat', lastView.lat.toFixed(4));
@@ -106,5 +154,5 @@ export function useMapFilters() {
 
     watch(filters, () => syncUrl(), { deep: true });
 
-    return { filters, initialView, activeCount, isFiltered, reset, toQuery, syncUrl };
+    return { filters, initialView, activeCount, isFiltered, reset, toQuery, toSceneQuery, syncUrl, includesKind };
 }

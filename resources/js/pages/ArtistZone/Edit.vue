@@ -98,7 +98,7 @@ const archive = () => {
                         </q-card-section>
 
                         <q-card-actions align="right" class="q-px-md">
-                            <Link :href="route('artists.show', artist.id)" class="text-caption text-grey-6 q-mr-md">
+                            <Link :href="route('artists.show', artist.slug)" class="text-caption text-grey-6 q-mr-md">
                                 Cancel
                             </Link>
                             <q-btn
