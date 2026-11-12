@@ -1,6 +1,6 @@
 # Phase 2 implementation plan — put the whole scene on the map
 
-Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–4 are built.**
+Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–5 are built.**
 
 This turns Phase 2 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. Each step ships on its own, keeps CI green on all three database drivers, and leaves the app better even if we pause after it. Order matters: venues before shows (shows reference venues), shows before map layers (a layer needs data), layers before scenes (a scene is a composed view of the layers), and listings last among the features because they reuse the area/genre machinery everything else establishes.
 
@@ -77,16 +77,29 @@ No switchable layers (revised on review): artists, shows, and venues render **to
 
 **Done when:** opening the map shows artists, this week's shows, and venues together; narrowing to "shows this weekend" is two filter taps whose URL is shareable; and the private DIY space renders at its town, never its door. ✅ (pending a visual pass in a browser)
 
-## Step 5 — Scene views
+## Step 5 — Scene views — ✅ BUILT (November 2026)
 
-- Genre **families** in `config/riff.php`: `families` mapping a family slug to curated genre names (`punk` ⊃ Punk, Hardcore, Emo, Ska…), reconciled onto genre ids via `GenreCatalog`. A genre may sit in more than one family.
-- **Places:** a small `places` table (`name`, `slug` like `hartford-ct`, `lat`/`lng`, `radius_km` default from config) seeded from distinct artist hometowns' stored coordinates (a `riff:sync-places` idempotent command, run by the seeder and schedulable). No request-path geocoding; a place with no coordinates simply has no scene page yet. This also upgrades `GET /map/places` to read the table instead of aggregating per request.
-- `GET /scenes/{place:slug}/{family}` (public, `map` limiter, cacheable for guests under the layer cache versions): one page composing that area + genre set — artists (nearest first), upcoming shows, venues hosting them, and (after Step 6) active listings. Radius-based, not town-boundary-based. An all-genres variant `GET /scenes/{place:slug}` lists the families that have artists there.
-- The page is server-rendered Inertia (not the Leaflet map) with a small static map strip linking into the full map pre-filtered (`/map?view=shows&genres=punk&…` — the URL-state work from Step 4 makes this free).
-- Share meta so a scene link unfurls as "Hartford punk on Riff — 12 artists, 3 shows this month".
-- Tests: family resolution, radius composition, cache behaviour, empty-scene state (invites artists, like the empty map).
+*Also in this round, from Step 4 review:* the map's side list is now **tabbed by kind** (Shows / Artists / Venues, each with its count, only for kinds switched on). It opens on the first kind with anything in it, stays on whatever tab the listener picks, switches to the right tab when a pin is picked on the map, and supports the arrow keys (ARIA tabs pattern).
 
-**Done when:** `/scenes/hartford-ct/punk` is a link someone can text a friend, and it answers "who plays, what's on, where" without sign-in.
+**What was built**
+- **`GET /scenes/{place}/{family?}`** (public, `map` limiter): `/scenes/hartford-ct` shows everything, `/scenes/hartford-ct/punk` one genre family. The page has three parts: *Coming up* (the next 30 days, soonest first), *Where it happens* (venues), and *Who plays* (artists, nearest first, "the 24 nearest of 46" when capped). It covers a **radius** of the town's centre (`riff.scenes.radius_km`, 40 km ≈ 25 mi; per-place override column), not the town line. Family chips link between the scenes in a town, with counts; an artist in two genres of one family counts once. There's an empty state that invites artists in, "See it on the map" (pre-filtered to the family's genres), and OpenGraph meta ("6 artists, 2 shows this month, 2 venues around Hartford, CT").
+- **Composed from the map's own searches** (`App\Services\SceneView` → `ArtistMapSearch` and `SceneMapSearch` with a radius and no viewport), so "punk", "blocked", "upcoming" and "dormant" mean exactly what they mean on the map. The whole page payload is cached under `MapCache::version()`, except for a viewer who blocks someone, as on the map.
+- **Genre families** (`config('riff.scenes.families')`, `App\Support\SceneFamilies`): ten families named by curated genre *names*. A genre may sit in two (Ska is in Punk and in Latin, reggae & global). A test fails if any curated genre isn't in a family. Unknown families 404 at the router.
+- **Places** (`places` table, `App\Models\Place`): a town with a scene page. The slug is deterministic (`Place::slugFor(city, region)` → `hartford-ct`), so anything that knows a town can link to it. Rows come from stored *town-level* coordinates only (artists, private venues, one-off shows; a public venue's street point is skipped) — never geocoded. They're written by `riff:sync-places` (idempotent, daily via the scheduler, and run by the seeders) and by `GeocodeAddress` the moment an artist in a new town is placed. Rows are never deleted, so a scene link never breaks; it just goes empty.
+- **Ways in:** artist pages ("The local scene: Hartford punk · Everything in Hartford", one link per family the artist's genres fall in), venue pages ("Everything in Hartford"), and the map's town suggestions ("See the Hartford scene"). Each appears only when the town has a scene page.
+
+**Deviations from the original plan**
+- No static map strip on the page; a "See it on the map" button opens the real map, already filtered. This avoids loading a second Leaflet instance for a picture.
+- `GET /map/places` still aggregates artists (cached) rather than reading the table; it now just adds each town's `sceneUrl`. Switching it over buys nothing until places come from sources the map's search doesn't cover.
+- A scene page's "coming up" is always the next 30 days in the pilot's timezone (the page has no viewer timezone); the map's window control is where to narrow it.
+
+**Not yet**
+- Listings on scene pages (Step 6 adds them here).
+- A directory of scenes. Deliberately left out — Riff starts from a place, not an index.
+- Scenes have no curators or pages of their own; per the roadmap, they only become stored entities if pilots show the need.
+- The family chips' counting reads the radius's bounding box and applies the circle in PHP. That's fine at town scale; it would want SQL aggregation if a single scene grew to thousands of artists.
+
+**Done when:** `/scenes/hartford-ct/punk` is a link someone can text a friend, and it answers "who plays, what's on, where" without sign-in. ✅ (in the seeded data: 6 punk artists, both punk bills, and the two rooms hosting them)
 
 ## Step 6 — Listings ("looking for")
 
@@ -127,4 +140,4 @@ No switchable layers (revised on review): artists, shows, and venues render **to
 
 ## Suggested checkpoints
 
-Steps 1–4 are built; Step 5 (scene views) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.
+Steps 1–5 are built; Step 6 (listings) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.

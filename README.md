@@ -109,7 +109,7 @@ Never commit real credentials. Keep secret values in your local or deployment en
 - `app/Services`, `app/Contracts`, `app/DTO` — geocoding, map search, music-link parsing, photo processing, the pluggable event-provider contract, and shared value objects.
 - `app/Support` — small enums and helpers shared across layers (onboarding intent, moderation actions, map cache, geo maths).
 - `app/Jobs` and `app/Observers` — queued geocoding triggered by address changes.
-- `app/Console/Commands` — `riff:geocode-missing`, `riff:moderator`, and `riff:seed-pilot`.
+- `app/Console/Commands` — `riff:geocode-missing`, `riff:moderator`, `riff:seed-pilot`, and `riff:sync-places` (scene pages for every town with artists; scheduled daily, so production needs `php artisan schedule:run` in cron).
 - `config/riff.php` — map defaults and tuning, artist types, the curated genre vocabulary, media limits, distance units, and moderation settings.
 - `database/migrations` — database schema.
 - `database/seeders` — the pilot scene and the wider development dataset.
