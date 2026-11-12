@@ -19,7 +19,7 @@ Phases 0–1 built the first step (finding local artists on a map). Everything p
 3. **The artist page is the fans' home.** Fan interaction happens on the artist's own page, where the artist speaks as the artist and can moderate their own space, not in a shared public square.
 4. **Support reaches the artist.** Riff points money to where artists already get paid (Bandcamp, their own store, the door) before it ever handles money itself, and it doesn't take a cut of the music.
 5. **Underground-safe.** Public locations are approximate and chosen by the artist. DIY spaces and one-off house or backyard shows are placed at their town, and Riff never stores their street address at all. All-ages status is first-class information, and a listener's location is never public.
-6. **Dense and real beats broad and invented.** One scene that really works is worth more than thin coverage of a region. Seeded data stays fictional; real profiles come only from people who asked to be listed.
+6. **Dense and real beats broad and invented.** One scene that really works is worth more than thin coverage of a region. Demo seed data is researched from the real Connecticut scene so the pilot pitch looks true to life (owner decision, November 2026) — but it exists for local demos only, it never reaches a public database, nothing is ever *attributed* to a real act or venue that didn't do it (see the dataset's consent rules), and profiles on the live site come only from people who asked to be listed.
 
 ### Vocabulary
 
@@ -37,7 +37,7 @@ Phases 0–1 built the first step (finding local artists on a map). Everything p
 - Onboarding that splits a first-time guest into listener and artist paths and carries the choice through registration and email verification.
 - Safety: reporting from every surface, per-listener blocking, and a moderator queue whose actions can all be undone and are all logged.
 - Geocoding is queued and runs once per address change. Failures leave a record off the map rather than placing it at a fake location.
-- A seeded, entirely fictional Greater Hartford pilot scene (`riff:seed-pilot`). Real artists have not been recruited yet.
+- A seeded Greater Hartford pilot scene (`riff:seed-pilot`) built from a researched dataset of real Connecticut acts and venues plus fictional entries for the invented states (`database/seeders/data/pilot-scene.json`; demo only). Real artists have not been *recruited* yet — the dataset is also the pilot's shortlist of who to ask.
 
 ### Where the current build diverges from the new direction
 
@@ -77,7 +77,7 @@ Build in this order. Each step is useful by itself.
 5. **Scene views** — ✅ built. A scene is a named place plus a genre family, at a URL anyone can share (for example `/scenes/hartford-ct/punk`). It resolves to that area's artists, upcoming shows, and venues in one view (listings join it in step 6), linked from artist and venue pages and from the map's town search. It uses a radius around the place's centre rather than strict town boundaries, because scenes cross town lines. Genre families (Punk ⊃ Hardcore, Emo, Ska-punk, …) are curated in `config/riff.php` alongside the genre vocabulary.
 6. **Listings ("looking for")** — ✅ built. Structured, opt-in posts: members wanted (by instrument), band wanted (a musician looking to join), opener or bill wanted, practice space. Each has an area, genres, and an **expiry** so the board doesn't fill up with stale posts. Responding sends a relayed message: Riff emails the poster with the reply and whatever contact details the responder chose to share. That avoids building a messaging system for now and exposes no addresses. (**Noted for later:** an in-app messaging system is wanted eventually; when it exists, listing replies move onto it. Email relay is the Phase 2 answer, not the end state.) Listings show up in scene views, on artist pages, and as a fourth kind on the map; replies can't yet be reported or blocked, which in-app messaging should fix.
 7. **Events data sources.** Keep the `EventProvider` contract for local-first sources (venue calendars, promoter feeds). Ticketmaster stays only where it adds local coverage. It is cached, labelled, and degrades quietly.
-8. **Pilot data.** Extend `PilotSeeder` with invented venues (including a private DIY space), a backyard show with a one-off location, shows over the coming weeks with shared bills, and a few listings. Everything stays fictional, as now.
+8. **Pilot data** — ✅ built. The pilot seeds from a researched dataset of real Connecticut acts and venues (demo only, never production), plus the fictional entries that carry every invented state — reports, posts, listings, pending slots, a cancellation, hidden/archived profiles, the private DIY space and a one-off backyard show. Places sync on seed, so `/scenes/hartford-ct/punk` works out of the box.
 
 **Done when:** A guest opens a scene link (or the map in their town), sees that week's shows and the venues hosting them, opens a band's public page from a lineup, and finds a "drummer wanted" listing, all without signing in. Signing in lets them mark a show, follow, or reply to a listing.
 

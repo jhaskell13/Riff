@@ -1,6 +1,6 @@
 # Phase 2 implementation plan — put the whole scene on the map
 
-Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–6 are built.**
+Status: **approved** (November 11, 2026), with revisions from review: slugs follow renames (old links redirect) rather than being frozen, and the map is one unified scene view rather than switchable layers; venues are recurring places and one-off locations belong to shows. **Steps 1–7 are built.**
 
 This turns Phase 2 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. Each step ships on its own, keeps CI green on all three database drivers, and leaves the app better even if we pause after it. Order matters: venues before shows (shows reference venues), shows before map layers (a layer needs data), layers before scenes (a scene is a composed view of the layers), and listings last among the features because they reuse the area/genre machinery everything else establishes.
 
@@ -133,12 +133,15 @@ From Step 5 review: scene pages feel hidden. Options, roughly in order of value 
 
 Recommended first: 1 and 2 together (small, and every map session passes through them), then 3. Measure scene-page visits that came from the map before doing 4–5.
 
-## Step 7 — Pilot seed data + docs
+## Step 7 — Pilot seed data + docs — ✅ BUILT (November 2026)
 
-- Extend `PilotSeeder` (idempotent, as now, and re-run by CI): ~6 invented venues including one private DIY space (no street stored), plus a backyard show with a one-off location to show the difference, ~10 shows across the next six weeks with shared bills (including one pending lineup confirmation and one imported-source show to demo the label), RSVPs from the seeded listeners, 3–4 listings (one near expiry), venue/show/listing entries in the report queue, and places synced so `/scenes/hartford-ct/punk` works out of the box.
-- Update README (setup + feature list), CLAUDE.md (new models, policies, map layers, cache keys, gotchas discovered along the way), and mark Phase 2 progress in ROADMAP.
+**Revised on review (owner decision): the pilot seeds from researched real-world data,** not pure invention — the demo should look like the actual Connecticut scene. `database/seeders/data/pilot-scene.json` is a checked-in snapshot (sources and research date in `_meta`): 13 real acts across the pilot's genres — Boundaries, The Lonesome While, Perennial, West End Blend and Joey Batts & Them in Hartford; Make Do and Mend, Anxious, Cheem, Ovlov, Hatebreed, The Meadows Brothers, Eggy, Residual Groove around the state — and 10 real venues at their public addresses (The Webster, Arch Street Tavern, Black-Eyed Sally's, Real Art Ways, Parkville Market, Infinity Hall, Cafe Nine, Space Ballroom, The Buttonwood Tree, Bridge Street Live). `PilotSeeder` and `SceneSeeder` read the file; both stay idempotent and CI's seed-twice check still passes.
 
-**Done when:** `php artisan migrate:fresh --seed` demos the entire Phase 2 loop, and CI's seed-twice check still passes on all three drivers.
+**The consent boundary** (the dataset's rules, enforced by `PilotDatasetTest`): real entries get factual third-person bios, generated placeholder art, and only links verified during research (link-out Bandcamp pages — never a playable embed that could put someone else's audio on their profile). Everything *attributed* to its subject stays on the fictional entries kept for exactly that purpose: the report queue (now including a venue and a listing report), artist-voice feed posts, all four listings, the pending lineup slot, the cancellation, the hidden and archived profiles, and placeholder music. The private DIY space is fictional on purpose — Riff must not out a real one — and the shows are plausible compositions dated relative to seeding, not real events. The seeders refuse production, and the README says why.
+
+**Left out, knowingly:** the imported-source show demo (waits for Step 8, which would make it real rather than staged); acts I couldn't place in a town from sources (skipped rather than guessed); real DIY spaces and thin-public-presence individuals (skipped on principle). The dataset doubles as the recruiting shortlist when the real pilot outreach starts.
+
+**Done when:** `php artisan migrate:fresh --seed` demos the entire Phase 2 loop, and CI's seed-twice check still passes on all three drivers. ✅
 
 ## Step 8 — Imported events (optional, last)
 
@@ -161,4 +164,4 @@ Recommended first: 1 and 2 together (small, and every map session passes through
 
 ## Suggested checkpoints
 
-Steps 1–6 are built; Step 7 (pilot data + docs) is next. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.
+Steps 1–7 are built; only Step 8 (imported events, optional) remains. Steps 4–5 land the "open Riff, see the scene" promise. Step 6 completes the feature set; 7 makes it demoable; 8 only if needed.

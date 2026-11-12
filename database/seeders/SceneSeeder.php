@@ -5,9 +5,12 @@ namespace Database\Seeders;
 use App\Models\Artist;
 use App\Models\Genre;
 use App\Models\LineupEntry;
+use App\Models\Listing;
+use App\Models\Report;
 use App\Models\Show;
 use App\Models\User;
 use App\Models\Venue;
+use App\Support\ReportStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\Support\Towns;
 use Database\Seeders\Support\PilotScene;
@@ -79,6 +82,7 @@ class SceneSeeder extends Seeder
 
         $this->rsvps();
         $this->listings($artist);
+        $this->reports($venues->get('The Old Foundry'));
 
         // Scene pages for every town that now has artists, venues or shows.
         Artisan::call('riff:sync-places');
@@ -225,6 +229,40 @@ class SceneSeeder extends Seeder
                 'expires_at' => now()->addDays((int) $spec['days']),
             ])->save();
             $listing->genres()->sync($genres->only($spec['genres'])->values()->all());
+        }
+    }
+
+    /**
+     * The moderation queue sees the new surfaces too: one report about a
+     * venue and one about a listing — fictional subjects only, like every
+     * seeded report (see the dataset's _meta).
+     */
+    private function reports(?Venue $venue): void
+    {
+        $reporter = User::query()->where('email', '!=', 'test@example.com')->whereDoesntHave('artists')->first();
+
+        if ($reporter === null) {
+            return;
+        }
+
+        if ($venue !== null) {
+            Report::factory()->about($venue)->create([
+                'reporter_id' => $reporter->id,
+                'reason' => 'other',
+                'details' => 'This place shut down over a year ago; the page should probably say so.',
+                'status' => ReportStatus::Open,
+            ]);
+        }
+
+        $listing = Listing::query()->whereNull('artist_id')->first();
+
+        if ($listing !== null) {
+            Report::factory()->about($listing)->create([
+                'reporter_id' => $reporter->id,
+                'reason' => 'spam',
+                'details' => 'Same post appears word-for-word in three other towns.',
+                'status' => ReportStatus::Open,
+            ]);
         }
     }
 
