@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 // Row elements, kept off the reactive graph: they are only ever read to
 // scroll the selected row into view.
@@ -43,18 +43,93 @@ const isEmpty = computed(() => !props.loading && !props.failed && !props.pristin
 // view; say so rather than letting the count look wrong.
 const sampled = computed(() => props.meta?.mode === 'clusters');
 
-const plural = (count, one, many) => `${count.toLocaleString()} ${count === 1 ? one : many}`;
+/* ---- Tabs: one kind at a time, so no section is buried under another --- */
 
-// One line for the whole scene: "3 shows · 12 artists · 2 venues".
-const summary = computed(() => {
-    const parts = [];
+const TAB_META = {
+    shows: { label: 'Shows', icon: 'event', color: 'text-riff-show' },
+    artists: { label: 'Artists', icon: 'groups', color: 'text-riff-primary' },
+    venues: { label: 'Venues', icon: 'storefront', color: 'text-riff-venue' },
+};
+// Shows first: "what's on" is the first question a scene answers.
+const TAB_ORDER = ['shows', 'artists', 'venues'];
 
-    if (has('shows')) parts.push(plural(showsHere.value.length, 'show', 'shows'));
-    if (has('artists') && props.meta) parts.push(plural(props.meta.total, 'artist', 'artists'));
-    if (has('venues')) parts.push(plural(venuesHere.value.length, 'venue', 'venues'));
+const compact = (n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : String(n));
 
-    return parts.join(' · ');
+const countFor = (kind) => ({
+    shows: showsHere.value.length,
+    // The artists' true total (clusters included), not just the rows sent.
+    artists: props.meta?.total ?? artistsHere.value.length,
+    venues: venuesHere.value.length,
+}[kind]);
+
+const tabs = computed(() => TAB_ORDER.filter(has).map((kind) => ({
+    kind,
+    ...TAB_META[kind],
+    count: countFor(kind),
+})));
+
+const tab = ref(null);
+// Until the listener picks a tab, follow the data to the first kind with
+// something in it; after that, stay where they put us.
+let picked = false;
+
+watch(tabs, (list) => {
+    const kinds = list.map((t) => t.kind);
+
+    if (tab.value && kinds.includes(tab.value) && picked) {
+        return;
+    }
+
+    if (!kinds.includes(tab.value)) {
+        picked = false;
+    }
+
+    if (!picked) {
+        tab.value = list.find((t) => t.count > 0)?.kind ?? kinds[0] ?? null;
+    }
+}, { immediate: true });
+
+const scroller = ref(null);
+
+const choose = (kind) => {
+    picked = true;
+
+    if (tab.value !== kind) {
+        tab.value = kind;
+        scroller.value?.scrollTo({ top: 0 });
+    }
+};
+
+// Arrow keys move along the tablist (the WAI-ARIA tabs pattern).
+const tabButtons = {};
+const onTabKey = (event, index) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+
+    if (!step) {
+        return;
+    }
+
+    event.preventDefault();
+    const next = tabs.value[(index + step + tabs.value.length) % tabs.value.length];
+    choose(next.kind);
+    tabButtons[next.kind]?.focus();
+};
+
+// A pick on the map shows its row: switch to that kind's tab.
+watch(() => props.selectedId, (id) => id && has('artists') && (tab.value = 'artists'));
+watch(() => props.selectedPlaceKey, (key) => {
+    const kind = key?.startsWith('show:') ? 'shows' : key?.startsWith('venue:') ? 'venues' : null;
+
+    if (kind && has(kind)) {
+        tab.value = kind;
+    }
 });
+
+const tabEmpty = computed(() => ({
+    shows: `No shows here ${props.windowLabel ? `in the ${props.windowLabel.toLowerCase()}` : 'yet'}.`,
+    artists: 'No artists on the map here.',
+    venues: 'No active venues here.',
+}[tab.value]));
 
 // In cluster mode the artist list is a nearest-first sample.
 const artistNote = computed(() => {
@@ -71,8 +146,11 @@ const artistNote = computed(() => {
 
 const placeKey = (place) => `${place.kind}:${place.id}`;
 
-// Keep the selected row visible when the selection came from the map.
-watch(() => props.selectedId, (id) => {
+// Keep the selected row visible when the selection came from the map
+// (after the tab switch above has rendered it).
+watch(() => props.selectedId, async (id) => {
+    await nextTick();
+
     if (id && rows[id]) {
         rows[id].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
@@ -81,16 +159,37 @@ watch(() => props.selectedId, (id) => {
 
 <template>
     <div class="flex h-full flex-col bg-riff-surface">
-        <!-- Summary -->
-        <div class="flex items-center gap-2 border-b border-riff-line py-2 pr-1 pl-4 text-xs text-riff-muted">
-            <q-spinner v-if="loading" size="14px" color="primary" />
-            <span aria-live="polite" class="min-w-0 flex-1">
-                {{ loading && pristine ? 'Finding the scene…' : summary }}
+        <!-- Tabs, one per kind switched on, each with its count -->
+        <div class="flex items-center gap-1 border-b border-riff-line py-1 pr-1 pl-2 text-xs text-riff-muted">
+            <span v-if="loading && pristine" class="flex min-w-0 flex-1 items-center gap-2 py-1 pl-2" aria-live="polite">
+                <q-spinner size="14px" color="primary" /> Finding the scene…
             </span>
+            <div v-else role="tablist" aria-label="What to list" class="flex min-w-0 flex-1 items-center gap-1">
+                <button
+                    v-for="(t, index) in tabs"
+                    :id="`list-tab-${t.kind}`"
+                    :key="t.kind"
+                    :ref="(el) => (tabButtons[t.kind] = el)"
+                    type="button"
+                    role="tab"
+                    class="list-tab"
+                    :class="{ 'list-tab--active': tab === t.kind }"
+                    :aria-selected="tab === t.kind"
+                    :aria-controls="`list-panel-${t.kind}`"
+                    :tabindex="tab === t.kind ? 0 : -1"
+                    @click="choose(t.kind)"
+                    @keydown="onTabKey($event, index)"
+                >
+                    <q-icon :name="t.icon" size="15px" :class="t.color" />
+                    <span>{{ t.label }}</span>
+                    <span class="list-tab__count">{{ compact(t.count) }}</span>
+                </button>
+                <q-spinner v-if="loading" size="14px" color="primary" class="ml-1" />
+            </div>
             <q-btn
                 flat dense round size="sm" color="grey-5"
                 class="collapse-btn"
-                aria-label="Hide the artist list"
+                aria-label="Hide the list"
                 @click="emit('collapse')"
             >
                 <q-icon class="collapse-btn__wide" name="chevron_left" size="20px" />
@@ -99,7 +198,7 @@ watch(() => props.selectedId, (id) => {
             </q-btn>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto">
             <!-- Loading skeletons, only before the first result -->
             <div v-if="loading && pristine" class="space-y-px" aria-hidden="true">
                 <div v-for="n in 6" :key="n" class="flex items-center gap-3 px-4 py-3">
@@ -147,13 +246,15 @@ watch(() => props.selectedId, (id) => {
                 </template>
             </div>
 
-            <!-- Results: the scene, soonest first -->
-            <div v-else>
-            <template v-if="showsHere.length">
-                <h3 class="section-head">
-                    <q-icon name="event" size="14px" class="text-riff-show" /> Shows
-                    <span v-if="windowLabel" class="font-normal normal-case">· {{ windowLabel }}</span>
-                </h3>
+            <!-- Results: one kind at a time -->
+            <div v-else :id="`list-panel-${tab}`" role="tabpanel" :aria-labelledby="`list-tab-${tab}`">
+            <p v-if="tab === 'shows' && windowLabel && showsHere.length" class="tab-note">{{ windowLabel }} · soonest first</p>
+            <p v-else-if="tab === 'artists' && artistNote" class="tab-note">{{ artistNote }}</p>
+            <p v-else-if="tab === 'venues' && venuesHere.length" class="tab-note">Places with music on — nearest first</p>
+
+            <div v-if="countFor(tab) === 0" class="p-6 text-center text-sm text-riff-muted">{{ tabEmpty }}</div>
+
+            <template v-if="tab === 'shows' && showsHere.length">
                 <ul class="divide-y divide-riff-line">
                     <li v-for="show in showsHere" :key="`show-${show.id}`">
                         <button
@@ -181,11 +282,7 @@ watch(() => props.selectedId, (id) => {
                 </ul>
             </template>
 
-            <h3 v-if="artistsHere.length" class="section-head">
-                <q-icon name="groups" size="14px" class="text-riff-primary" /> Artists
-                <span v-if="artistNote" class="font-normal normal-case">· {{ artistNote }}</span>
-            </h3>
-            <ul v-if="artistsHere.length" class="divide-y divide-riff-line">
+            <ul v-if="tab === 'artists' && artistsHere.length" class="divide-y divide-riff-line">
                 <li v-for="artist in artistsHere" :key="artist.id" :ref="(el) => (rows[artist.id] = el)">
                     <button
                         type="button"
@@ -230,10 +327,7 @@ watch(() => props.selectedId, (id) => {
                 </li>
             </ul>
 
-            <template v-if="venuesHere.length">
-                <h3 class="section-head">
-                    <q-icon name="storefront" size="14px" class="text-riff-venue" /> Venues
-                </h3>
+            <template v-if="tab === 'venues' && venuesHere.length">
                 <ul class="divide-y divide-riff-line">
                     <li v-for="venue in venuesHere" :key="`venue-${venue.id}`">
                         <button
@@ -265,21 +359,48 @@ watch(() => props.selectedId, (id) => {
 </template>
 
 <style scoped>
-.section-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    display: flex;
+.list-tab {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin: 0;
-    padding: 8px 16px 6px;
-    border-bottom: 1px solid var(--color-riff-line);
-    background: var(--color-riff-surface);
-    font-size: 11px;
+    gap: 5px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--color-riff-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.list-tab:hover {
+    background: var(--color-riff-surface-2);
+}
+
+.list-tab:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+.list-tab--active {
+    background: var(--color-riff-surface-2);
+    color: var(--color-riff-text);
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+}
+
+.list-tab__count {
+    min-width: 1.5em;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.08);
+    font-size: 0.7rem;
+    text-align: center;
+}
+
+.tab-note {
+    margin: 0;
+    padding: 8px 16px 4px;
+    font-size: 11px;
     color: var(--color-riff-muted);
 }
 
