@@ -280,6 +280,100 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Support links
+    |--------------------------------------------------------------------------
+    |
+    | Where an artist already gets paid. Riff points at these and handles no
+    | money itself (ROADMAP principle 4), so every one of them is a link-out:
+    | nothing here is ever embedded, and SupportLink refuses anything that is
+    | not a plain http(s) link to a real host.
+    |
+    | `hosts` is an allowlist for the types where carrying somewhere
+    | unrelated would be a scam rather than a mistake: a "Bandcamp" button
+    | that goes anywhere else, or a tip jar pointed at a stranger's wallet.
+    | An empty list means any valid link, because a band's own shop lives on
+    | its own domain and no list could anticipate it.
+    |
+    | The keys are persisted in artist_support_links.type, so renaming one
+    | needs a migration.
+    |
+    */
+
+    'support' => [
+        'types' => [
+            'bandcamp' => [
+                'label' => 'Bandcamp',
+                'icon' => 'album',
+                'hosts' => ['bandcamp.com'],
+                'hint' => 'Your Bandcamp page, album, or track.',
+            ],
+            'store' => [
+                'label' => 'Your store',
+                'icon' => 'storefront',
+                'hosts' => [],
+                'hint' => 'Where you sell your music directly.',
+            ],
+            'merch' => [
+                'label' => 'Merch',
+                'icon' => 'checkroom',
+                'hosts' => [],
+                'hint' => 'Shirts, records, tapes.',
+            ],
+            'tickets' => [
+                'label' => 'Tickets',
+                'icon' => 'confirmation_number',
+                'hosts' => [],
+                'hint' => 'A tour page or ticket seller. Individual shows have their own ticket links.',
+            ],
+            'tip_jar' => [
+                'label' => 'Tip jar',
+                'icon' => 'volunteer_activism',
+                'hosts' => [
+                    'ko-fi.com', 'patreon.com', 'buymeacoffee.com', 'liberapay.com',
+                    'paypal.com', 'paypal.me', 'venmo.com', 'cash.app', 'gofundme.com',
+                ],
+                'hint' => 'Ko-fi, Patreon, PayPal, Venmo, Cash App, and the like.',
+            ],
+            'other' => [
+                'label' => 'Something else',
+                'icon' => 'link',
+                'hosts' => [],
+                'hint' => 'Anywhere else people can support you.',
+            ],
+        ],
+        // Enough for a store, a Bandcamp, merch, tickets and a tip jar
+        // without the section becoming a link farm.
+        'max_links' => (int) env('RIFF_SUPPORT_MAX_LINKS', 6),
+        'max_label' => 40,
+        // Outbound clicks are a bare counter, no per-user rows: the
+        // question is "do support links get clicked" (the Phase 4 payments
+        // decision gate), never who clicked.
+        'click_rate_limit_per_minute' => (int) env('RIFF_SUPPORT_CLICK_RATE_LIMIT', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fans
+    |--------------------------------------------------------------------------
+    |
+    | Following is the fan relationship (artist_follows). Artist pages show
+    | how many fans an artist has and how many are local -- as counts only.
+    | No individual fan is ever named, placed, or listed.
+    |
+    | A local fan is one whose own stored town centre is within local_radius_km
+    | of the artist. Below local_floor the local count renders as "< 5": an
+    | exact small number next to a small town is close to naming someone.
+    |
+    */
+
+    'fans' => [
+        'local_radius_km' => (float) env('RIFF_FAN_LOCAL_RADIUS_KM', 40),
+        'local_floor' => (int) env('RIFF_FAN_LOCAL_FLOOR', 5),
+        'count_cache_seconds' => (int) env('RIFF_FAN_COUNT_CACHE_TTL', 300),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Moderation
     |--------------------------------------------------------------------------
     |

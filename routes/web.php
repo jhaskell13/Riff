@@ -3,6 +3,7 @@
 use App\Http\Controllers\ArtistBlockController;
 use App\Http\Controllers\ArtistFollowController;
 use App\Http\Controllers\ArtistPhotoController;
+use App\Http\Controllers\ArtistSupportLinkController;
 use App\Http\Controllers\ArtistZoneController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\LineupEntryController;
@@ -82,6 +83,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('artists.photo.store');
     Route::delete('artists/{artist}/photo', [ArtistPhotoController::class, 'destroy'])
         ->name('artists.photo.destroy');
+    // Where this artist gets paid. Members only; the public click counter
+    // is registered below, outside this group, because a guest following a
+    // support link is exactly what the section is for.
+    Route::match(['put', 'patch'], 'artists/{artist}/support', [ArtistSupportLinkController::class, 'update'])
+        ->whereNumber('artist')
+        ->middleware('throttle:posts')
+        ->name('artists.support.update');
+
     Route::post('artists/{artist}/follow', [ArtistFollowController::class, 'store'])
         ->middleware('throttle:follows')
         ->name('artists.follow');
@@ -173,6 +182,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // after the auth group so artists/create and the other zone routes match
 // first, and the numeric route sits before the slug route so an old
 // /artists/{id} link redirects (slugs are never all digits).
+// Counting an outbound click on a support link. Public on purpose: the
+// artist page works logged out, so support has to as well. POST, so it
+// never collides with the slug route below.
+Route::post('artists/{artist}/support/{link}/click', [ArtistSupportLinkController::class, 'click'])
+    ->whereNumber(['artist', 'link'])
+    ->middleware('throttle:support-clicks')
+    ->name('artists.support.click');
+
 Route::middleware('throttle:map')->group(function () {
     // A distinct parameter name: {artist} here would collide with the slug
     // route below (binding fields are stripped from the URI, so both would

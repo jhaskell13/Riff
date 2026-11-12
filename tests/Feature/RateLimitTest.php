@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Artist;
+use App\Models\ArtistSupportLink;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -25,6 +27,25 @@ class RateLimitTest extends TestCase
             ->assertTooManyRequests();
 
         $this->assertDatabaseCount('posts', 10);
+    }
+
+    public function test_support_link_clicks_are_rate_limited(): void
+    {
+        // The click counter is public and unauthenticated, so it needs a
+        // ceiling -- but a generous one, since throttling real readers
+        // would corrupt the number rather than just delay it.
+        $artist = Artist::factory()->create();
+        $link = ArtistSupportLink::factory()->for($artist)->create();
+        $route = route('artists.support.click', ['artist' => $artist->id, 'link' => $link->id]);
+        $limit = (int) config('riff.support.click_rate_limit_per_minute');
+
+        foreach (range(1, $limit) as $ignored) {
+            $this->post($route)->assertNoContent();
+        }
+
+        $this->post($route)->assertTooManyRequests();
+
+        $this->assertSame($limit, $link->fresh()->clicks);
     }
 
     public function test_the_limit_is_per_user_not_global(): void

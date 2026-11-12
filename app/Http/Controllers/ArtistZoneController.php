@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
 use App\Http\Resources\ShowCardResource;
+use App\Http\Resources\SupportLinkResource;
 use App\Models\Artist;
+use App\Models\ArtistSupportLink;
 use App\Models\Genre;
 use App\Models\LineupEntry;
 use App\Models\Listing;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
+use App\Services\FanCounts;
 use App\Support\SceneLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,7 +137,7 @@ class ArtistZoneController extends Controller
      * The public profile. Guests land here from shared links and the map,
      * so every account-specific prop must survive a null user.
      */
-    public function show(Request $request, Artist $artist): Response|RedirectResponse
+    public function show(Request $request, Artist $artist, FanCounts $fanCounts): Response|RedirectResponse
     {
         $this->authorize('view', $artist);
 
@@ -183,6 +186,18 @@ class ArtistZoneController extends Controller
                 $artist->stateOrProvince,
                 $artist->genres->pluck('id')->map(fn ($id) => (int) $id)->all(),
             ),
+            // Where this artist already gets paid. Public: a guest who
+            // opened a shared link is exactly who this is for. Click
+            // counts are the artist's own number and stay on the edit page.
+            //
+            // Queried separately rather than eager-loaded onto $artist: a
+            // loaded relation serialises with the model, which would put
+            // every column -- clicks included -- into the public payload
+            // regardless of what the resource chooses to emit.
+            'supportLinks' => SupportLinkResource::collection($artist->supportLinks()->get())->resolve($request),
+            // Counts only, never names or places (ROADMAP principle 5).
+            // "< 5" below the floor rather than an exact small number.
+            'localFans' => $fanCounts->displayLocal($artist),
             'canManage' => $user?->can('update', $artist) ?? false,
             'canFollow' => $user !== null,
             'isFollowing' => $user?->follows($artist) ?? false,
@@ -200,12 +215,28 @@ class ArtistZoneController extends Controller
         return redirect()->route('artists.show', Artist::findOrFail($artistId), 301);
     }
 
-    public function edit(Artist $artist): Response
+    public function edit(Request $request, Artist $artist): Response
     {
         $this->authorize('update', $artist);
 
         return Inertia::render('ArtistZone/Edit', [
             'artist' => $artist->load('genres:id,name')->append('music_embed'),
+            // Members see their own click counts here -- the one place they
+            // appear. See SupportLinkResource.
+            'supportLinks' => $artist->supportLinks()->get()
+                ->map(fn (ArtistSupportLink $link) => SupportLinkResource::make($link)->withClicks()->resolve($request))
+                ->all(),
+            'supportTypes' => collect((array) config('riff.support.types'))
+                ->map(fn (array $config, string $value) => [
+                    'value' => $value,
+                    'label' => $config['label'],
+                    'icon' => $config['icon'],
+                    'hint' => $config['hint'] ?? null,
+                    'hosts' => array_values((array) ($config['hosts'] ?? [])),
+                ])
+                ->values(),
+            'maxSupportLinks' => (int) config('riff.support.max_links'),
+            'maxSupportLabel' => (int) config('riff.support.max_label'),
             ...$this->formOptions(),
         ]);
     }

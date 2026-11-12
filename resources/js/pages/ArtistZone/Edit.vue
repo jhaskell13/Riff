@@ -2,6 +2,7 @@
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import ArtistProfileFields from '@/Components/ArtistProfileFields.vue';
+import SupportLinkFields from '@/Components/SupportLinkFields.vue';
 
 const props = defineProps({
     artist: {
@@ -11,6 +12,10 @@ const props = defineProps({
     genreOptions: { type: Array, default: () => [] },
     artistTypes: { type: Array, default: () => [] },
     maxGenres: { type: Number, default: 3 },
+    supportLinks: { type: Array, default: () => [] },
+    supportTypes: { type: Array, default: () => [] },
+    maxSupportLinks: { type: Number, default: 6 },
+    maxSupportLabel: { type: Number, default: 40 },
 });
 
 const form = useForm({
@@ -34,6 +39,26 @@ const form = useForm({
 
 const submit = () => {
     form.patch(route('artists.update', props.artist.id));
+};
+
+// Support links are their own form and their own endpoint, like the photo
+// below: the section is a has-many that is reordered and pruned, which
+// does not fit the profile's flat field list.
+const supportForm = useForm({
+    links: props.supportLinks.map((link) => ({
+        id: link.id,
+        type: link.type,
+        url: link.url,
+        label: link.label ?? '',
+        // Display only; the server ignores it on the way back in.
+        clicks: link.clicks,
+    })),
+});
+
+const saveSupport = () => {
+    supportForm.patch(route('artists.support.update', props.artist.id), {
+        preserveScroll: true,
+    });
 };
 
 // The photo saves on its own the moment one is picked; it is not part of
@@ -107,6 +132,29 @@ const archive = () => {
                                 padding="xs lg"
                                 :loading="form.processing"
                                 @click="submit"
+                            />
+                        </q-card-actions>
+                    </q-card>
+
+                    <q-card class="post-card q-pb-sm q-mb-md">
+                        <q-card-section>
+                            <div class="text-subtitle1 text-weight-medium text-grey-3">Support this artist</div>
+                        </q-card-section>
+                        <q-card-section class="q-pt-none">
+                            <SupportLinkFields
+                                :form="supportForm"
+                                :support-types="supportTypes"
+                                :max-links="maxSupportLinks"
+                                :max-label="maxSupportLabel"
+                            />
+                        </q-card-section>
+                        <q-card-actions align="right" class="q-px-md q-pb-md">
+                            <q-btn
+                                unelevated rounded color="primary"
+                                label="Save Links"
+                                padding="xs lg"
+                                :loading="supportForm.processing"
+                                @click="saveSupport"
                             />
                         </q-card-actions>
                     </q-card>

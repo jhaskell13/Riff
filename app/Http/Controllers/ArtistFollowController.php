@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Services\FanCounts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -13,11 +14,14 @@ use Illuminate\Http\Request;
  */
 class ArtistFollowController extends Controller
 {
+    public function __construct(private FanCounts $fanCounts) {}
+
     public function store(Request $request, Artist $artist): RedirectResponse
     {
         $this->authorize('follow', $artist);
 
         $request->user()->followedArtists()->syncWithoutDetaching([$artist->id]);
+        $this->fanCounts->forget($artist);
 
         return back();
     }
@@ -27,6 +31,7 @@ class ArtistFollowController extends Controller
         $this->authorize('follow', $artist);
 
         $request->user()->followedArtists()->detach($artist->id);
+        $this->fanCounts->forget($artist);
 
         return back();
     }

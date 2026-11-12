@@ -7,7 +7,8 @@
             "Entries with \"real\": true describe real acts/venues from public sources: factual third-person bios, public street addresses for public venues, and only music links verified during research.",
             "Entries with \"real\": false are invented. Everything that attributes a state or action to its subject stays on fictional entries ONLY: hidden/archived profiles, seeded reports and the moderation queue, feed posts written in the artist's voice, listings, lineup slots shown as pending/declined, and cancelled shows.",
             "Shows are plausible compositions (real bands at venues they could play, dated relative to seeding), not real events. Member accounts behind every act are invented.",
-            "No real DIY space is listed: a private venue's whole point is that Riff never holds its address, and outing one's existence is harm the privacy rules exist to prevent. The DIY space here is fictional."
+            "No real DIY space is listed: a private venue's whole point is that Riff never holds its address, and outing one's existence is harm the privacy rules exist to prevent. The DIY space here is fictional.",
+            "Support links are on fictional entries ONLY. A support section is an invitation to pay, which is a stronger attribution than listing a link: Riff must not imply a real act asks for money anywhere. Real acts keep only their research-verified Bandcamp link, rendered as a link, not as a support ask. Seeded click counts are invented and exist to demo the counter."
         ],
         "sources": [
             "https://ctvisit.com/articles/great-venues-live-music-and-concerts-connecticut",
@@ -194,7 +195,21 @@
                 "Hardcore"
             ],
             "placeholder_music": true,
-            "bio": "Fast, short, loud. We book our own shows in basements and VFW halls and split the door evenly."
+            "bio": "Fast, short, loud. We book our own shows in basements and VFW halls and split the door evenly.",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://thesilvermill.bandcamp.com",
+                    "label": null,
+                    "clicks": 31
+                },
+                {
+                    "type": "tip_jar",
+                    "url": "https://ko-fi.com/thesilvermill",
+                    "label": "Chip in for the van",
+                    "clicks": 7
+                }
+            ]
         },
         {
             "real": false,
@@ -206,7 +221,21 @@
                 "Ambient"
             ],
             "placeholder_music": true,
-            "bio": "Instrumental, loud at the end. We rehearse in a converted office above a print shop downtown."
+            "bio": "Instrumental, loud at the end. We rehearse in a converted office above a print shop downtown.",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://quiettransit.bandcamp.com",
+                    "label": null,
+                    "clicks": 18
+                },
+                {
+                    "type": "store",
+                    "url": "https://quiettransit.example.com/shop",
+                    "label": "Records & tapes",
+                    "clicks": 4
+                }
+            ]
         },
         {
             "real": false,
@@ -218,7 +247,21 @@
                 "Soul"
             ],
             "placeholder_music": true,
-            "bio": "Singer and guitarist. I grew up between Hartford and Ponce and the songs come out somewhere in the middle."
+            "bio": "Singer and guitarist. I grew up between Hartford and Ponce and the songs come out somewhere in the middle.",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://marisolvega.bandcamp.com",
+                    "label": null,
+                    "clicks": 12
+                },
+                {
+                    "type": "merch",
+                    "url": "https://marisolvega.example.com/merch",
+                    "label": null,
+                    "clicks": 2
+                }
+            ]
         },
         {
             "real": false,
@@ -242,7 +285,15 @@
                 "Reggae"
             ],
             "placeholder_music": true,
-            "bio": "Eight of us, named for the mills. If there is a street festival within an hour of Willimantic, we have played it."
+            "bio": "Eight of us, named for the mills. If there is a street festival within an hour of Willimantic, we have played it.",
+            "support": [
+                {
+                    "type": "tickets",
+                    "url": "https://threadcityska.example.com/shows",
+                    "label": "Tickets & tour dates",
+                    "clicks": 9
+                }
+            ]
         },
         {
             "real": false,

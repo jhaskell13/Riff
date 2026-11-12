@@ -137,6 +137,17 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
     }
 
+    /**
+     * Where this artist already gets paid. Riff links out and takes no cut
+     * (ROADMAP principle 4); see App\Services\ArtistSupportLinks.
+     *
+     * @return HasMany<ArtistSupportLink, $this>
+     */
+    public function supportLinks(): HasMany
+    {
+        return $this->hasMany(ArtistSupportLink::class)->orderBy('position')->orderBy('id');
+    }
+
     /** Listeners who hid this artist from their own map; never shown to them. */
     public function blockers(): BelongsToMany
     {

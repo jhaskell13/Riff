@@ -100,6 +100,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Outbound support-link clicks. Public and unauthenticated, so it
+        // needs a ceiling -- but a generous one: the counter it feeds
+        // answers "do support links get clicked", and throttling a real
+        // reader's click would make the answer wrong, not just late.
+        RateLimiter::for('support-clicks', function (Request $request) {
+            return Limit::perMinute(config('riff.support.click_rate_limit_per_minute'))
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
         // The map's data endpoints are public. Panning fires a request
         // only when movement settles, so this ceiling is far above real
         // browsing while still bounding a scraper.

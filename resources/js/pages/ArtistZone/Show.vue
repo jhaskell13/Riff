@@ -6,6 +6,7 @@ import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
 import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
 import ShowList from '@/Components/ShowList.vue';
+import SupportLinks from '@/Components/SupportLinks.vue';
 
 const props = defineProps({
     artist: {
@@ -44,6 +45,18 @@ const props = defineProps({
     sceneLinks: {
         type: Array,
         default: () => [],
+    },
+    // Where the artist already gets paid (SupportLinkResource). Public.
+    supportLinks: {
+        type: Array,
+        default: () => [],
+    },
+    // How many fans are local, as a count only -- "12", or "< 5" when
+    // there are few enough that an exact number would narrow someone down.
+    // Null means there is nothing to say (no coordinates, or none local).
+    localFans: {
+        type: String,
+        default: null,
     },
     canBlock: {
         type: Boolean,
@@ -160,6 +173,11 @@ const metaDescription = computed(() => {
                                     {{ artist.followers_count ?? 0 }} {{ (artist.followers_count ?? 0) === 1 ? 'follower' : 'followers' }}
                                 </span>
                             </div>
+                            <!-- A count, never a name or a place: a
+                                 listener's location is never public. -->
+                            <div v-if="localFans" class="text-caption text-grey-6 q-mt-xs">
+                                <q-icon name="place" size="13px" /> {{ localFans }} nearby
+                            </div>
                         </q-card-section>
 
                         <q-separator color="grey-9" />
@@ -167,6 +185,30 @@ const metaDescription = computed(() => {
                         <q-card-section v-if="artist.music_embed">
                             <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-sm">Listen</div>
                             <MusicPreview :embed="artist.music_embed" :artist-name="artist.name" />
+                        </q-card-section>
+
+                        <!-- Hear it, then buy it: support sits directly
+                             under the player. Riff points at where the
+                             artist already gets paid and handles no money
+                             itself. -->
+                        <q-card-section v-if="supportLinks.length || canManage">
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">Support this artist</div>
+                                <q-space />
+                                <q-btn
+                                    v-if="canManage"
+                                    flat dense rounded no-caps
+                                    color="teal-3"
+                                    :icon="supportLinks.length ? 'edit' : 'add'"
+                                    :label="supportLinks.length ? 'Edit links' : 'Add links'"
+                                    @click="router.visit(route('artists.edit', artist.id))"
+                                />
+                            </div>
+                            <SupportLinks v-if="supportLinks.length" :links="supportLinks" />
+                            <p v-else class="text-caption text-grey-6 m-0">
+                                Nothing listed. Add your Bandcamp, store, or tip jar so people can pay you directly —
+                                Riff takes no cut.
+                            </p>
                         </q-card-section>
 
                         <q-card-section v-if="upcomingShows.length || canManage">

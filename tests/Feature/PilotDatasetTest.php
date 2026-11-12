@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\SupportLink;
 use Database\Factories\Support\Towns;
 use Database\Seeders\Support\PilotScene;
 use Illuminate\Support\Arr;
@@ -68,6 +69,18 @@ class PilotDatasetTest extends TestCase
             }
         }
 
+        // Seeded support links go through the same parser a real artist's
+        // would, so a typo in the dataset fails here rather than storing a
+        // dead href the seeder silently skipped.
+        foreach (PilotScene::acts() as $act) {
+            foreach ($act['support'] ?? [] as $link) {
+                $this->assertNotNull(
+                    SupportLink::parse($link['url'], $link['type']),
+                    "{$act['name']}: {$link['url']} is not a valid {$link['type']} link.",
+                );
+            }
+        }
+
         foreach (PilotScene::listings() as $listing) {
             $this->assertArrayHasKey($listing['type'], config('riff.listings.types'));
 
@@ -125,6 +138,20 @@ class PilotDatasetTest extends TestCase
         foreach (PilotScene::acts() as $act) {
             if ($act['real'] && isset($act['music_url'])) {
                 $this->assertMatchesRegularExpression('/^https:\/\/[a-z0-9-]+\.bandcamp\.com$/', $act['music_url'], $act['name']);
+            }
+        }
+
+        // A support section is an invitation to pay. Saying a real act
+        // asks for money -- anywhere, let alone at a URL nobody verified --
+        // is a stronger attribution than listing a link, so it stays on
+        // fictional entries only, like posts and reports.
+        foreach (PilotScene::acts() as $act) {
+            if ($act['real']) {
+                $this->assertArrayNotHasKey(
+                    'support',
+                    $act,
+                    "{$act['name']}: a real act can't be shown asking to be paid.",
+                );
             }
         }
     }

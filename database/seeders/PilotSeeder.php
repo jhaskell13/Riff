@@ -71,6 +71,14 @@ class PilotSeeder extends Seeder
 
             PlaceholderPhoto::attach($artist);
 
+            // A support section is an invitation to pay, which is a
+            // stronger attribution than listing a link -- so, like posts
+            // and reports, it is seeded onto fictional acts only. The
+            // dataset enforces that; this asserts it at the point of use.
+            if ($act['support'] ?? false) {
+                $this->supportLinks($artist, $act);
+            }
+
             $artist->members()->attach($this->memberFor($artist, $town));
 
             if ($act['archived'] ?? false) {
@@ -87,6 +95,29 @@ class PilotSeeder extends Seeder
         // Posts speak as the act and reports accuse one: fictional only.
         $this->posts($fictional);
         $this->reports($fictional);
+    }
+
+    /**
+     * Where a (fictional) act asks to be supported. Click counts are
+     * invented, and exist so the Artist Zone has something to show.
+     *
+     * @param  array<string, mixed>  $act
+     */
+    private function supportLinks(Artist $artist, array $act): void
+    {
+        if ($act['real'] !== false) {
+            throw new \LogicException("{$act['name']}: support links may only be seeded onto fictional acts.");
+        }
+
+        foreach (array_values($act['support']) as $position => $link) {
+            $artist->supportLinks()->create([
+                'type' => $link['type'],
+                'url' => $link['url'],
+                'label' => $link['label'] ?? null,
+                'position' => $position,
+                // Not fillable, by design: a request may never set this.
+            ])->forceFill(['clicks' => (int) ($link['clicks'] ?? 0)])->save();
+        }
     }
 
     /** The member account behind an act, local to the same town. */
