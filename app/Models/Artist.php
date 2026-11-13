@@ -123,8 +123,8 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
-     * The people who hold this identity. Membership -- not following -- is
-     * what grants the authority to speak as the artist.
+     * Membership — not following — grants the authority to speak as the
+     * artist.
      *
      * @return BelongsToMany<User, $this>
      */
@@ -147,8 +147,7 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
-     * Everything on this artist's wall, in both voices -- the band's own
-     * updates and the fans' posts. Filter by voice with Post::inVoice().
+     * Both voices; filter with Post::inVoice().
      *
      * @return HasMany<Post, $this>
      */
@@ -158,8 +157,8 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
-     * Listeners barred from posting on this wall. They keep following and
-     * keep reading -- a ban is about the wall, not the fandom.
+     * A ban is about the wall, not the fandom: they keep following and
+     * keep reading.
      *
      * @return HasMany<ArtistWallBan, $this>
      */
@@ -168,19 +167,14 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         return $this->hasMany(ArtistWallBan::class);
     }
 
-    /**
-     * The append-only trail of what the members hid, unhid and banned.
-     *
-     * @return HasMany<WallModerationEvent, $this>
-     */
+    /** @return HasMany<WallModerationEvent, $this> */
     public function wallModerationEvents(): HasMany
     {
         return $this->hasMany(WallModerationEvent::class);
     }
 
     /**
-     * Where this artist already gets paid. Riff links out and takes no cut
-     * (ROADMAP principle 4); see App\Services\ArtistSupportLinks.
+     * Riff links out and takes no cut (principle 4).
      *
      * @return HasMany<ArtistSupportLink, $this>
      */

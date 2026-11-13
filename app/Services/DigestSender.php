@@ -77,11 +77,43 @@ class DigestSender
             return false;
         }
 
+        // Claim the slot before writing, with the same condition the
+        // query used. Two overlapping runs -- a scheduler that fires
+        // twice, a command run by hand while the cron is going -- both
+        // reach here with the same person; only the one whose UPDATE
+        // matched a row sends. Reading digest_sent_at and then writing it
+        // would let both through.
+        if (! $force && ! $this->claim($user)) {
+            return false;
+        }
+
+        if ($force) {
+            $user->forceFill(['digest_sent_at' => now()])->save();
+        }
+
         Mail::to($user)->send(new WeeklyDigestMail($user, $digest, $this->unsubscribeUrl($user)));
 
-        $user->forceFill(['digest_sent_at' => now()])->save();
-
         return true;
+    }
+
+    /**
+     * Atomically take this person's slot for the week. Returns false when
+     * another run already had it.
+     */
+    private function claim(User $user): bool
+    {
+        $claimed = User::query()
+            ->whereKey($user->id)
+            ->where(fn ($query) => $query
+                ->whereNull('digest_sent_at')
+                ->orWhere('digest_sent_at', '<=', $this->cutoff()->toDateTimeString()))
+            ->update(['digest_sent_at' => now()]);
+
+        if ($claimed > 0) {
+            $user->forceFill(['digest_sent_at' => now()])->syncOriginal();
+        }
+
+        return $claimed > 0;
     }
 
     public function isDue(User $user): bool

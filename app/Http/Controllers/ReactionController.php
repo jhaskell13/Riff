@@ -61,40 +61,50 @@ class ReactionController extends Controller
     }
 
     /**
-     * attach() only when the pivot row is genuinely new, so a double-tap
-     * cannot inflate the counter.
+     * The counter moves only when the pivot row genuinely changed, and the
+     * database decides whether it did.
+     *
+     * An exists() check followed by attach() looks equivalent and is not:
+     * two concurrent taps both pass the check, and the second attach hits
+     * the unique index and 500s. insertOrIgnore is one atomic statement
+     * whose affected-row count is the answer.
      *
      * @param  Post|Comment  $subject
      */
     private function like(Model $subject, int $userId): void
     {
-        DB::transaction(function () use ($subject, $userId) {
-            if ($subject->likers()->whereKey($userId)->exists()) {
-                return;
-            }
+        $pivot = $subject->likers();
+        $now = now();
 
-            $subject->likers()->attach($userId);
+        $inserted = DB::table($pivot->getTable())->insertOrIgnore([
+            $pivot->getForeignPivotKeyName() => $subject->getKey(),
+            $pivot->getRelatedPivotKeyName() => $userId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        if ($inserted === 1) {
             $subject->increment('likes');
-        });
+        }
     }
 
     /**
+     * detach() already reports how many rows it removed, so only one of
+     * two concurrent un-taps decrements.
+     *
      * @param  Post|Comment  $subject
      */
     private function unlike(Model $subject, int $userId): void
     {
-        DB::transaction(function () use ($subject, $userId) {
-            if ($subject->likers()->detach($userId) === 0) {
-                return;
-            }
+        if ($subject->likers()->detach($userId) === 0) {
+            return;
+        }
 
-            // Guarded so a counter that has drifted cannot go negative:
-            // the column is unsigned, and a negative write is a hard error
-            // on MySQL in strict mode.
-            $subject->newQuery()
-                ->whereKey($subject->getKey())
-                ->where('likes', '>', 0)
-                ->decrement('likes');
-        });
+        // Guarded: the column is unsigned, and a drifted counter going
+        // negative is a hard error on MySQL in strict mode.
+        $subject->newQuery()
+            ->whereKey($subject->getKey())
+            ->where('likes', '>', 0)
+            ->decrement('likes');
     }
 }

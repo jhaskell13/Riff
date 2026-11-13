@@ -155,6 +155,14 @@ class ArtistZoneController extends Controller
 
         $user = Auth::user();
 
+        // Membership, following and blocking each answer several props,
+        // and each is an EXISTS. Asked once here and reused below: the
+        // gate was being asked the same question eight times for one
+        // member's page view.
+        $isMember = $user?->isMemberOf($artist) ?? false;
+        $isFollowing = $user?->follows($artist) ?? false;
+        $isBlocked = $user?->blocks($artist) ?? false;
+
         return Inertia::render('ArtistZone/Show', [
             'artist' => tap($artist
                 ->load(['members:id,name', 'genres:id,name'])
@@ -208,7 +216,7 @@ class ArtistZoneController extends Controller
             'wallMode' => $artist->wall_mode,
             // The members' own list of who they barred, so a ban is
             // visible and liftable where it was made.
-            'wallBans' => $user?->can('moderateWall', $artist)
+            'wallBans' => $isMember
                 ? $artist->wallBans()->with('user:id,name')->latest()->get()
                     ->map(fn ($ban) => [
                         'userId' => $ban->user_id,
@@ -220,18 +228,20 @@ class ArtistZoneController extends Controller
             'wallModeLabel' => config('riff.wall.modes.'.$artist->wall_mode),
             // Whether *this* viewer may post, and in which voice. Guests
             // get false for both and are offered registration instead.
-            'canPostAsArtist' => $user?->can('postAsArtist', $artist) ?? false,
+            // ArtistPolicy::postAsArtist, ::update and ::moderateWall are
+            // all "is this user a member"; the write paths still go
+            // through $this->authorize(), which stays the authority.
+            'canPostAsArtist' => $isMember,
             'canPostOnWall' => $user?->can('postOnWall', $artist) ?? false,
-            'canManage' => $user?->can('update', $artist) ?? false,
+            'canManage' => $isMember,
             'canFollow' => $user !== null,
-            'isFollowing' => $user?->follows($artist) ?? false,
+            'isFollowing' => $isFollowing,
             // Whether this fan still wants to hear from them. Only
             // meaningful while following; false otherwise.
-            'isMuted' => $user !== null && $user->follows($artist)
-                ? ! $user->wantsNotificationsFrom($artist)
-                : false,
-            'isBlocked' => $user?->blocks($artist) ?? false,
-            'canBlock' => $user?->can('block', $artist) ?? false,
+            'isMuted' => $isFollowing && ! $user->wantsNotificationsFrom($artist),
+            'isBlocked' => $isBlocked,
+            // ArtistPolicy::block refuses members their own artist.
+            'canBlock' => $user !== null && ! $isMember,
         ]);
     }
 

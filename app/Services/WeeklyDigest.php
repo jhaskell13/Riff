@@ -15,24 +15,13 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * "Your scene, by email."
+ * "Your scene, by email": the shows you said you were going to first (the
+ * only thing you already committed to), then your artists' next dates,
+ * what they said this week, then what's on nearby.
  *
- * Four sections, in the order someone actually cares about them:
- *
- *  1. **Shows you said you were going to**, soonest first. The only thing
- *     here you have already committed to, so it goes first — a digest that
- *     buries your own Friday night under a band's news is a digest you
- *     stop opening.
- *  2. **When the artists you follow next play.**
- *  3. **What they said this week.**
- *  4. **What is coming up around you**, whoever is playing it.
- *
- * Composed from the same searches the map and "your scene" use, so an
- * email and the site can never disagree about "upcoming" or "blocked".
- *
- * **Nothing is sent when there is nothing to say.** An empty digest is the
- * fastest way to teach someone to unsubscribe, so `hasAnything()` is the
- * gate the sender checks before writing at all.
+ * Composed from the searches the map and "your scene" use, so an email and
+ * the site cannot disagree about "upcoming" or "blocked". `hasAnything()`
+ * is the gate — an empty digest teaches people to unsubscribe.
  */
 class WeeklyDigest
 {
@@ -55,11 +44,7 @@ class WeeklyDigest
         ];
     }
 
-    /**
-     * Whether this digest is worth an email at all.
-     *
-     * @param  array<string, mixed>  $digest
-     */
+    /** @param  array<string, mixed>  $digest */
     public function hasAnything(array $digest): bool
     {
         return $digest['myShows']->isNotEmpty()
@@ -70,9 +55,8 @@ class WeeklyDigest
     }
 
     /**
-     * What has happened since this person was last written to -- or, for a
-     * first digest, the configured look-back. Without the second case a
-     * new account's first email would carry everything ever posted.
+     * Since the last digest, or the configured look-back for a first one —
+     * without which a first email would carry everything ever posted.
      */
     private function windowStart(User $user): Carbon
     {
@@ -80,14 +64,7 @@ class WeeklyDigest
             ?? now()->subDays((int) config('riff.digest.first_window_days'));
     }
 
-    /**
-     * Shows this person marked going or interested, still to come.
-     *
-     * Deliberately first in the email: it is the only section about
-     * something they have already decided to do.
-     *
-     * @return Collection<int, Show>
-     */
+    /** @return Collection<int, Show> */
     private function myShows(User $user)
     {
         return Show::query()
@@ -106,7 +83,7 @@ class WeeklyDigest
     private function followedShows(array $followed)
     {
         if ($followed === []) {
-            return Show::query()->whereRaw('1 = 0')->get();
+            return new Collection;
         }
 
         return Show::query()
@@ -121,11 +98,8 @@ class WeeklyDigest
     }
 
     /**
-     * What the artists you follow said since the last digest.
-     *
-     * Artist-voice only, for the same reason "your scene" is: a wall also
-     * carries what fans wrote there, and mailing that to everyone would be
-     * a stream of strangers in an inbox.
+     * Artist-voice only: a wall also carries what fans wrote there, and
+     * mailing that out is a stream of strangers in an inbox.
      *
      * @param  list<int>  $followed
      * @return Collection<int, Post>
@@ -133,7 +107,7 @@ class WeeklyDigest
     private function updates(array $followed, Carbon $since)
     {
         if ($followed === []) {
-            return Post::query()->whereRaw('1 = 0')->get();
+            return new Collection;
         }
 
         return Post::query()

@@ -10,24 +10,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Sending a notification, with the three questions that have to be asked
- * every time asked in exactly one place.
+ * Sending a notification, with the three questions asked in one place:
+ * does this person want the kind, have they blocked the artist it is
+ * about, and is it already in their bell.
  *
- *  1. **Does this person want it?** Their own preference for the kind, and
- *     — for the kinds that arrive because of a follow — their mute on that
- *     particular artist.
- *
- *  2. **Have they hidden the artist it is about?** Blocking means "I do not
- *     want to see this artist". A notification about them would walk
- *     straight through that, which is worse than the feed entry it already
- *     suppresses.
- *
- *  3. **Is this already in their bell?** Five posts from one band in an
- *     afternoon is one line, not five. Folding keeps the bell from becoming
- *     the stream this product deliberately does not have.
- *
- * Every trigger goes through here. A caller that reaches for
- * `$user->notify()` directly skips all three.
+ * Every trigger goes through here — `$user->notify()` skips all three.
  */
 class Notifier
 {
@@ -49,9 +36,7 @@ class Notifier
 
         $wanted = $recipients
             ->filter(fn (User $user) => $user->exists)
-            // Never tell someone about their own action. Doing it here
-            // rather than at each trigger is the point: every trigger
-            // could remember, and one of them would not.
+            // Here rather than at each trigger: one of them would forget.
             ->reject(fn (User $user) => $notification->actorId() !== null
                 && $user->id === $notification->actorId())
             ->unique('id')
@@ -68,9 +53,7 @@ class Notifier
         }
     }
 
-    /**
-     * Whether this person has asked for this kind, from this artist.
-     */
+    /** Whether this person asked for this kind, from this artist. */
     public function wants(User $user, RiffNotification $notification): bool
     {
         $type = $notification->type();
@@ -85,14 +68,12 @@ class Notifier
             return true;
         }
 
-        // Hidden means hidden, whatever the preference says.
+        // Blocking outranks any preference.
         if ($user->blocks($artist)) {
             return false;
         }
 
-        // A per-artist mute only applies to the kinds that arrive because
-        // you follow someone; a reply to your own words is not a
-        // subscription.
+        // Mutes only apply to follow-driven kinds.
         if ($type->respectsArtistMute() && ! $user->wantsNotificationsFrom($artist)) {
             return false;
         }
@@ -101,13 +82,11 @@ class Notifier
     }
 
     /**
-     * Fold into an unread notification about the same thing, if there is
-     * one inside the window. Returns true when it folded, meaning no new
-     * row should be written.
+     * Fold into an unread notification about the same thing. True means no
+     * new row should be written.
      *
-     * Written against the table rather than through the notification
-     * channel on purpose: the whole point is to *not* create a second row,
-     * and a channel's job is to create one.
+     * Against the table rather than the channel on purpose: the point is
+     * to *not* create a second row, and creating one is a channel's job.
      */
     private function folded(User $user, RiffNotification $notification): bool
     {
@@ -138,8 +117,7 @@ class Notifier
             return false;
         }
 
-        // The newest wording wins -- "Ana replied" is more use than the
-        // reply from this morning -- and the count says how many folded in.
+        // Newest wording wins; the count says how many folded in.
         $fresh = $notification->toDatabase($user);
         $fresh['collapseKey'] = $key;
         $fresh['count'] = (int) ($data['count'] ?? 1) + 1;
@@ -148,8 +126,7 @@ class Notifier
             ->where('id', $existing->id)
             ->update([
                 'data' => json_encode($fresh),
-                // Bumped so it sorts to the top again: something new
-                // happened, even if it folded.
+                // Sorts to the top again: something new happened.
                 'created_at' => now()->toDateTimeString(),
                 'updated_at' => now()->toDateTimeString(),
             ]);
@@ -157,12 +134,7 @@ class Notifier
         return true;
     }
 
-    /**
-     * The preference map a form should render: every kind, with whether
-     * this account currently receives it.
-     *
-     * @return list<array<string, mixed>>
-     */
+    /** @return list<array<string, mixed>> */
     public function preferencesFor(User $user): array
     {
         return array_map(fn (NotificationType $type) => [
@@ -171,8 +143,7 @@ class Notifier
             'description' => $type->description(),
             'icon' => $type->icon(),
             'enabled' => $user->wantsNotification($type),
-            // The lineup invitation cannot be turned off: switching it off
-            // would quietly break other people's listings.
+            // Switching this off would break other people's listings.
             'required' => (bool) ($type->config()['required'] ?? false),
         ], NotificationType::cases());
     }

@@ -522,6 +522,35 @@ class WallTest extends TestCase
     }
 
     #[Test]
+    public function a_duplicate_like_is_absorbed_rather_than_erroring(): void
+    {
+        // The pivot's unique index is what decides, not a read-then-write:
+        // two taps that race both used to pass an exists() check and the
+        // second blew up on the index.
+        $artist = Artist::factory()->create();
+        $post = Post::factory()->asArtist($artist, $this->member($artist))->create();
+        $fan = $this->follower($artist);
+
+        $pivot = $post->likers();
+        $now = now();
+        $row = [
+            $pivot->getForeignPivotKeyName() => $post->id,
+            $pivot->getRelatedPivotKeyName() => $fan->id,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        // Simulate the loser of the race arriving first.
+        DB::table($pivot->getTable())->insert($row);
+
+        $this->actingAs($fan)->post(route('wall.posts.like', $post))->assertRedirect();
+
+        $this->assertSame(1, $post->likers()->count());
+        // And the counter did not move for a row that already existed.
+        $this->assertSame(0, $post->fresh()->likes);
+    }
+
+    #[Test]
     public function unliking_never_drives_the_counter_negative(): void
     {
         // The column is unsigned, and a negative write is a hard error on

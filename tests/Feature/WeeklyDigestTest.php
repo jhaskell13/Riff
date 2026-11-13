@@ -148,6 +148,28 @@ class WeeklyDigestTest extends TestCase
     }
 
     #[Test]
+    public function two_overlapping_runs_do_not_both_send(): void
+    {
+        // The slot is claimed with a conditional UPDATE, so a scheduler
+        // that fires twice -- or a command run by hand while the cron is
+        // going -- cannot write to the same person twice.
+        Mail::fake();
+
+        $user = $this->subscriber();
+        $this->followedArtistWithNews($user);
+
+        // Two senders holding their own copies of the same row, as two
+        // processes would.
+        $first = app(DigestSender::class);
+        $second = app(DigestSender::class);
+
+        $this->assertTrue($first->sendTo(User::find($user->id)));
+        $this->assertFalse($second->sendTo(User::find($user->id)));
+
+        Mail::assertQueuedCount(1);
+    }
+
+    #[Test]
     public function the_window_reopens_after_the_gap(): void
     {
         Mail::fake();

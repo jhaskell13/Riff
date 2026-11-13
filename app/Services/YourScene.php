@@ -14,20 +14,14 @@ use App\Support\ShowWindow;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
- * "Your scene": the signed-in home.
+ * "Your scene": the signed-in home. What your artists said and when they
+ * next play, plus what's on around you.
  *
- * What the artists you follow have said and when they next play, plus what
- * is coming up around you. **Ordered by date and distance, never by
- * engagement** (ROADMAP principle 2) — a new band's first show is as
- * visible here as a popular one's.
+ * **Ordered by date and distance, never engagement** (principle 2). The
+ * "around you" half composes the map's own searches, as SceneView does.
  *
- * Composed from the map's own searches for the "around you" half, exactly
- * as SceneView does, so this page and the map can never disagree about
- * what "upcoming", "active" or "blocked" mean.
- *
- * **Deliberately uncached.** It is per-viewer by definition, so it follows
- * the MapFilters::hiddenFor rule: personal views are not cached, they are
- * *bounded*. Every section here has a hard limit and the updates paginate.
+ * **Per-viewer, therefore uncached** (the MapFilters::hiddenFor rule) —
+ * which makes bounding it the only protection it has.
  */
 class YourScene
 {
@@ -70,12 +64,8 @@ class YourScene
     }
 
     /**
-     * What the artists you follow have said.
-     *
-     * **Artist-voice posts only.** A wall also carries what fans wrote
-     * there, and pulling that in would turn a page about the bands you
-     * chose into a stream of strangers talking -- which is the global feed
-     * this page replaces.
+     * Artist-voice only: pulling in fan posts would turn a page about the
+     * bands you chose into the stream of strangers it replaced.
      *
      * @param  list<int>  $followed
      * @return array<string, mixed>
@@ -120,10 +110,7 @@ class YourScene
     }
 
     /**
-     * When the artists you follow next play. Soonest first -- the point of
-     * following a band is not missing them.
-     *
-     * Uses the confirmed lineup only, like every public surface: a pending
+     * Confirmed lineup only, like every public surface: a pending
      * invitation is not a date anyone should plan around.
      *
      * @param  list<int>  $followed
@@ -146,13 +133,7 @@ class YourScene
             ->get();
     }
 
-    /**
-     * What is on around you, whoever is playing it -- the half of the page
-     * that is about a place rather than a follow list. Same searches the
-     * map runs, so "upcoming" and "blocked" mean one thing.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function nearby(User $user, string $unit): array
     {
         if ($user->lat === null || $user->lng === null) {

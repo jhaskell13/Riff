@@ -6,19 +6,15 @@ use App\Models\Artist;
 use App\Models\User;
 
 /**
- * What one viewer may do on one artist's wall, worked out once.
+ * What one viewer may do on one artist's wall, worked out once per render.
  *
- * Every post and every reply on a page asks the same two questions -- "can
- * I delete this?", "can I reply here?" -- and on a single wall the answers
- * turn on exactly two facts: whether the viewer is a member of *this*
- * artist, and whether they may post here at all. Asking the policy per row
- * meant three `exists()` queries per post; a busy wall cost 24 extra
- * queries for a page of buttons.
+ * Every post and reply asks "can I delete this, can I reply here", and on
+ * one wall both reduce to two facts. Asking the policy per row was three
+ * exists() queries per post.
  *
- * Deliberately not a memo on the User model: that was the first attempt,
- * and it went stale the moment a follow was written outside the follow
- * controller (a test caught it reusing one User instance across two
- * requests). This object is built per render and cannot outlive it.
+ * Deliberately not a memo on the User model: that was tried and went stale
+ * when a follow was written outside the follow controller. This is built
+ * per render and cannot outlive it.
  */
 final class WallViewer
 {
@@ -29,7 +25,7 @@ final class WallViewer
         public readonly bool $canModerate = false,
     ) {}
 
-    /** Nobody: a guest, or a caller that did not ask for viewer state. */
+    /** A guest, or a caller that did not ask for viewer state. */
     public static function guest(): self
     {
         return new self;
@@ -50,12 +46,9 @@ final class WallViewer
     }
 
     /**
-     * Whether this viewer may delete something written in the given voice.
-     *
      * An artist-voice post belongs to the band, so any member may take it
-     * back. A fan's post belongs to the fan. Mirrors PostPolicy::delete and
-     * CommentPolicy::delete, which remain the authority for the actual
-     * delete request -- this only decides whether to draw the control.
+     * back; a fan's belongs to the fan. Only decides whether to draw the
+     * control — PostPolicy/CommentPolicy still gate the request.
      */
     public function canDelete(bool $isArtistVoice, ?int $authorId): bool
     {

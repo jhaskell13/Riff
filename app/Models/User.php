@@ -140,12 +140,9 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /**
-     * Whether this account receives a kind of notification.
-     *
-     * Null preferences mean "never chosen", so the config defaults apply:
-     * a new account is not silently opted out of everything. A kind marked
-     * `required` cannot be switched off -- turning the lineup invitation
-     * off would quietly break other people's listings.
+     * Null preferences mean "never chosen", so config defaults apply — a
+     * new account is not silently opted out of everything. `required`
+     * kinds cannot be switched off.
      */
     public function wantsNotification(NotificationType $type): bool
     {
@@ -162,11 +159,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         return (bool) $preferences[$type->value];
     }
 
-    /**
-     * Whether this listener still wants to hear from one particular
-     * artist. Following a band you love should not mean the same volume as
-     * following one you are curious about, so the dial is on the follow.
-     */
+    /** The dial is on the follow, not the account. */
     public function wantsNotificationsFrom(Artist $artist): bool
     {
         $follow = $this->followedArtists()
@@ -178,8 +171,11 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         return $follow === null || (bool) $follow->pivot->getAttribute('notify');
     }
 
-    /** Walls this listener may no longer post on. */
-    /** @return BelongsToMany<Artist, $this> */
+    /**
+     * Walls this listener may no longer post on.
+     *
+     * @return BelongsToMany<Artist, $this>
+     */
     public function bannedFromWalls(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'artist_wall_bans')->withTimestamps();
@@ -244,8 +240,7 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     }
 
     /**
-     * Posts this user wrote, in either voice. Create through this relation
-     * so the author can't be mass-assigned.
+     * Create through this relation so the author can't be mass-assigned.
      *
      * @return HasMany<Post, $this>
      */

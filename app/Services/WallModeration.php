@@ -13,29 +13,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Members keeping their own page tidy.
+ * Members keeping their own page tidy. Three rules held in one place:
  *
- * **Three rules this class exists to hold in one place:**
- *
- *  1. *Artists hide; they never destroy.* Every method here is reversible
- *     and leaves the row where it was. Taking something off Riff is a
- *     platform moderator's call, reached by reporting it.
- *
- *  2. *A moderator's decision outranks an artist's.* Unhiding only ever
- *     restores something the artist themselves hid. If a moderator has
- *     since removed it, unhide is a no-op -- otherwise an artist could
- *     undo a platform decision from their own page.
- *
- *  3. *Every action is written to the trail*, as a new row, before the
- *     state changes. A hide and its undo are two events, so "who hid this,
+ *  1. Artists hide, never destroy — every method is reversible and leaves
+ *     the row where it was. Removal is a moderator's call, via a report.
+ *  2. A moderator's decision outranks an artist's: unhide restores only
+ *     what the artist hid, so a band cannot undo a platform decision.
+ *  3. Every action is appended to the trail as a new row, so "who hid this
  *     and who put it back" stays answerable.
  */
 class WallModeration
 {
-    /**
-     * Hide a post or comment from the public wall. Idempotent: hiding
-     * something already hidden changes nothing and logs nothing.
-     */
+    /** Idempotent: hiding something already hidden logs nothing. */
     public function hide(Artist $artist, User $actor, Post|Comment $subject, ?string $note = null): bool
     {
         if (! $this->isHideable($subject)) {
@@ -50,10 +39,7 @@ class WallModeration
         });
     }
 
-    /**
-     * Put it back. Only something *hidden* comes back: a moderator's
-     * `removed` is not an artist's to undo (rule 2).
-     */
+    /** Only something *hidden* comes back; `removed` is not theirs to undo. */
     public function unhide(Artist $artist, User $actor, Post|Comment $subject, ?string $note = null): bool
     {
         if ($subject->status !== $subject::HIDDEN) {
@@ -69,9 +55,8 @@ class WallModeration
     }
 
     /**
-     * Stop someone posting on this wall. Their existing posts stay up --
-     * hiding those is a separate decision, deliberately, so "I don't want
-     * you posting here" and "I want what you said gone" stay distinct.
+     * Their existing posts stay up: "stop posting here" and "take down
+     * what you said" are deliberately separate decisions.
      */
     public function ban(Artist $artist, User $actor, User $listener, ?string $reason = null): bool
     {
@@ -114,10 +99,8 @@ class WallModeration
     }
 
     /**
-     * Something is hideable while it is on the wall. A moderator-removed
-     * item is already gone and must not be re-labelled as the artist's
-     * doing -- that would let an artist take the blame, or the credit, for
-     * a platform decision.
+     * A moderator-removed item is already gone, and must not be relabelled
+     * as the artist's doing.
      */
     private function isHideable(Post|Comment $subject): bool
     {
@@ -141,11 +124,7 @@ class WallModeration
         $event->save();
     }
 
-    /**
-     * Who is banned from this wall, for the members' own list.
-     *
-     * @return Collection<int, ArtistWallBan>
-     */
+    /** @return Collection<int, ArtistWallBan> */
     public function bans(Artist $artist)
     {
         return $artist->wallBans()->with('user:id,name')->latest()->get();

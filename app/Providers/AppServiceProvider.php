@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\EventProvider;
 use App\Services\Events\TicketmasterEvents;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -148,5 +149,18 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // Mass-assignment mistakes become errors outside production: a
+        // field that is not fillable is silently dropped otherwise, which
+        // is how a test fixture once set a lineup status that never
+        // applied and quietly inverted what it asserted.
+        //
+        // The other two halves of shouldBeStrict() are *not* on.
+        // preventAccessingMissingAttributes trips wherever a model is
+        // serialised after a narrowed select (Inertia does this with the
+        // auth user), and preventLazyLoading needs a pass over every
+        // render first. Both are worth adopting deliberately; neither is
+        // a one-line change.
+        Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
     }
 }

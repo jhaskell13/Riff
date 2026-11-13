@@ -17,22 +17,15 @@ use Illuminate\Support\Collection;
 /**
  * Writing to an artist's wall.
  *
- * **The voice is resolved in exactly one place: voiceFor().** A request may
- * *ask* to speak as the artist; only membership grants it. Nothing else in
- * the app may set author_context, for the same reason nothing but
- * Lineup::sync() may write lineup_entries.status -- the moment two places
- * can decide who is speaking, one of them will be wrong.
+ * **The voice is resolved only here.** A request may *ask* to speak as the
+ * artist; only membership grants it. The moment two places can decide who
+ * is speaking, one of them will be wrong.
  */
 class Wall
 {
     public function __construct(private Notifier $notifier) {}
 
-    /**
-     * The voice this user actually gets. Asking to be the band is not
-     * being the band: a non-member who asks is quietly a fan, because the
-     * fallback is harmless and an error here would be a dead end for
-     * someone who simply isn't in the band.
-     */
+    /** Asking to be the band is not being the band; non-members fall back to fan. */
     public function voiceFor(User $user, Artist $artist, bool $asArtist): AuthorContext
     {
         return $asArtist && $user->can('postAsArtist', $artist)
@@ -40,10 +33,7 @@ class Wall
             : AuthorContext::Fan;
     }
 
-    /**
-     * Post on an artist's wall. Created through the user's own relation so
-     * the author cannot be mass-assigned, per the project's rule.
-     */
+    /** Created through the user's own relation so the author can't be mass-assigned. */
     public function post(User $user, Artist $artist, string $content, bool $asArtist): Post
     {
         $voice = $this->voiceFor($user, $artist, $asArtist);
@@ -61,13 +51,7 @@ class Wall
         return $post;
     }
 
-    /**
-     * Tell the people a post concerns.
-     *
-     * The band speaking reaches its fans; a fan speaking reaches the band.
-     * Nobody is told about their own post -- the Notifier drops the actor,
-     * so each trigger does not have to remember to.
-     */
+    /** The band speaking reaches its fans; a fan speaking reaches the band. */
     private function announce(Post $post, Artist $artist, User $author, AuthorContext $voice): void
     {
         if ($voice->isArtist()) {
@@ -86,10 +70,8 @@ class Wall
     }
 
     /**
-     * Reply on a wall post or a show thread -- whatever the subject, the
-     * rule is the same, which is why this takes the contract rather than a
-     * model. artist_id records *which* artist is speaking, and is set only
-     * for the artist voice: on a fan's comment it stays null, so a fan's
+     * Takes the contract, not a model: a wall post and a show answer the
+     * same way. artist_id is set only for the artist voice, so a fan's
      * reply can never render as the band by accident.
      */
     public function comment(
@@ -99,9 +81,7 @@ class Wall
         bool $asArtist,
         ?int $parentId = null,
     ): Comment {
-        // Which artist this user may speak as here -- the wall's artist, or
-        // on a show the host or any confirmed act on the bill they belong
-        // to. Null means they have no standing to be anyone but themselves.
+        // Null means no standing to be anyone but themselves.
         $artist = $subject->voiceArtistFor($user);
         $voice = $artist !== null && $asArtist
             ? AuthorContext::Artist
@@ -122,13 +102,9 @@ class Wall
     }
 
     /**
-     * Tell whoever was answered.
-     *
-     * Who that is depends on what was answered: a reply under a comment
-     * answers its author; a top-level comment answers whoever wrote the
-     * post. On a show thread a top-level comment answers nobody in
-     * particular -- a show has no author -- so it reaches the host's
-     * members, who are the people expected to field questions about it.
+     * A reply answers its comment's author; a top-level comment answers
+     * the post's. A show has no author, so its thread reaches the host's
+     * members — the people expected to field questions about the night.
      */
     private function notifyRepliedTo(
         Comment $comment,
@@ -176,11 +152,8 @@ class Wall
     }
 
     /**
-     * Who to tell about something written in a given voice.
-     *
-     * An artist-voice post belongs to the band, so answering it answers
-     * *the band* -- every member, not just whichever one happened to type
-     * it. A fan's words belong to the fan.
+     * Answering an artist-voice post answers *the band* — every member,
+     * not just whoever typed it.
      *
      * @return Collection<int, User>|list<User>
      */
