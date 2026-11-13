@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Artist;
 use App\Models\LineupEntry;
 use App\Models\Show;
 use App\Models\User;
 use App\Models\Venue;
+use App\Notifications\LineupInviteReceived;
 use App\Support\MapCache;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  */
 class Lineup
 {
+    public function __construct(private Notifier $notifier) {}
+
     /**
      * A venue's name or location changed under its upcoming shows: the
      * same material change, made from the venue side. Every confirmed act
@@ -55,6 +59,11 @@ class Lineup
      */
     public function sync(Show $show, array $entries, User $actor, bool $materialChange = false): void
     {
+        // Who to ask, collected as we go and told at the end -- notifying
+        // mid-loop would announce a bill that a later entry may still
+        // change.
+        $toAsk = [];
+
         // Cast: some drivers return ids as strings, and the check is strict.
         $ownArtistIds = $actor->artists()->pluck('artists.id')->map(fn ($id) => (int) $id)->all();
 
@@ -93,12 +102,23 @@ class Lineup
                     'status' => $isOwn ? LineupEntry::CONFIRMED : LineupEntry::PENDING,
                     'responded_at' => $isOwn ? now() : null,
                 ]);
+
+                if (! $isOwn) {
+                    $toAsk[$artistId] = false;
+                }
             } else {
                 $current->position = $position;
 
                 if ($isOwn) {
                     $current->forceFill(['status' => LineupEntry::CONFIRMED, 'responded_at' => now()]);
                 } elseif ($materialChange) {
+                    // Only worth asking again if they had already answered:
+                    // someone still sitting on the first invitation does
+                    // not need a second one.
+                    if ($current->status !== LineupEntry::PENDING) {
+                        $toAsk[$artistId] = true;
+                    }
+
                     $current->forceFill(['status' => LineupEntry::PENDING, 'responded_at' => null]);
                 }
             }
@@ -111,5 +131,35 @@ class Lineup
             ->whereNotNull('artist_id')
             ->whereNotIn('artist_id', $kept === [] ? [0] : $kept)
             ->delete();
+
+        $this->askArtists($show, $toAsk, $actor);
+    }
+
+    /**
+     * Tell the invited acts' members that they have been asked.
+     *
+     * **The debt Phase 2 left behind.** Before notifications existed, an
+     * invitation sat in the Artist Zone until somebody happened to look --
+     * and until it is answered, the show appears on no public surface at
+     * all. This is the one notification here that gates another band's
+     * listing, which is why its type is marked `required` and cannot be
+     * switched off.
+     *
+     * @param  array<int, bool>  $toAsk  artist id => whether this is a re-ask
+     */
+    private function askArtists(Show $show, array $toAsk, User $actor): void
+    {
+        if ($toAsk === []) {
+            return;
+        }
+
+        $artists = Artist::query()->whereKey(array_keys($toAsk))->with('members')->get();
+
+        foreach ($artists as $artist) {
+            $this->notifier->send(
+                $artist->members,
+                (new LineupInviteReceived($show, $artist, $toAsk[$artist->id] ?? false))->causedBy($actor),
+            );
+        }
     }
 }

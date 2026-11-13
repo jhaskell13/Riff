@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Moderation\ReportResolveRequest;
 use App\Http\Resources\ReportResource;
+use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\Post;
 use App\Models\Report;
@@ -37,6 +38,7 @@ class ModerationController extends Controller
             ->with([
                 'reportable' => fn (MorphTo $morphTo) => $morphTo->morphWith([
                     Post::class => ['artist:id,name', 'user:id,name'],
+                    Comment::class => ['artist:id,name', 'user:id,name', 'commentable'],
                     Show::class => ['confirmedLineup.artist', 'venue', 'hostArtist'],
                     Listing::class => ['artist:id,name', 'user:id,name'],
                 ]),

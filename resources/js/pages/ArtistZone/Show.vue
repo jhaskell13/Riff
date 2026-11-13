@@ -2,10 +2,13 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useHashHighlight } from '@/Composables/useHashHighlight';
 import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
 import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
 import ShowList from '@/Components/ShowList.vue';
+import SupportLinks from '@/Components/SupportLinks.vue';
+import ArtistWall from '@/Components/Wall/ArtistWall.vue';
 
 const props = defineProps({
     artist: {
@@ -30,6 +33,11 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    // Following, but asked for quiet. Only meaningful while following.
+    isMuted: {
+        type: Boolean,
+        default: false,
+    },
     // Shows this artist has confirmed playing (ShowCardResource).
     upcomingShows: {
         type: Array,
@@ -45,11 +53,49 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    // Where the artist already gets paid (SupportLinkResource). Public.
+    supportLinks: {
+        type: Array,
+        default: () => [],
+    },
+    // How many fans are local, as a count only -- "12", or "< 5" when
+    // there are few enough that an exact number would narrow someone down.
+    // Null means there is nothing to say (no coordinates, or none local).
+    localFans: {
+        type: String,
+        default: null,
+    },
+    // The wall: posts from the band and from fans, newest first.
+    wall: {
+        type: Object,
+        default: () => ({ posts: [], total: 0 }),
+    },
+    wallMode: {
+        type: String,
+        default: 'fans',
+    },
+    canPostAsArtist: {
+        type: Boolean,
+        default: false,
+    },
+    canPostOnWall: {
+        type: Boolean,
+        default: false,
+    },
+    // Members only: who they have barred from their wall.
+    wallBans: {
+        type: Array,
+        default: () => [],
+    },
     canBlock: {
         type: Boolean,
         default: false,
     },
 });
+
+// A notification links to the post or reply itself, not just this
+// page; scroll to it and flash it.
+useHashHighlight();
 
 const links = computed(() => [
     { key: 'website', url: props.artist.website, label: 'Website', icon: 'public' },
@@ -59,6 +105,14 @@ const links = computed(() => [
     { key: 'youtube_url', url: props.artist.youtube_url, label: 'YouTube', icon: 'smart_display' },
     { key: 'instagram_url', url: props.artist.instagram_url, label: 'Instagram', icon: 'photo_camera' },
 ].filter((link) => Boolean(link.url)));
+
+const toggleMute = () => {
+    router.patch(
+        route('artists.follow.notify', props.artist.id),
+        { notify: props.isMuted },
+        { preserveScroll: true, preserveState: true },
+    );
+};
 
 // What a shared link unfurls as.
 const metaDescription = computed(() => {
@@ -160,6 +214,27 @@ const metaDescription = computed(() => {
                                     {{ artist.followers_count ?? 0 }} {{ (artist.followers_count ?? 0) === 1 ? 'follower' : 'followers' }}
                                 </span>
                             </div>
+                            <!-- Quiet from one band without losing them
+                                 from your scene. -->
+                            <q-btn
+                                v-if="isFollowing"
+                                flat dense no-caps rounded size="sm"
+                                :color="isMuted ? 'orange-4' : 'grey-6'"
+                                :icon="isMuted ? 'notifications_off' : 'notifications_active'"
+                                :label="isMuted ? 'Muted' : 'Notifying'"
+                                :aria-pressed="isMuted"
+                                :aria-label="isMuted
+                                    ? `Turn notifications from ${artist.name} back on`
+                                    : `Mute notifications from ${artist.name}`"
+                                class="q-mt-xs"
+                                @click="toggleMute"
+                            />
+
+                            <!-- A count, never a name or a place: a
+                                 listener's location is never public. -->
+                            <div v-if="localFans" class="text-caption text-grey-6 q-mt-xs">
+                                <q-icon name="place" size="13px" /> {{ localFans }} nearby
+                            </div>
                         </q-card-section>
 
                         <q-separator color="grey-9" />
@@ -167,6 +242,30 @@ const metaDescription = computed(() => {
                         <q-card-section v-if="artist.music_embed">
                             <div class="text-subtitle2 text-weight-medium text-grey-5 q-mb-sm">Listen</div>
                             <MusicPreview :embed="artist.music_embed" :artist-name="artist.name" />
+                        </q-card-section>
+
+                        <!-- Hear it, then buy it: support sits directly
+                             under the player. Riff points at where the
+                             artist already gets paid and handles no money
+                             itself. -->
+                        <q-card-section v-if="supportLinks.length || canManage">
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">Support this artist</div>
+                                <q-space />
+                                <q-btn
+                                    v-if="canManage"
+                                    flat dense rounded no-caps
+                                    color="teal-3"
+                                    :icon="supportLinks.length ? 'edit' : 'add'"
+                                    :label="supportLinks.length ? 'Edit links' : 'Add links'"
+                                    @click="router.visit(route('artists.edit', artist.id))"
+                                />
+                            </div>
+                            <SupportLinks v-if="supportLinks.length" :links="supportLinks" />
+                            <p v-else class="text-caption text-grey-6 m-0">
+                                Nothing listed. Add your Bandcamp, store, or tip jar so people can pay you directly —
+                                Riff takes no cut.
+                            </p>
                         </q-card-section>
 
                         <q-card-section v-if="upcomingShows.length || canManage">
@@ -261,6 +360,37 @@ const metaDescription = computed(() => {
                                 &larr; Back to your artists
                             </Link>
                         </q-card-section>
+                    </q-card>
+
+                    <!-- The wall is its own card, and last: it grows without
+                         bound, so everything factual about an artist has to
+                         be readable before it. -->
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section>
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">
+                                    Wall
+                                </div>
+                                <q-space />
+                                <span v-if="wall?.total" class="text-caption text-grey-6">
+                                    {{ wall.total }} {{ wall.total === 1 ? 'post' : 'posts' }}
+                                </span>
+                            </div>
+                            <ArtistWall
+                                :artist="artist"
+                                :wall="wall"
+                                :wall-mode="wallMode"
+                                :can-post-as-artist="canPostAsArtist"
+                                :can-post-on-wall="canPostOnWall"
+                                :is-authenticated="canFollow"
+                                :is-following="isFollowing"
+                                :max-post="wall?.maxPost ?? 5000"
+                                :wall-bans="wallBans"
+                                :can-moderate="canManage"
+                                :max-comment="wall?.maxComment ?? 2000"
+                            />
+                        </q-card-section>
+
                     </q-card>
                 </div>
             </div>

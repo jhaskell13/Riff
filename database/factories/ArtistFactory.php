@@ -37,6 +37,7 @@ class ArtistFactory extends Factory
             'lat' => $town['lat'],
             'lng' => $town['lng'],
             'show_on_map' => true,
+            'wall_mode' => config('riff.wall.default_mode'),
         ];
     }
 
@@ -82,17 +83,30 @@ class ArtistFactory extends Factory
     }
 
     /**
-     * Real public links, used so a seeded development map has profiles with
-     * a player that actually loads. Never used for pilot or imported data.
+     * A playable-shaped music link for an invented artist, so the profile
+     * renders its Listen section and the map's "has music" filter has
+     * something to match.
+     *
+     * These used to be real public tracks, which put a real musician's work
+     * on an invented band's profile -- the same misattribution the dataset
+     * forbids for real acts. The identifiers here are deliberately
+     * all-zero: a valid *shape* (so MusicLink parses them and the embed
+     * builds), but not a real track, so the player resolves to the
+     * provider's own "not found" rather than to a stranger's music.
+     *
+     * The host is the provider itself, never an artist-owned subdomain or
+     * path: an invented name is exactly the kind a real act may already
+     * have taken.
      */
     public function withMusic(): static
     {
         return $this->state(fn () => [
             'music_url' => fake()->randomElement([
-                'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT',
-                'https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX',
-                'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                'https://soundcloud.com/forss/flickermood',
+                // 22-character base62 ids, Spotify's own shape.
+                'https://open.spotify.com/track/0000000000000000000000',
+                'https://open.spotify.com/album/0000000000000000000000',
+                // 11 characters, YouTube's own shape.
+                'https://www.youtube.com/watch?v=00000000000',
             ]),
         ]);
     }

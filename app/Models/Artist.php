@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $music_provider
  * @property string|null $image_path
  * @property bool $show_on_map
+ * @property string $wall_mode
  * @property float|null $lat
  * @property float|null $lng
  * @property-read string|null $image_url
@@ -65,6 +66,7 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         'email',
         'music_url',
         'show_on_map',
+        'wall_mode',
         'formed_date',
         'lat',
         'lng',
@@ -121,7 +123,10 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
-     * Get all of the members for the Artist
+     * Membership — not following — grants the authority to speak as the
+     * artist.
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function members(): BelongsToMany
     {
@@ -131,13 +136,58 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     /**
      * Listeners following this artist. Counted with withCount('followers');
      * there is intentionally no followers_count column to shadow it.
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function followers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
+        return $this->belongsToMany(User::class, 'artist_follows')
+            ->withPivot('notify')
+            ->withTimestamps();
     }
 
-    /** Listeners who hid this artist from their own map; never shown to them. */
+    /**
+     * Both voices; filter with Post::inVoice().
+     *
+     * @return HasMany<Post, $this>
+     */
+    public function wallPosts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+
+    /**
+     * A ban is about the wall, not the fandom: they keep following and
+     * keep reading.
+     *
+     * @return HasMany<ArtistWallBan, $this>
+     */
+    public function wallBans(): HasMany
+    {
+        return $this->hasMany(ArtistWallBan::class);
+    }
+
+    /** @return HasMany<WallModerationEvent, $this> */
+    public function wallModerationEvents(): HasMany
+    {
+        return $this->hasMany(WallModerationEvent::class);
+    }
+
+    /**
+     * Riff links out and takes no cut (principle 4).
+     *
+     * @return HasMany<ArtistSupportLink, $this>
+     */
+    public function supportLinks(): HasMany
+    {
+        return $this->hasMany(ArtistSupportLink::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * Listeners who hid this artist from their own map; never shown to them.
+     *
+     * @return BelongsToMany<User, $this>
+     */
     public function blockers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'artist_blocks')->withTimestamps();

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Moderation;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Listing;
 use App\Models\Post;
 use App\Models\Show;
@@ -20,6 +21,7 @@ class ReportStoreRequest extends FormRequest
     public const SUBJECTS = [
         'artist' => Artist::class,
         'post' => Post::class,
+        'comment' => Comment::class,
         'venue' => Venue::class,
         'show' => Show::class,
         'listing' => Listing::class,
@@ -74,7 +76,7 @@ class ReportStoreRequest extends FormRequest
     }
 
     /** The model being reported; default scopes exclude archived subjects. */
-    public function subject(): Artist|Listing|Post|Show|Venue
+    public function subject(): Artist|Comment|Listing|Post|Show|Venue
     {
         $model = self::SUBJECTS[$this->validated('type')];
 

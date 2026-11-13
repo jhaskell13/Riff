@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Genre;
 use App\Models\Post;
 use App\Models\User;
+use App\Support\AuthorContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -80,6 +82,57 @@ class MassAssignmentTest extends TestCase
         $this->assertSame('published', $post->status);
         $this->assertNull($post->artist_id);
         $this->assertTrue($post->published_at->isCurrentDay());
+    }
+
+    public function test_wall_post_ignores_injected_voice_and_author(): void
+    {
+        // author_context is fillable but never a validation rule, so
+        // ...validated() cannot carry it: App\Services\Wall decides the
+        // voice from the authorization result. A request that could pick
+        // its own voice would be an endpoint for speaking as the band.
+        $artist = Artist::factory()->create(['wall_mode' => 'everyone']);
+        $user = User::factory()->create();
+        $impostor = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('wall.posts.store', $artist), [
+                'content' => 'Hello',
+                'author_context' => 'artist',
+                'user_id' => $impostor->id,
+                'status' => 'draft',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $post = Post::sole();
+
+        $this->assertSame(AuthorContext::Fan, $post->author_context);
+        $this->assertSame($user->id, $post->user_id);
+        $this->assertSame('published', $post->status);
+    }
+
+    public function test_comment_ignores_injected_voice_and_artist(): void
+    {
+        $artist = Artist::factory()->create(['wall_mode' => 'everyone']);
+        $member = User::factory()->create();
+        $artist->members()->attach($member);
+        $post = Post::factory()->asArtist($artist, $member)->create();
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('wall.comments.store', $post), [
+                'content' => 'Hello',
+                'author_context' => 'artist',
+                'artist_id' => $artist->id,
+                'status' => 'hidden',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $comment = Comment::sole();
+
+        $this->assertSame(AuthorContext::Fan, $comment->author_context);
+        // Null, not the artist: a fan's reply must never be able to
+        // render as the band.
+        $this->assertNull($comment->artist_id);
+        $this->assertSame(Comment::PUBLISHED, $comment->status);
     }
 
     public function test_stream_store_ignores_injected_status(): void

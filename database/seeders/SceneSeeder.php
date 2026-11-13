@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Genre;
 use App\Models\LineupEntry;
 use App\Models\Listing;
@@ -10,11 +11,13 @@ use App\Models\Report;
 use App\Models\Show;
 use App\Models\User;
 use App\Models\Venue;
+use App\Support\OnboardingIntent;
 use App\Support\ReportStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\Support\Towns;
 use Database\Seeders\Support\PilotScene;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 
 /**
@@ -81,6 +84,7 @@ class SceneSeeder extends Seeder
         }
 
         $this->rsvps();
+        $this->threads();
         $this->listings($artist);
         $this->reports($venues->get('The Old Foundry'));
 
@@ -267,6 +271,133 @@ class SceneSeeder extends Seeder
     }
 
     /** A few going / interested, one of them listed by name. */
+    /**
+     * Threads on the upcoming shows: the questions a night actually gets,
+     * and the host answering some of them in its own voice.
+     *
+     * Only on shows whose host is fictional -- a thread is invented words
+     * about an act, and the dataset's consent rules keep those off real
+     * ones (database/seeders/data/pilot-scene.json).
+     */
+    private function threads(): void
+    {
+        if (Comment::query()->whereMorphedTo('commentable', Show::class)->exists()) {
+            return;
+        }
+
+        $fictional = PilotScene::fictionalActNames();
+        $listeners = User::query()
+            ->where('onboarding_intent', OnboardingIntent::Fan)
+            ->inRandomOrder()
+            ->limit(6)
+            ->get();
+
+        if ($listeners->isEmpty()) {
+            return;
+        }
+
+        // A question the host answers, fans sorting out a lift between
+        // themselves, and one question nobody has answered.
+        $scripts = [
+            [
+                ['voice' => 'fan', 'content' => 'What time are you on?', 'replies' => [
+                    ['voice' => 'artist', 'content' => 'Second of three, so about nine. Doors at seven.'],
+                    ['voice' => 'fan', 'content' => 'Perfect, I can get there after work.'],
+                ]],
+                ['voice' => 'fan', 'content' => 'Is there parking anywhere near, or is it street only?', 'replies' => []],
+            ],
+            [
+                ['voice' => 'fan', 'content' => 'Anyone driving from the shoreline? Happy to chip in for gas.', 'replies' => [
+                    ['voice' => 'fan', 'content' => 'I am, leaving New Haven about six. Room for two.'],
+                    ['voice' => 'fan', 'content' => 'Taking you up on that.'],
+                ]],
+                ['voice' => 'artist', 'content' => 'Set times are posted at the door. Come early, the opener is worth it.', 'replies' => []],
+            ],
+            [
+                ['voice' => 'fan', 'content' => 'All ages or 21+? Bringing my younger brother.', 'replies' => [
+                    ['voice' => 'artist', 'content' => 'All ages. Bring him.'],
+                ]],
+            ],
+            // Reads as the run-up to a night that then got called off.
+            [
+                ['voice' => 'fan', 'content' => 'Been waiting for this one all month. See everyone Tuesday.', 'replies' => [
+                    ['voice' => 'fan', 'content' => 'Same. First time seeing them.'],
+                ]],
+                ['voice' => 'artist', 'content' => 'Sorry everyone — we have had to call this off. Refunds at the point of sale, and we will find another date.', 'replies' => []],
+            ],
+        ];
+
+        $shows = Show::query()
+            ->listed()
+            ->upcoming()
+            ->whereHas('hostArtist', fn ($query) => $query->whereIn('name', $fictional))
+            ->get();
+
+        // Plus the cancelled show, so the demo carries a *closed* thread:
+        // the page stays up, what was said stays readable, and nothing new
+        // can be added. listed() excludes cancelled shows, so it is fetched
+        // on its own.
+        $cancelled = Show::query()
+            ->whereNotNull('cancelled_at')
+            ->whereHas('hostArtist', fn ($query) => $query->whereIn('name', $fictional))
+            ->first();
+
+        if ($cancelled !== null) {
+            $shows = $shows->take(count($scripts) - 1)->push($cancelled);
+        }
+
+        foreach ($shows->take(count($scripts))->values() as $index => $show) {
+            $host = $show->hostArtist;
+            $member = $host?->members()->first();
+
+            if ($host === null || $member === null) {
+                continue;
+            }
+
+            foreach ($scripts[$index] as $position => $script) {
+                $parent = $this->threadComment($show, $host, $member, $listeners, $script, $position, null);
+
+                foreach ($script['replies'] as $offset => $reply) {
+                    $this->threadComment($show, $host, $member, $listeners, $reply, $position + $offset + 1, $parent);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param  Collection<int, User>  $listeners
+     * @param  array<string, mixed>  $script
+     */
+    private function threadComment(
+        Show $show,
+        Artist $host,
+        User $member,
+        Collection $listeners,
+        array $script,
+        int $offset,
+        ?Comment $parent,
+    ): Comment {
+        $factory = $script['voice'] === 'artist'
+            ? Comment::factory()->asArtist($host, $member)
+            : Comment::factory()->state(['user_id' => $listeners[$offset % $listeners->count()]->getKey()]);
+
+        if ($parent !== null) {
+            $factory = $factory->replyTo($parent);
+        }
+
+        // Dated before the show and after it was listed, so the thread
+        // reads as the run-up to the night.
+        $at = now()->subDays(2)->addHours($offset);
+
+        return $factory->create([
+            'commentable_type' => $show->getMorphClass(),
+            'commentable_id' => $show->getKey(),
+            'content' => $script['content'],
+            'created_at' => $at,
+            'updated_at' => $at,
+        ]);
+    }
+
     private function rsvps(): void
     {
         $listeners = User::query()->where('email', '!=', 'test@example.com')->inRandomOrder()->limit(8)->pluck('id');

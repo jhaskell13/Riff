@@ -8,7 +8,12 @@ const props = defineProps({
     genreOptions: { type: Array, default: () => [] },
     artistTypes: { type: Array, default: () => [] },
     maxGenres: { type: Number, default: 3 },
+    // [{ value, label }] from config('riff.wall.modes'). Empty on the
+    // create form, where the wall has nothing on it yet.
+    wallModes: { type: Array, default: () => [] },
 });
+
+const wallModes = computed(() => props.wallModes ?? []);
 
 // Mirrors App\Services\MusicLink's host list closely enough to tell an
 // artist, while they type, whether the link will play. The server is still
@@ -173,6 +178,24 @@ const inputProps = {
         />
         <div class="text-caption text-grey-6 q-mt-none">
             Turn this off to keep a public profile without appearing as a map pin.
+        </div>
+
+        <!-- Who may post on the wall. The artist's own call, which is why
+             it is a setting here rather than a platform rule. -->
+        <q-select
+            v-if="wallModes.length"
+            v-model="form.wall_mode"
+            :options="wallModes"
+            emit-value
+            map-options
+            label="Who can post on your wall"
+            v-bind="inputProps"
+            :error="!!form.errors.wall_mode"
+            :error-message="form.errors.wall_mode"
+        />
+        <div v-if="wallModes.length" class="text-caption text-grey-6 q-mt-none">
+            Fans — people who follow you — is the default. Opening it to anyone gets more
+            conversation and more spam. Either way, you can always post as the band.
         </div>
 
         <!-- Music -->

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Artist;
+use App\Models\Comment;
 use App\Models\Genre;
+use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
 use Database\Seeders\PilotSeeder;
@@ -96,12 +98,18 @@ class PilotSeedTest extends TestCase
         $artists = Artist::withTrashed()->count();
         $reports = Report::count();
         $users = User::count();
+        // Wall content is seeded per act, so re-running must not give a
+        // band the same announcement -- or the same thread -- twice.
+        $posts = Post::whereNotNull('artist_id')->count();
+        $comments = Comment::count();
 
         $this->seed(PilotSeeder::class);
 
         $this->assertSame($artists, Artist::withTrashed()->count());
         $this->assertSame($reports, Report::count());
         $this->assertSame($users, User::count());
+        $this->assertSame($posts, Post::whereNotNull('artist_id')->count());
+        $this->assertSame($comments, Comment::count());
     }
 
     public function test_the_map_serves_the_pilot_area_to_a_guest(): void

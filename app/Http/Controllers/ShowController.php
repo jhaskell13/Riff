@@ -8,7 +8,10 @@ use App\Models\Artist;
 use App\Models\LineupEntry;
 use App\Models\Show;
 use App\Models\User;
+use App\Notifications\ShowAnnounced;
 use App\Services\Lineup;
+use App\Services\Notifier;
+use App\Services\WallReader;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +24,11 @@ use Inertia\Response;
  */
 class ShowController extends Controller
 {
+    public function __construct(
+        private WallReader $threads,
+        private Notifier $notifier,
+    ) {}
+
     public function create(Request $request): Response
     {
         $this->authorize('create', Show::class);
@@ -53,6 +61,11 @@ class ShowController extends Controller
             return $show;
         });
 
+        // After the transaction, not inside it: a notification about a
+        // show that then failed to save would be a lie, and the followers
+        // query has no business holding the write open.
+        $this->announceToFollowers($show);
+
         return to_route('shows.show', $show);
     }
 
@@ -83,10 +96,42 @@ class ShowController extends Controller
                     'isPublic' => (bool) $mine->getAttribute('is_public'),
                 ],
             ],
+            // The night's thread. Goes read-only after the show rather
+            // than disappearing: what was said still explains the night to
+            // anyone arriving late.
+            'thread' => $this->threads->thread($request, $show),
             'canManage' => $user?->can('update', $show) ?? false,
             'canRsvp' => $user?->can('rsvp', $show) ?? false,
             'isGuest' => $user === null,
         ]);
+    }
+
+    /**
+     * Tell the fans of every confirmed act that there is a new date.
+     *
+     * Confirmed only, like every public surface: a pending invitation is
+     * not a date anyone should plan around, and announcing it would name
+     * an act that has not agreed to be named. When a pending act later
+     * confirms, LineupEntryController announces it then.
+     */
+    private function announceToFollowers(Show $show): void
+    {
+        if (! $show->listed()->whereKey($show->id)->exists()) {
+            return;
+        }
+
+        $show->load('confirmedLineup.artist', 'venue');
+
+        foreach ($show->confirmedLineup as $entry) {
+            if ($entry->artist === null) {
+                continue;
+            }
+
+            $this->notifier->send(
+                $entry->artist->followers()->get(),
+                (new ShowAnnounced($show, $entry->artist))->causedBy(request()->user()),
+            );
+        }
     }
 
     public function edit(Request $request, Show $show): Response

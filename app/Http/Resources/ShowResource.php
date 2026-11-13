@@ -59,6 +59,7 @@ class ShowResource extends JsonResource
             'agePolicyLabel' => $agePolicy === null ? null : (config('riff.age_policies')[$agePolicy] ?? null),
             'description' => $this->description,
             'host' => $this->hostArtist === null ? null : [
+                'id' => $this->hostArtist->id,
                 'name' => $this->hostArtist->name,
                 'url' => route('artists.show', $this->hostArtist),
             ],

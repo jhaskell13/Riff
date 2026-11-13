@@ -5,13 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
 use App\Http\Resources\ShowCardResource;
+use App\Http\Resources\SupportLinkResource;
 use App\Models\Artist;
+use App\Models\ArtistSupportLink;
 use App\Models\Genre;
 use App\Models\LineupEntry;
 use App\Models\Listing;
+use App\Models\Post;
 use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
+use App\Services\FanCounts;
+use App\Services\WallReader;
 use App\Support\SceneLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +27,8 @@ use Inertia\Response;
 
 class ArtistZoneController extends Controller
 {
+    public function __construct(private WallReader $wallReader) {}
+
     public function index(Request $request): Response
     {
         $columns = ['artists.id', 'artists.name', 'artists.slug', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
@@ -134,7 +141,7 @@ class ArtistZoneController extends Controller
      * The public profile. Guests land here from shared links and the map,
      * so every account-specific prop must survive a null user.
      */
-    public function show(Request $request, Artist $artist): Response|RedirectResponse
+    public function show(Request $request, Artist $artist, FanCounts $fanCounts): Response|RedirectResponse
     {
         $this->authorize('view', $artist);
 
@@ -147,6 +154,14 @@ class ArtistZoneController extends Controller
         }
 
         $user = Auth::user();
+
+        // Membership, following and blocking each answer several props,
+        // and each is an EXISTS. Asked once here and reused below: the
+        // gate was being asked the same question eight times for one
+        // member's page view.
+        $isMember = $user?->isMemberOf($artist) ?? false;
+        $isFollowing = $user?->follows($artist) ?? false;
+        $isBlocked = $user?->blocks($artist) ?? false;
 
         return Inertia::render('ArtistZone/Show', [
             'artist' => tap($artist
@@ -183,11 +198,50 @@ class ArtistZoneController extends Controller
                 $artist->stateOrProvince,
                 $artist->genres->pluck('id')->map(fn ($id) => (int) $id)->all(),
             ),
-            'canManage' => $user?->can('update', $artist) ?? false,
+            // Where this artist already gets paid. Public: a guest who
+            // opened a shared link is exactly who this is for. Click
+            // counts are the artist's own number and stay on the edit page.
+            //
+            // Queried separately rather than eager-loaded onto $artist: a
+            // loaded relation serialises with the model, which would put
+            // every column -- clicks included -- into the public payload
+            // regardless of what the resource chooses to emit.
+            'supportLinks' => SupportLinkResource::collection($artist->supportLinks()->get())->resolve($request),
+            // Counts only, never names or places (ROADMAP principle 5).
+            // "< 5" below the floor rather than an exact small number.
+            'localFans' => $fanCounts->displayLocal($artist),
+            // The wall: updates from the band and posts from fans, newest
+            // first, in one stream. Ordered by time, never by likes.
+            'wall' => $this->wallReader->wall($request, $artist),
+            'wallMode' => $artist->wall_mode,
+            // The members' own list of who they barred, so a ban is
+            // visible and liftable where it was made.
+            'wallBans' => $isMember
+                ? $artist->wallBans()->with('user:id,name')->latest()->get()
+                    ->map(fn ($ban) => [
+                        'userId' => $ban->user_id,
+                        'name' => $ban->user?->name,
+                        'reason' => $ban->reason,
+                        'at' => $ban->created_at?->toIso8601String(),
+                    ])->all()
+                : [],
+            'wallModeLabel' => config('riff.wall.modes.'.$artist->wall_mode),
+            // Whether *this* viewer may post, and in which voice. Guests
+            // get false for both and are offered registration instead.
+            // ArtistPolicy::postAsArtist, ::update and ::moderateWall are
+            // all "is this user a member"; the write paths still go
+            // through $this->authorize(), which stays the authority.
+            'canPostAsArtist' => $isMember,
+            'canPostOnWall' => $user?->can('postOnWall', $artist) ?? false,
+            'canManage' => $isMember,
             'canFollow' => $user !== null,
-            'isFollowing' => $user?->follows($artist) ?? false,
-            'isBlocked' => $user?->blocks($artist) ?? false,
-            'canBlock' => $user?->can('block', $artist) ?? false,
+            'isFollowing' => $isFollowing,
+            // Whether this fan still wants to hear from them. Only
+            // meaningful while following; false otherwise.
+            'isMuted' => $isFollowing && ! $user->wantsNotificationsFrom($artist),
+            'isBlocked' => $isBlocked,
+            // ArtistPolicy::block refuses members their own artist.
+            'canBlock' => $user !== null && ! $isMember,
         ]);
     }
 
@@ -200,12 +254,31 @@ class ArtistZoneController extends Controller
         return redirect()->route('artists.show', Artist::findOrFail($artistId), 301);
     }
 
-    public function edit(Artist $artist): Response
+    public function edit(Request $request, Artist $artist): Response
     {
         $this->authorize('update', $artist);
 
         return Inertia::render('ArtistZone/Edit', [
             'artist' => $artist->load('genres:id,name')->append('music_embed'),
+            // Members see their own click counts here -- the one place they
+            // appear. See SupportLinkResource.
+            'supportLinks' => $artist->supportLinks()->get()
+                ->map(fn (ArtistSupportLink $link) => SupportLinkResource::make($link)->withClicks()->resolve($request))
+                ->all(),
+            'supportTypes' => collect((array) config('riff.support.types'))
+                ->map(fn (array $config, string $value) => [
+                    'value' => $value,
+                    'label' => $config['label'],
+                    'icon' => $config['icon'],
+                    'hint' => $config['hint'] ?? null,
+                    'hosts' => array_values((array) ($config['hosts'] ?? [])),
+                ])
+                ->values(),
+            'wallModes' => collect((array) config('riff.wall.modes'))
+                ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
+                ->values(),
+            'maxSupportLinks' => (int) config('riff.support.max_links'),
+            'maxSupportLabel' => (int) config('riff.support.max_label'),
             ...$this->formOptions(),
         ]);
     }

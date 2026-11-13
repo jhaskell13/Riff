@@ -149,6 +149,11 @@ return [
         'max_lineup' => (int) env('RIFF_SHOW_MAX_LINEUP', 12),
         'max_days_ahead' => (int) env('RIFF_SHOW_MAX_DAYS_AHEAD', 365),
         'still_on_hours' => (int) env('RIFF_SHOW_STILL_ON_HOURS', 4),
+        // A show's thread goes read-only this long after the start. Longer
+        // than still_on_hours on purpose: "that was great" is worth saying
+        // the morning after, "what time are you on?" is not worth asking a
+        // week later.
+        'thread_closes_after_hours' => (int) env('RIFF_SHOW_THREAD_HOURS', 24),
         'rate_limit_per_minute' => (int) env('RIFF_SHOW_RATE_LIMIT', 5),
         'rate_limit_per_day' => (int) env('RIFF_SHOW_DAILY_LIMIT', 30),
     ],
@@ -276,6 +281,285 @@ return [
             'max_source_edge_pixels' => (int) env('RIFF_ARTIST_PHOTO_MAX_SOURCE_EDGE', 6000),
             'jpeg_quality' => 85,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Artist walls
+    |--------------------------------------------------------------------------
+    |
+    | An artist's page is where fan interaction lives (ROADMAP principle 3).
+    | Two voices speak there, and which one a post carries is explicit, never
+    | inferred: members post *as the artist*, fans post *as themselves*.
+    |
+    | wall_modes is who may post as a fan:
+    |   fans         -- listeners who follow the artist (the default: being a
+    |                   fan should mean something, and following is a free,
+    |                   effective spam gate)
+    |   everyone     -- any verified user (the artist's own opt-in)
+    |   members_only -- nobody but the artist; the wall is closed, and the
+    |                   page still carries updates and comments stay readable
+    |
+    | Replies are one level deep. A wall should read on a phone, and a flat
+    | reply list renders in two queries instead of a recursive walk.
+    |
+    */
+
+    'wall' => [
+        'modes' => [
+            'fans' => 'Fans who follow us',
+            'everyone' => 'Anyone with a Riff account',
+            'members_only' => 'Only us',
+        ],
+        'default_mode' => 'fans',
+        'max_post' => (int) env('RIFF_WALL_MAX_POST', 5000),
+        'max_comment' => (int) env('RIFF_WALL_MAX_COMMENT', 2000),
+        // How many posts a wall shows per page, and how many comments come
+        // with each post before "show more".
+        'posts_per_page' => (int) env('RIFF_WALL_POSTS_PER_PAGE', 10),
+        'comments_per_post' => (int) env('RIFF_WALL_COMMENTS_PER_POST', 3),
+        'replies_per_comment' => (int) env('RIFF_WALL_REPLIES_PER_COMMENT', 2),
+        // And how many more arrive each time a reader asks for them, from
+        // the "show more comments" / "see all replies" endpoints. A wall
+        // must not become an unbounded scroll just because a thread is
+        // popular.
+        'comments_per_page' => (int) env('RIFF_WALL_COMMENTS_PER_PAGE', 10),
+        'replies_per_page' => (int) env('RIFF_WALL_REPLIES_PER_PAGE', 10),
+        // Fan posts are the cheapest thing to flood a page with, so they
+        // are capped per minute and per day, like venues and listings.
+        'post_rate_limit_per_minute' => (int) env('RIFF_WALL_POST_RATE_LIMIT', 5),
+        'post_rate_limit_per_day' => (int) env('RIFF_WALL_POST_DAILY_LIMIT', 60),
+        'comment_rate_limit_per_minute' => (int) env('RIFF_WALL_COMMENT_RATE_LIMIT', 10),
+        'comment_rate_limit_per_day' => (int) env('RIFF_WALL_COMMENT_DAILY_LIMIT', 200),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    |
+    | In-app notifications: replies, follows, and the handful of things an
+    | artist or a fan would want to be told about. Every kind here is
+    | anchored to an artist, a thread or a show -- there is no "activity"
+    | kind, because an unanchored stream is the algorithmic feed the
+    | roadmap rules out arriving by another door.
+    |
+    | The keys are App\Support\NotificationType values and are persisted in
+    | users.notification_preferences, so renaming one needs a migration.
+    | `default` is what a brand-new account gets; the preferences form is
+    | built from this list, so it can only ever offer what exists.
+    |
+    | collapse_window_minutes is how long a new notification will fold into
+    | an unread one about the same thing instead of appearing beside it:
+    | five posts from one band in an afternoon is one line in the bell, not
+    | five. Set to 0 to turn folding off.
+    |
+    */
+    'notifications' => [
+        'types' => [
+            'reply' => [
+                'label' => 'Replies to me',
+                'description' => 'When someone answers your post or your comment.',
+                'icon' => 'reply',
+                'default' => true,
+            ],
+            'new_follower' => [
+                'label' => 'New fans',
+                'description' => 'When someone follows an artist you are in.',
+                'icon' => 'person_add',
+                'default' => true,
+            ],
+            'wall_post' => [
+                'label' => 'Posts on your wall',
+                'description' => "When a fan posts on your artist's page.",
+                'icon' => 'forum',
+                'default' => true,
+            ],
+            'artist_post' => [
+                'label' => 'Updates from artists you follow',
+                'description' => 'When a band you follow posts something.',
+                'icon' => 'campaign',
+                'default' => true,
+            ],
+            'artist_show' => [
+                'label' => 'Shows from artists you follow',
+                'description' => 'When a band you follow lists a new date.',
+                'icon' => 'event',
+                'default' => true,
+            ],
+            'lineup_invite' => [
+                'label' => 'Invitations to a bill',
+                'description' => 'When your artist is added to a show, or asked again after it moved.',
+                'icon' => 'queue_music',
+                // Not optional in practice: an unanswered invitation keeps
+                // a show off every public surface, so turning it off would
+                // quietly break other people's listings.
+                'default' => true,
+                'required' => true,
+            ],
+        ],
+        'collapse_window_minutes' => (int) env('RIFF_NOTIFICATION_COLLAPSE_MINUTES', 720),
+        // What the bell shows before "see all".
+        'bell_limit' => (int) env('RIFF_NOTIFICATION_BELL_LIMIT', 8),
+        'per_page' => (int) env('RIFF_NOTIFICATION_PER_PAGE', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The weekly digest
+    |--------------------------------------------------------------------------
+    |
+    | "Your scene, by email": what the artists you follow did this week,
+    | when they next play, the shows you said you were going to, and what
+    | is coming up around you.
+    |
+    | Nothing is sent when there is nothing to say -- an empty digest is
+    | the fastest way to teach someone to unsubscribe. Every send records
+    | digest_sent_at, which is both the window for the next one and the cap
+    | that stops a stray command writing twice in a week.
+    |
+    | unsubscribe_days is how long an unsubscribe link stays valid: long
+    | enough that a mail read a fortnight late still works, short enough
+    | that an old forwarded mail is not a permanent handle on an account.
+    |
+    */
+
+    'digest' => [
+        'frequencies' => [
+            'weekly' => 'Once a week',
+            'off' => 'Never',
+        ],
+        'default' => env('RIFF_DIGEST_DEFAULT', 'weekly'),
+        // The cap, in days, between two digests for one person.
+        'min_days_between' => (int) env('RIFF_DIGEST_MIN_DAYS', 6),
+        // How far back a digest looks when someone has never had one.
+        'first_window_days' => (int) env('RIFF_DIGEST_FIRST_WINDOW', 7),
+        'max_updates' => 6,
+        'max_shows' => 6,
+        'max_my_shows' => 5,
+        'max_nearby' => 6,
+        'max_listings' => 4,
+        // How many accounts one run will write to. A pilot-sized ceiling:
+        // raise it deliberately, with a queue worker that can keep up.
+        'batch_limit' => (int) env('RIFF_DIGEST_BATCH', 500),
+        'unsubscribe_days' => (int) env('RIFF_DIGEST_UNSUBSCRIBE_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Your scene (the signed-in home)
+    |--------------------------------------------------------------------------
+    |
+    | What the artists you follow have said and when they next play, plus
+    | what is coming up around you. Ordered by date and distance, never by
+    | engagement -- this page replaces the global feed precisely because a
+    | global feed ranks.
+    |
+    | Every limit here is a hard bound rather than a cache: the page is
+    | per-viewer by definition, so it follows the MapFilters::hiddenFor
+    | rule (personal views are bounded, not cached).
+    |
+    */
+
+    'scene_home' => [
+        'updates_per_page' => (int) env('RIFF_SCENE_HOME_UPDATES', 10),
+        'max_shows' => (int) env('RIFF_SCENE_HOME_SHOWS', 8),
+        'max_nearby_shows' => (int) env('RIFF_SCENE_HOME_NEARBY_SHOWS', 8),
+        'max_listings' => (int) env('RIFF_SCENE_HOME_LISTINGS', 6),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support links
+    |--------------------------------------------------------------------------
+    |
+    | Where an artist already gets paid. Riff points at these and handles no
+    | money itself (ROADMAP principle 4), so every one of them is a link-out:
+    | nothing here is ever embedded, and SupportLink refuses anything that is
+    | not a plain http(s) link to a real host.
+    |
+    | `hosts` is an allowlist for the types where carrying somewhere
+    | unrelated would be a scam rather than a mistake: a "Bandcamp" button
+    | that goes anywhere else, or a tip jar pointed at a stranger's wallet.
+    | An empty list means any valid link, because a band's own shop lives on
+    | its own domain and no list could anticipate it.
+    |
+    | The keys are persisted in artist_support_links.type, so renaming one
+    | needs a migration.
+    |
+    */
+
+    'support' => [
+        'types' => [
+            'bandcamp' => [
+                'label' => 'Bandcamp',
+                'icon' => 'album',
+                'hosts' => ['bandcamp.com'],
+                'hint' => 'Your Bandcamp page, album, or track.',
+            ],
+            'store' => [
+                'label' => 'Your store',
+                'icon' => 'storefront',
+                'hosts' => [],
+                'hint' => 'Where you sell your music directly.',
+            ],
+            'merch' => [
+                'label' => 'Merch',
+                'icon' => 'checkroom',
+                'hosts' => [],
+                'hint' => 'Shirts, records, tapes.',
+            ],
+            'tickets' => [
+                'label' => 'Tickets',
+                'icon' => 'confirmation_number',
+                'hosts' => [],
+                'hint' => 'A tour page or ticket seller. Individual shows have their own ticket links.',
+            ],
+            'tip_jar' => [
+                'label' => 'Tip jar',
+                'icon' => 'volunteer_activism',
+                'hosts' => [
+                    'ko-fi.com', 'patreon.com', 'buymeacoffee.com', 'liberapay.com',
+                    'paypal.com', 'paypal.me', 'venmo.com', 'cash.app', 'gofundme.com',
+                ],
+                'hint' => 'Ko-fi, Patreon, PayPal, Venmo, Cash App, and the like.',
+            ],
+            'other' => [
+                'label' => 'Something else',
+                'icon' => 'link',
+                'hosts' => [],
+                'hint' => 'Anywhere else people can support you.',
+            ],
+        ],
+        // Enough for a store, a Bandcamp, merch, tickets and a tip jar
+        // without the section becoming a link farm.
+        'max_links' => (int) env('RIFF_SUPPORT_MAX_LINKS', 6),
+        'max_label' => 40,
+        // Outbound clicks are a bare counter, no per-user rows: the
+        // question is "do support links get clicked" (the Phase 4 payments
+        // decision gate), never who clicked.
+        'click_rate_limit_per_minute' => (int) env('RIFF_SUPPORT_CLICK_RATE_LIMIT', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fans
+    |--------------------------------------------------------------------------
+    |
+    | Following is the fan relationship (artist_follows). Artist pages show
+    | how many fans an artist has and how many are local -- as counts only.
+    | No individual fan is ever named, placed, or listed.
+    |
+    | A local fan is one whose own stored town centre is within local_radius_km
+    | of the artist. Below local_floor the local count renders as "< 5": an
+    | exact small number next to a small town is close to naming someone.
+    |
+    */
+
+    'fans' => [
+        'local_radius_km' => (float) env('RIFF_FAN_LOCAL_RADIUS_KM', 40),
+        'local_floor' => (int) env('RIFF_FAN_LOCAL_FLOOR', 5),
+        'count_cache_seconds' => (int) env('RIFF_FAN_COUNT_CACHE_TTL', 300),
     ],
 
     /*

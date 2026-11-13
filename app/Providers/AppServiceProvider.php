@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\EventProvider;
 use App\Services\Events\TicketmasterEvents;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -100,6 +101,43 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Wall posts and comments. A fan post is the cheapest thing to
+        // flood someone's page with, so both are capped per minute and
+        // per day, like venues and listings.
+        RateLimiter::for('wall-posts', function (Request $request) {
+            $key = (string) ($request->user()?->id ?: $request->ip());
+
+            return [
+                Limit::perMinute(config('riff.wall.post_rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.wall.post_rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
+        RateLimiter::for('wall-comments', function (Request $request) {
+            $key = (string) ($request->user()?->id ?: $request->ip());
+
+            return [
+                Limit::perMinute(config('riff.wall.comment_rate_limit_per_minute'))->by('minute:'.$key),
+                Limit::perDay(config('riff.wall.comment_rate_limit_per_day'))->by('day:'.$key),
+            ];
+        });
+
+        // Artist-level moderation. Generous -- a band cleaning up after a
+        // bad night should not be throttled mid-cleanup -- but bounded,
+        // since each action writes a trail row.
+        RateLimiter::for('wall-moderation', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Outbound support-link clicks. Public and unauthenticated, so it
+        // needs a ceiling -- but a generous one: the counter it feeds
+        // answers "do support links get clicked", and throttling a real
+        // reader's click would make the answer wrong, not just late.
+        RateLimiter::for('support-clicks', function (Request $request) {
+            return Limit::perMinute(config('riff.support.click_rate_limit_per_minute'))
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
         // The map's data endpoints are public. Panning fires a request
         // only when movement settles, so this ceiling is far above real
         // browsing while still bounding a scraper.
@@ -111,5 +149,18 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
+
+        // Mass-assignment mistakes become errors outside production: a
+        // field that is not fillable is silently dropped otherwise, which
+        // is how a test fixture once set a lineup status that never
+        // applied and quietly inverted what it asserted.
+        //
+        // The other two halves of shouldBeStrict() are *not* on.
+        // preventAccessingMissingAttributes trips wherever a model is
+        // serialised after a narrowed select (Inertia does this with the
+        // auth user), and preventLazyLoading needs a pass over every
+        // render first. Both are worth adopting deliberately; neither is
+        // a one-line change.
+        Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
     }
 }
