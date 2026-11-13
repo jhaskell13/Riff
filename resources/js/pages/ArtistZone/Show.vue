@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useHashHighlight } from '@/Composables/useHashHighlight';
 import MusicPreview from '@/Components/MusicPreview.vue';
 import FollowButton from '@/Components/FollowButton.vue';
 import ArtistSafetyMenu from '@/Components/ArtistSafetyMenu.vue';
@@ -29,6 +30,11 @@ const props = defineProps({
         default: false,
     },
     isBlocked: {
+        type: Boolean,
+        default: false,
+    },
+    // Following, but asked for quiet. Only meaningful while following.
+    isMuted: {
         type: Boolean,
         default: false,
     },
@@ -76,11 +82,20 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    // Members only: who they have barred from their wall.
+    wallBans: {
+        type: Array,
+        default: () => [],
+    },
     canBlock: {
         type: Boolean,
         default: false,
     },
 });
+
+// A notification links to the post or reply itself, not just this
+// page; scroll to it and flash it.
+useHashHighlight();
 
 const links = computed(() => [
     { key: 'website', url: props.artist.website, label: 'Website', icon: 'public' },
@@ -90,6 +105,14 @@ const links = computed(() => [
     { key: 'youtube_url', url: props.artist.youtube_url, label: 'YouTube', icon: 'smart_display' },
     { key: 'instagram_url', url: props.artist.instagram_url, label: 'Instagram', icon: 'photo_camera' },
 ].filter((link) => Boolean(link.url)));
+
+const toggleMute = () => {
+    router.patch(
+        route('artists.follow.notify', props.artist.id),
+        { notify: props.isMuted },
+        { preserveScroll: true, preserveState: true },
+    );
+};
 
 // What a shared link unfurls as.
 const metaDescription = computed(() => {
@@ -191,6 +214,22 @@ const metaDescription = computed(() => {
                                     {{ artist.followers_count ?? 0 }} {{ (artist.followers_count ?? 0) === 1 ? 'follower' : 'followers' }}
                                 </span>
                             </div>
+                            <!-- Quiet from one band without losing them
+                                 from your scene. -->
+                            <q-btn
+                                v-if="isFollowing"
+                                flat dense no-caps rounded size="sm"
+                                :color="isMuted ? 'orange-4' : 'grey-6'"
+                                :icon="isMuted ? 'notifications_off' : 'notifications_active'"
+                                :label="isMuted ? 'Muted' : 'Notifying'"
+                                :aria-pressed="isMuted"
+                                :aria-label="isMuted
+                                    ? `Turn notifications from ${artist.name} back on`
+                                    : `Mute notifications from ${artist.name}`"
+                                class="q-mt-xs"
+                                @click="toggleMute"
+                            />
+
                             <!-- A count, never a name or a place: a
                                  listener's location is never public. -->
                             <div v-if="localFans" class="text-caption text-grey-6 q-mt-xs">
@@ -243,32 +282,6 @@ const metaDescription = computed(() => {
                                 />
                             </div>
                             <ShowList :shows="upcomingShows" empty="Nothing listed yet." />
-                        </q-card-section>
-
-                        <!-- The fans' home (ROADMAP principle 3): fan
-                             interaction happens here, on the artist's own
-                             page, not in a shared public square. -->
-                        <q-card-section>
-                            <div class="row items-center q-mb-sm">
-                                <div class="text-subtitle2 text-weight-medium text-grey-5">
-                                    Wall
-                                </div>
-                                <q-space />
-                                <span v-if="wall?.total" class="text-caption text-grey-6">
-                                    {{ wall.total }} {{ wall.total === 1 ? 'post' : 'posts' }}
-                                </span>
-                            </div>
-                            <ArtistWall
-                                :artist="artist"
-                                :wall="wall"
-                                :wall-mode="wallMode"
-                                :can-post-as-artist="canPostAsArtist"
-                                :can-post-on-wall="canPostOnWall"
-                                :is-authenticated="canFollow"
-                                :is-following="isFollowing"
-                                :max-post="wall?.maxPost ?? 5000"
-                                :max-comment="wall?.maxComment ?? 2000"
-                            />
                         </q-card-section>
 
                         <q-card-section v-if="listings.length || canManage" class="q-pt-none">
@@ -347,6 +360,37 @@ const metaDescription = computed(() => {
                                 &larr; Back to your artists
                             </Link>
                         </q-card-section>
+                    </q-card>
+
+                    <!-- The wall is its own card, and last: it grows without
+                         bound, so everything factual about an artist has to
+                         be readable before it. -->
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section>
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">
+                                    Wall
+                                </div>
+                                <q-space />
+                                <span v-if="wall?.total" class="text-caption text-grey-6">
+                                    {{ wall.total }} {{ wall.total === 1 ? 'post' : 'posts' }}
+                                </span>
+                            </div>
+                            <ArtistWall
+                                :artist="artist"
+                                :wall="wall"
+                                :wall-mode="wallMode"
+                                :can-post-as-artist="canPostAsArtist"
+                                :can-post-on-wall="canPostOnWall"
+                                :is-authenticated="canFollow"
+                                :is-following="isFollowing"
+                                :max-post="wall?.maxPost ?? 5000"
+                                :wall-bans="wallBans"
+                                :can-moderate="canManage"
+                                :max-comment="wall?.maxComment ?? 2000"
+                            />
+                        </q-card-section>
+
                     </q-card>
                 </div>
             </div>

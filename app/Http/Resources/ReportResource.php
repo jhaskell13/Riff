@@ -98,11 +98,13 @@ class ReportResource extends JsonResource
                 'detail' => $subject->created_at?->toIso8601String(),
                 'body' => Str::limit($subject->content, 400, '…'),
                 'imageUrl' => null,
-                // The comment lives on its post's wall; link to the page
-                // it can actually be read in context on.
-                'url' => $subject->commentable instanceof Post && $subject->commentable->artist !== null
-                    ? route('artists.show', $subject->commentable->artist)
-                    : null,
+                // Link to the page it can actually be read in context on:
+                // the artist's wall, or the show whose thread it is in.
+                'url' => match (true) {
+                    $subject->commentable instanceof Show => route('shows.show', $subject->commentable),
+                    $subject->commentable instanceof Post && $subject->commentable->artist !== null => route('artists.show', $subject->commentable->artist),
+                    default => null,
+                },
                 'state' => $subject->status === Comment::PUBLISHED
                     ? null
                     : ($subject->status === Comment::HIDDEN ? 'Hidden by the artist' : 'Removed'),

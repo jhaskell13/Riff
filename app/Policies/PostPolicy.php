@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\User;
 use App\Support\AuthorContext;
@@ -27,15 +28,12 @@ class PostPolicy
     }
 
     /**
-     * Commenting on a post means posting on the wall it belongs to, so it
-     * answers to the same rule (ArtistPolicy::postOnWall). A post with no
-     * wall is a leftover from the old global feed and takes no comments.
+     * Commenting on a post is the same question as commenting on a show:
+     * both delegate to CommentPolicy::createOn, so the rule lives once.
      */
     public function comment(User $user, Post $post): bool
     {
-        return $post->artist !== null
-            && $post->status === 'published'
-            && $user->can('postOnWall', $post->artist);
+        return $user->can('createOn', [Comment::class, $post]);
     }
 
     /**

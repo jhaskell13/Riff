@@ -8,12 +8,16 @@ use App\Models\Genre;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\User;
+use App\Models\WallModerationEvent;
+use App\Services\WallModeration;
+use App\Support\AuthorContext;
 use App\Support\ModerationAction;
 use App\Support\OnboardingIntent;
 use App\Support\ReportStatus;
 use Database\Factories\Support\Towns;
 use Database\Seeders\Support\PilotScene;
 use Database\Seeders\Support\PlaceholderPhoto;
+use Database\Seeders\Support\WallScripts;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -73,15 +77,11 @@ class PilotSeeder extends Seeder
 
             PlaceholderPhoto::attach($artist);
 
-            // A support section is an invitation to pay, which is a
-            // stronger attribution than listing a link -- so, like posts
-            // and reports, it is seeded onto fictional acts only. The
-            // dataset enforces that; this asserts it at the point of use.
             if ($act['support'] ?? false) {
                 $this->supportLinks($artist, $act);
             }
 
-            $artist->members()->attach($this->memberFor($artist, $town));
+            $this->attachMembers($artist, $act, $town);
 
             if ($act['archived'] ?? false) {
                 $artist->delete();
@@ -94,30 +94,37 @@ class PilotSeeder extends Seeder
         $fictional = $onMap->whereIn('name', PilotScene::fictionalActNames());
 
         $this->listeners($onMap);
-        // Posts speak as the act and reports accuse one: fictional only.
+        // Walls carry simulated conversation on real acts too (owner
+        // decision, November 2026): the demo has to show a populated
+        // scene, and an empty wall under a real band shows nothing. The
+        // report queue stays fictional -- being reported is a judgement,
+        // not a public fact.
         //
         // The first few fictional acts get full wall conversations; the
         // rest get a lone artist-voice post, so the demo shows both a busy
         // wall and a quiet one. They are split rather than overlapping, or
         // an act would carry the same line twice.
-        $withWalls = $fictional->take(4);
-        $this->walls($withWalls);
-        $this->posts($fictional->skip($withWalls->count()));
+        $this->walls($onMap);
+        // One hidden comment and one barred listener, so a member logging
+        // in sees what artist-level moderation looks like -- including the
+        // undo and the trail. Fictional acts only, like every other
+        // attributed state.
+        $this->seedWallModeration($fictional);
+        // Anything with no scripted wall still gets a lone artist-voice
+        // post, so a quiet page is represented too.
+        $this->posts($fictional);
         $this->reports($fictional);
     }
 
     /**
-     * Where a (fictional) act asks to be supported. Click counts are
-     * invented, and exist so the Artist Zone has something to show.
+     * Where an act asks to be supported. For a real act this is their own
+     * public Bandcamp and nothing else; the click counts are invented, and
+     * exist so the Artist Zone has something to show.
      *
      * @param  array<string, mixed>  $act
      */
     private function supportLinks(Artist $artist, array $act): void
     {
-        if ($act['real'] !== false) {
-            throw new \LogicException("{$act['name']}: support links may only be seeded onto fictional acts.");
-        }
-
         foreach (array_values($act['support']) as $position => $link) {
             $artist->supportLinks()->create([
                 'type' => $link['type'],
@@ -130,9 +137,39 @@ class PilotSeeder extends Seeder
     }
 
     /** The member account behind an act, local to the same town. */
-    private function memberFor(Artist $artist, array $town): User
+    /**
+     * The people behind an act.
+     *
+     * Real acts get their publicly credited members by name -- that is
+     * what makes the demo look like a scene rather than a directory. The
+     * accounts themselves are invented: every one uses an RFC-reserved
+     * example.* address (UserFactory::safeEmail), so **a demo digest or
+     * notification can never reach a real person's inbox.** That is the
+     * one hard line in the dataset's rules, and PilotDatasetTest enforces
+     * it on the way out.
+     *
+     * @param  array<string, mixed>  $act
+     * @param  array<string, mixed>  $town
+     */
+    private function attachMembers(Artist $artist, array $act, array $town): void
+    {
+        $names = $act['members'] ?? [];
+
+        if ($names === []) {
+            $artist->members()->attach($this->memberFor($artist, $town));
+
+            return;
+        }
+
+        foreach ($names as $name) {
+            $artist->members()->attach($this->memberFor($artist, $town, (string) $name));
+        }
+    }
+
+    private function memberFor(Artist $artist, array $town, ?string $name = null): User
     {
         return User::factory()->create([
+            ...$name === null ? [] : ['name' => $name],
             'city' => $town['city'],
             'state' => $town['state'],
             'lat' => $town['lat'],
@@ -225,57 +262,95 @@ class PilotSeeder extends Seeder
             return;
         }
 
-        // Four exchanges, each a different shape a wall actually takes:
-        // a question the band answers, fans agreeing with each other, a
-        // thank-you, and a question nobody has answered yet.
-        $conversations = [
-            [
-                'post' => ['voice' => 'artist', 'content' => 'New single is up. Thanks to everyone who came out to the release show.'],
-                'comments' => [
-                    ['voice' => 'fan', 'content' => 'Been waiting for this one since you played it in May. The bridge is enormous.', 'replies' => [
-                        ['voice' => 'artist', 'content' => 'That bridge took four practices and one argument. Glad it landed.'],
-                        ['voice' => 'fan', 'content' => 'Worth every practice.'],
-                    ]],
-                    ['voice' => 'fan', 'content' => 'Any chance of a tape run?', 'replies' => [
-                        ['voice' => 'artist', 'content' => 'Fifty of them, at the merch table Friday. First come.'],
-                    ]],
-                ],
-            ],
-            [
-                'post' => ['voice' => 'fan', 'content' => 'Saw these three last night in a basement with about forty people. Go while you still can stand that close.'],
-                'comments' => [
-                    ['voice' => 'fan', 'content' => 'I was at the one in March. Same thing. Ears rang for a day.', 'replies' => []],
-                    ['voice' => 'artist', 'content' => 'Thanks for coming out. Next one is announced this week.', 'replies' => []],
-                ],
-            ],
-            [
-                'post' => ['voice' => 'artist', 'content' => 'Practice space flooded. If anyone has a room in the area for a month, we are asking.'],
-                'comments' => [
-                    ['voice' => 'fan', 'content' => 'My uncle has a garage in Newington, I can ask him tonight.', 'replies' => [
-                        ['voice' => 'artist', 'content' => 'That would genuinely save us. Message through the listing and we will sort it.'],
-                    ]],
-                ],
-            ],
-            [
-                'post' => ['voice' => 'fan', 'content' => 'Does anyone know if the Friday show is all ages? Bringing my younger brother and do not want to get turned away at the door.'],
-                'comments' => [],
-            ],
-        ];
+        // The first act gets the busy wall -- enough comments and replies
+        // that the "show more" controls appear in the demo without anyone
+        // typing a word. The rest get ordinary walls, cycling through the
+        // shapes in WallScripts.
+        $scripts = WallScripts::scripts();
+        $scripted = WallScripts::forActs();
+        $acts = $artists->values();
 
-        foreach ($artists->take(count($conversations))->values() as $index => $artist) {
+        foreach ($acts as $index => $artist) {
             $member = $artist->members()->first();
 
-            // Same rule as posts(): a wall is seeded once.
+            // Idempotent per act, like the acts themselves: re-running
+            // must not give a band the same thread twice.
             if ($member === null || $artist->wallPosts()->exists()) {
                 continue;
             }
 
             // Posting fans follow the artist, which is what the default
             // wall mode requires of a real one.
-            $local = $fans->random(min(4, $fans->count()))->values();
+            $local = $fans->random(min(6, $fans->count()))->values();
             $local->each(fn (User $fan) => $fan->followedArtists()->syncWithoutDetaching([$artist->id]));
 
-            $this->conversation($artist, $member, $local, $conversations[$index]);
+            // An act with a script of its own gets it -- written around
+            // that band's actual records and rooms. Everyone else cycles
+            // through the generic shapes.
+            $wall = $scripted[$artist->name]
+                ?? ($index === 0 ? WallScripts::busy() : $scripts[$index % count($scripts)]);
+
+            // Oldest first, so the newest post ends up at the top of the
+            // wall and the timestamps read in order.
+            $age = count($wall) * 4;
+
+            foreach ($wall as $post) {
+                $this->conversation($artist, $member, $local, $post, $age);
+                $age -= 4;
+            }
+        }
+    }
+
+    /**
+     * A demo of artist-level moderation: something hidden (with its trail
+     * and its undo) and somebody barred from a wall.
+     *
+     * Nothing destructive, because nothing artist-level ever is -- that is
+     * the whole point of the feature.
+     *
+     * @param  Collection<int, Artist>  $artists
+     */
+    private function seedWallModeration(Collection $artists): void
+    {
+        if (WallModerationEvent::query()->exists()) {
+            return;
+        }
+
+        $artist = $artists->first(fn (Artist $a) => $a->wallPosts()
+            ->whereHas('comments', fn ($q) => $q->whereNull('parent_id'))
+            ->exists());
+
+        $member = $artist?->members()->first();
+
+        if ($artist === null || $member === null) {
+            return;
+        }
+
+        $moderation = app(WallModeration::class);
+
+        // Hide the newest fan comment on the wall, so the demo shows a
+        // hidden row with "Hidden by <member>" and an Unhide beside it.
+        $comment = Comment::query()
+            ->whereIn('commentable_id', $artist->wallPosts()->pluck('id'))
+            ->where('commentable_type', (new Post)->getMorphClass())
+            ->where('author_context', AuthorContext::Fan)
+            ->whereNull('parent_id')
+            ->latest('id')
+            ->first();
+
+        if ($comment !== null) {
+            $moderation->hide($artist, $member, $comment, 'Off topic — asked them to take it to the listing.');
+        }
+
+        // And bar one listener who is not a fan of anything else, so the
+        // members' ban list has a row to lift.
+        $listener = User::where('onboarding_intent', OnboardingIntent::Fan)
+            ->whereNotIn('id', $artist->members()->pluck('users.id'))
+            ->latest('id')
+            ->first();
+
+        if ($listener !== null) {
+            $moderation->ban($artist, $member, $listener, 'Repeatedly posting the same promo under every update.');
         }
     }
 
@@ -285,19 +360,19 @@ class PilotSeeder extends Seeder
      * @param  Collection<int, User>  $fans
      * @param  array<string, mixed>  $script
      */
-    private function conversation(Artist $artist, User $member, Collection $fans, array $script): void
+    private function conversation(Artist $artist, User $member, Collection $fans, array $script, int $ageInDays): void
     {
         $fanAt = fn (int $i) => $fans[$i % $fans->count()];
-        $postedAt = now()->subDays(rand(1, 12))->subHours(rand(0, 23));
+        $postedAt = now()->subDays(max(0, $ageInDays))->subHours(rand(0, 20));
 
-        $post = $script['post']['voice'] === 'artist'
+        $post = $script['voice'] === 'artist'
             ? Post::factory()->asArtist($artist, $member)->create([
-                'content' => $script['post']['content'],
+                'content' => $script['content'],
                 'published_at' => $postedAt,
             ])
             : Post::factory()->onWall($artist)->create([
                 'user_id' => $fanAt(0)->getKey(),
-                'content' => $script['post']['content'],
+                'content' => $script['content'],
                 'published_at' => $postedAt,
             ]);
 

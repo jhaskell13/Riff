@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Wall;
 
+use App\Contracts\Commentable;
 use App\Models\Comment;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -23,6 +25,23 @@ class CommentRequest extends FormRequest
             'parent_id' => ['nullable', 'integer', 'exists:comments,id'],
             'as_artist' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * The thing being commented on, whichever route reached here. Keeps the
+     * reply checks below identical for wall posts and show threads.
+     */
+    public function commentable(): (Commentable&Model)|null
+    {
+        foreach (['post', 'show'] as $parameter) {
+            $value = $this->route($parameter);
+
+            if ($value instanceof Commentable && $value instanceof Model) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     public function withValidator(Validator $validator): void
@@ -48,10 +67,14 @@ class CommentRequest extends FormRequest
             }
 
             // And it must belong to the thread being replied to, or a
-            // reply could be smuggled onto another artist's wall.
-            if ($parent->commentable_type !== $this->route('post')?->getMorphClass()
-                || $parent->commentable_id !== $this->route('post')?->getKey()) {
-                $validator->errors()->add('parent_id', 'That comment is not on this post.');
+            // reply could be smuggled onto another artist's wall, or onto
+            // another show's thread.
+            $subject = $this->commentable();
+
+            if ($subject === null
+                || $parent->commentable_type !== $subject->getMorphClass()
+                || $parent->commentable_id !== $subject->getKey()) {
+                $validator->errors()->add('parent_id', 'That comment is not on this thread.');
             }
         });
     }

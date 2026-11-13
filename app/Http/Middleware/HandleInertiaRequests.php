@@ -43,6 +43,12 @@ class HandleInertiaRequests extends Middleware
                     ->map(fn (string $label, string $value) => ['value' => $value, 'label' => $label])
                     ->values()
                     ->all(),
+            // The bell's badge, on every page. One indexed count against
+            // notifications_unread_index; lazily evaluated so a partial
+            // reload that does not ask for it does not pay for it.
+            'notifications' => fn () => $request->user() === null ? null : [
+                'unread' => $request->user()->unreadNotifications()->count(),
+            ],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

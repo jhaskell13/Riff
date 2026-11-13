@@ -149,6 +149,11 @@ return [
         'max_lineup' => (int) env('RIFF_SHOW_MAX_LINEUP', 12),
         'max_days_ahead' => (int) env('RIFF_SHOW_MAX_DAYS_AHEAD', 365),
         'still_on_hours' => (int) env('RIFF_SHOW_STILL_ON_HOURS', 4),
+        // A show's thread goes read-only this long after the start. Longer
+        // than still_on_hours on purpose: "that was great" is worth saying
+        // the morning after, "what time are you on?" is not worth asking a
+        // week later.
+        'thread_closes_after_hours' => (int) env('RIFF_SHOW_THREAD_HOURS', 24),
         'rate_limit_per_minute' => (int) env('RIFF_SHOW_RATE_LIMIT', 5),
         'rate_limit_per_day' => (int) env('RIFF_SHOW_DAILY_LIMIT', 30),
     ],
@@ -313,13 +318,154 @@ return [
         // with each post before "show more".
         'posts_per_page' => (int) env('RIFF_WALL_POSTS_PER_PAGE', 10),
         'comments_per_post' => (int) env('RIFF_WALL_COMMENTS_PER_POST', 3),
-        'replies_per_comment' => (int) env('RIFF_WALL_REPLIES_PER_COMMENT', 3),
+        'replies_per_comment' => (int) env('RIFF_WALL_REPLIES_PER_COMMENT', 2),
+        // And how many more arrive each time a reader asks for them, from
+        // the "show more comments" / "see all replies" endpoints. A wall
+        // must not become an unbounded scroll just because a thread is
+        // popular.
+        'comments_per_page' => (int) env('RIFF_WALL_COMMENTS_PER_PAGE', 10),
+        'replies_per_page' => (int) env('RIFF_WALL_REPLIES_PER_PAGE', 10),
         // Fan posts are the cheapest thing to flood a page with, so they
         // are capped per minute and per day, like venues and listings.
         'post_rate_limit_per_minute' => (int) env('RIFF_WALL_POST_RATE_LIMIT', 5),
         'post_rate_limit_per_day' => (int) env('RIFF_WALL_POST_DAILY_LIMIT', 60),
         'comment_rate_limit_per_minute' => (int) env('RIFF_WALL_COMMENT_RATE_LIMIT', 10),
         'comment_rate_limit_per_day' => (int) env('RIFF_WALL_COMMENT_DAILY_LIMIT', 200),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications
+    |--------------------------------------------------------------------------
+    |
+    | In-app notifications: replies, follows, and the handful of things an
+    | artist or a fan would want to be told about. Every kind here is
+    | anchored to an artist, a thread or a show -- there is no "activity"
+    | kind, because an unanchored stream is the algorithmic feed the
+    | roadmap rules out arriving by another door.
+    |
+    | The keys are App\Support\NotificationType values and are persisted in
+    | users.notification_preferences, so renaming one needs a migration.
+    | `default` is what a brand-new account gets; the preferences form is
+    | built from this list, so it can only ever offer what exists.
+    |
+    | collapse_window_minutes is how long a new notification will fold into
+    | an unread one about the same thing instead of appearing beside it:
+    | five posts from one band in an afternoon is one line in the bell, not
+    | five. Set to 0 to turn folding off.
+    |
+    */
+    'notifications' => [
+        'types' => [
+            'reply' => [
+                'label' => 'Replies to me',
+                'description' => 'When someone answers your post or your comment.',
+                'icon' => 'reply',
+                'default' => true,
+            ],
+            'new_follower' => [
+                'label' => 'New fans',
+                'description' => 'When someone follows an artist you are in.',
+                'icon' => 'person_add',
+                'default' => true,
+            ],
+            'wall_post' => [
+                'label' => 'Posts on your wall',
+                'description' => "When a fan posts on your artist's page.",
+                'icon' => 'forum',
+                'default' => true,
+            ],
+            'artist_post' => [
+                'label' => 'Updates from artists you follow',
+                'description' => 'When a band you follow posts something.',
+                'icon' => 'campaign',
+                'default' => true,
+            ],
+            'artist_show' => [
+                'label' => 'Shows from artists you follow',
+                'description' => 'When a band you follow lists a new date.',
+                'icon' => 'event',
+                'default' => true,
+            ],
+            'lineup_invite' => [
+                'label' => 'Invitations to a bill',
+                'description' => 'When your artist is added to a show, or asked again after it moved.',
+                'icon' => 'queue_music',
+                // Not optional in practice: an unanswered invitation keeps
+                // a show off every public surface, so turning it off would
+                // quietly break other people's listings.
+                'default' => true,
+                'required' => true,
+            ],
+        ],
+        'collapse_window_minutes' => (int) env('RIFF_NOTIFICATION_COLLAPSE_MINUTES', 720),
+        // What the bell shows before "see all".
+        'bell_limit' => (int) env('RIFF_NOTIFICATION_BELL_LIMIT', 8),
+        'per_page' => (int) env('RIFF_NOTIFICATION_PER_PAGE', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | The weekly digest
+    |--------------------------------------------------------------------------
+    |
+    | "Your scene, by email": what the artists you follow did this week,
+    | when they next play, the shows you said you were going to, and what
+    | is coming up around you.
+    |
+    | Nothing is sent when there is nothing to say -- an empty digest is
+    | the fastest way to teach someone to unsubscribe. Every send records
+    | digest_sent_at, which is both the window for the next one and the cap
+    | that stops a stray command writing twice in a week.
+    |
+    | unsubscribe_days is how long an unsubscribe link stays valid: long
+    | enough that a mail read a fortnight late still works, short enough
+    | that an old forwarded mail is not a permanent handle on an account.
+    |
+    */
+
+    'digest' => [
+        'frequencies' => [
+            'weekly' => 'Once a week',
+            'off' => 'Never',
+        ],
+        'default' => env('RIFF_DIGEST_DEFAULT', 'weekly'),
+        // The cap, in days, between two digests for one person.
+        'min_days_between' => (int) env('RIFF_DIGEST_MIN_DAYS', 6),
+        // How far back a digest looks when someone has never had one.
+        'first_window_days' => (int) env('RIFF_DIGEST_FIRST_WINDOW', 7),
+        'max_updates' => 6,
+        'max_shows' => 6,
+        'max_my_shows' => 5,
+        'max_nearby' => 6,
+        'max_listings' => 4,
+        // How many accounts one run will write to. A pilot-sized ceiling:
+        // raise it deliberately, with a queue worker that can keep up.
+        'batch_limit' => (int) env('RIFF_DIGEST_BATCH', 500),
+        'unsubscribe_days' => (int) env('RIFF_DIGEST_UNSUBSCRIBE_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Your scene (the signed-in home)
+    |--------------------------------------------------------------------------
+    |
+    | What the artists you follow have said and when they next play, plus
+    | what is coming up around you. Ordered by date and distance, never by
+    | engagement -- this page replaces the global feed precisely because a
+    | global feed ranks.
+    |
+    | Every limit here is a hard bound rather than a cache: the page is
+    | per-viewer by definition, so it follows the MapFilters::hiddenFor
+    | rule (personal views are bounded, not cached).
+    |
+    */
+
+    'scene_home' => [
+        'updates_per_page' => (int) env('RIFF_SCENE_HOME_UPDATES', 10),
+        'max_shows' => (int) env('RIFF_SCENE_HOME_SHOWS', 8),
+        'max_nearby_shows' => (int) env('RIFF_SCENE_HOME_NEARBY_SHOWS', 8),
+        'max_listings' => (int) env('RIFF_SCENE_HOME_LISTINGS', 6),
     ],
 
     /*

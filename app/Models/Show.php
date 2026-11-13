@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Contracts\Commentable;
 use App\Contracts\Geocodable;
 use App\Jobs\GeocodeAddress;
 use App\Support\MapCache;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,7 +61,7 @@ use Illuminate\Support\Carbon;
  * @property-read Artist|null $hostArtist
  * @property-read Venue|null $venue
  */
-class Show extends Model implements Geocodable
+class Show extends Model implements Commentable, Geocodable
 {
     use HasFactory, SoftDeletes;
 
@@ -187,6 +189,18 @@ class Show extends Model implements Geocodable
             ->withTimestamps();
     }
 
+    /**
+     * The show's thread: "who's going?", "what time are you on?". Shares
+     * the comments table with artist walls -- the reason comments went
+     * polymorphic rather than each show carrying a phantom post row.
+     *
+     * @return MorphMany<Comment, $this>
+     */
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
+
     /** @return MorphMany<Report, $this> */
     public function reports(): MorphMany
     {
@@ -276,6 +290,99 @@ class Show extends Model implements Geocodable
     protected function effectiveAgePolicy(): Attribute
     {
         return Attribute::get(fn (): ?string => $this->age_policy ?? $this->venue?->age_policy);
+    }
+
+    // ---- Commentable ----------------------------------------------------
+
+    /**
+     * The host's members own the night, so they own its thread. Null once
+     * the host is archived, which also takes the show off every listing.
+     */
+    public function moderatingArtist(): ?Artist
+    {
+        return $this->hostArtist;
+    }
+
+    /**
+     * A show thread is short-lived on purpose: it exists to answer "who is
+     * going?" and "what time are you on?", and both questions stop mattering
+     * once the night is over. It goes read-only rather than disappearing,
+     * because what was said still explains the night to anyone who arrives
+     * late.
+     *
+     * A cancelled show's thread closes too -- the page stays up to tell
+     * people it is off, but there is nothing left to arrange.
+     */
+    public function threadUrl(): ?string
+    {
+        return $this->trashed() ? null : route('shows.show', $this);
+    }
+
+    /**
+     * The host, or any confirmed act on the bill this user belongs to. The
+     * bands playing can answer for their own set; the host is just the one
+     * who listed the night.
+     */
+    public function voiceArtistFor(User $user): ?Artist
+    {
+        return $this->commentVoiceArtists()
+            ->first(fn (Artist $artist) => $user->isMemberOf($artist));
+    }
+
+    /**
+     * Host first, then the confirmed bill. Pending and declined acts are
+     * absent on purpose: they appear on no public surface until they have
+     * agreed to be on it.
+     *
+     * @return EloquentCollection<int, Artist>
+     */
+    public function commentVoiceArtists(): EloquentCollection
+    {
+        $artists = new EloquentCollection;
+
+        if ($this->hostArtist !== null) {
+            $artists->push($this->hostArtist);
+        }
+
+        foreach ($this->confirmedLineup as $entry) {
+            if ($entry->artist !== null) {
+                $artists->push($entry->artist);
+            }
+        }
+
+        return $artists->unique('id')->values();
+    }
+
+    /**
+     * A show is a public event, not the host's own page: anyone with an
+     * account may ask about it. Making people follow the band first would
+     * be a strange tax on "is this all ages?".
+     */
+    public function commentsFollowWallMode(): bool
+    {
+        return false;
+    }
+
+    public function acceptsComments(): bool
+    {
+        return ! $this->is_cancelled && ! $this->threadHasClosed();
+    }
+
+    public function commentsClosedReason(): ?string
+    {
+        return match (true) {
+            $this->is_cancelled => 'This show was cancelled, so its thread is closed. What was said stays here.',
+            $this->threadHasClosed() => 'This thread closed after the show. What was said stays here.',
+            default => null,
+        };
+    }
+
+    /** Whether the window after the start has run out. */
+    public function threadHasClosed(): bool
+    {
+        return $this->starts_at->lt(
+            now()->subHours((int) config('riff.shows.thread_closes_after_hours'))
+        );
     }
 
     /**

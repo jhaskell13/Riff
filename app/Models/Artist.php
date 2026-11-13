@@ -136,10 +136,14 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     /**
      * Listeners following this artist. Counted with withCount('followers');
      * there is intentionally no followers_count column to shadow it.
+     *
+     * @return BelongsToMany<User, $this>
      */
     public function followers(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'artist_follows')->withTimestamps();
+        return $this->belongsToMany(User::class, 'artist_follows')
+            ->withPivot('notify')
+            ->withTimestamps();
     }
 
     /**
@@ -154,6 +158,27 @@ class Artist extends Model implements Geocodable, HasPublicSlug
     }
 
     /**
+     * Listeners barred from posting on this wall. They keep following and
+     * keep reading -- a ban is about the wall, not the fandom.
+     *
+     * @return HasMany<ArtistWallBan, $this>
+     */
+    public function wallBans(): HasMany
+    {
+        return $this->hasMany(ArtistWallBan::class);
+    }
+
+    /**
+     * The append-only trail of what the members hid, unhid and banned.
+     *
+     * @return HasMany<WallModerationEvent, $this>
+     */
+    public function wallModerationEvents(): HasMany
+    {
+        return $this->hasMany(WallModerationEvent::class);
+    }
+
+    /**
      * Where this artist already gets paid. Riff links out and takes no cut
      * (ROADMAP principle 4); see App\Services\ArtistSupportLinks.
      *
@@ -164,7 +189,11 @@ class Artist extends Model implements Geocodable, HasPublicSlug
         return $this->hasMany(ArtistSupportLink::class)->orderBy('position')->orderBy('id');
     }
 
-    /** Listeners who hid this artist from their own map; never shown to them. */
+    /**
+     * Listeners who hid this artist from their own map; never shown to them.
+     *
+     * @return BelongsToMany<User, $this>
+     */
     public function blockers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'artist_blocks')->withTimestamps();

@@ -2,16 +2,24 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useHashHighlight } from '@/Composables/useHashHighlight';
 import ReportDialog from '@/Components/ReportDialog.vue';
+import ShowThread from '@/Components/Wall/ShowThread.vue';
 
 const props = defineProps({
     // ShowResource: confirmed acts only; times in the show's timezone.
     show: { type: Object, required: true },
     rsvp: { type: Object, required: true },
+    // The night's thread (WallReader::thread). Read-only after the show.
+    thread: { type: Object, default: () => ({ comments: [], total: 0 }) },
     canManage: { type: Boolean, default: false },
     canRsvp: { type: Boolean, default: false },
     isGuest: { type: Boolean, default: true },
 });
+
+// A notification links to the post or reply itself, not just this
+// page; scroll to it and flash it.
+useHashHighlight();
 
 const reporting = ref(false);
 const pending = ref(false);
@@ -225,6 +233,27 @@ const metaDescription = computed(() => {
                             <div class="text-caption text-grey-7">
                                 Listed by <Link :href="show.host.url" class="text-grey-5">{{ show.host.name }}</Link>
                             </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- The thread is its own card and last, like the
+                         artist wall: it grows without bound, so everything
+                         factual about the night reads before it. -->
+                    <q-card class="post-card q-pb-md q-mb-xl">
+                        <q-card-section>
+                            <div class="row items-center q-mb-sm">
+                                <div class="text-subtitle2 text-weight-medium text-grey-5">Thread</div>
+                                <q-space />
+                                <span v-if="thread?.total" class="text-caption text-grey-6">
+                                    {{ thread.total }} {{ thread.total === 1 ? 'comment' : 'comments' }}
+                                </span>
+                            </div>
+                            <ShowThread
+                                :show="show"
+                                :thread="thread"
+                                :host-artist="show.host"
+                                :is-authenticated="!isGuest"
+                            />
                         </q-card-section>
                     </q-card>
                 </div>

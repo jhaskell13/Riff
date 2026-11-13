@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
 import WallComposer from '@/Components/Wall/WallComposer.vue';
 import WallPost from '@/Components/Wall/WallPost.vue';
 
@@ -19,7 +19,18 @@ const props = defineProps({
     isFollowing: { type: Boolean, default: false },
     maxPost: { type: Number, default: 5000 },
     maxComment: { type: Number, default: 2000 },
+    // Only populated for members: who they have barred from this wall.
+    wallBans: { type: Array, default: () => [] },
+    canModerate: { type: Boolean, default: false },
 });
+
+// Members' own list, so a ban is liftable where it was made rather than
+// only from wherever the post happened to be.
+const showingBans = ref(false);
+
+const unban = (userId) => {
+    router.delete(route('wall.bans.destroy', [props.artist.id, userId]), { preserveScroll: true });
+};
 
 const posts = computed(() => props.wall?.posts ?? []);
 
@@ -75,6 +86,29 @@ const closedReason = computed(() => {
             <span class="text-caption text-grey-6">and talk with other fans here.</span>
         </div>
 
+        <!-- A member's view of their own moderation. Everything here is
+             reversible; nothing here deletes anything. -->
+        <div v-if="canModerate && wallBans.length" class="bans">
+            <button class="bans__toggle" @click="showingBans = !showingBans">
+                <q-icon :name="showingBans ? 'expand_less' : 'expand_more'" size="16px" />
+                {{ wallBans.length }} {{ wallBans.length === 1 ? 'person' : 'people' }} removed from your wall
+            </button>
+            <div v-if="showingBans" class="column gap-2 q-mt-sm">
+                <div v-for="ban in wallBans" :key="ban.userId" class="row items-center gap-2">
+                    <q-icon name="person_off" size="16px" color="grey-6" />
+                    <span class="text-body2 text-grey-3">{{ ban.name }}</span>
+                    <span v-if="ban.reason" class="text-caption text-grey-6">“{{ ban.reason }}”</span>
+                    <q-space />
+                    <q-btn
+                        flat dense no-caps rounded size="sm"
+                        color="orange-4"
+                        label="Allow back"
+                        @click="unban(ban.userId)"
+                    />
+                </div>
+            </div>
+        </div>
+
         <div v-if="posts.length" class="column gap-3">
             <WallPost
                 v-for="post in posts"
@@ -105,3 +139,28 @@ const closedReason = computed(() => {
         </Link>
     </div>
 </template>
+
+<style scoped>
+.bans {
+    padding: 10px 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    background: #1c1c1c;
+}
+
+.bans__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #9e9e9e;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.bans__toggle:hover {
+    color: #e0e0e0;
+}
+</style>

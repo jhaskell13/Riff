@@ -1,6 +1,8 @@
 # Phase 3 implementation plan — make the artist page a home for fans
 
-Status: **approved** (November 12, 2026), with the owner's decisions recorded at the bottom. Revisions from that review: a wall can be opened to any verified user (artist opt-in) rather than followers-only being the single option; legacy posts are **re-seeded, not backfilled**, while the project is pre-launch; and "your scene" gets its own routes and controllers while `/feed` survives, demoted to the end of the nav, as the seed of a future followed-entity digest.
+Status: **complete** (November 12, 2026). All eight steps built.
+
+Originally approved (November 12, 2026), with the owner's decisions recorded at the bottom. Revisions from that review: a wall can be opened to any verified user (artist opt-in) rather than followers-only being the single option; legacy posts are **re-seeded, not backfilled**, while the project is pre-launch; and "your scene" gets its own routes and controllers while `/feed` survives, demoted to the end of the nav, as the seed of a future followed-entity digest.
 
 This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As in Phase 2, each step ships on its own, keeps CI green on SQLite, MySQL and Postgres, and leaves the app better if we pause after it.
 
@@ -83,7 +85,7 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 
 **Seed data was rewritten, not backfilled** (decision 3). `PilotSeeder` now seeds four wall conversations — a question the band answers, fans agreeing with each other, a practice-space offer, and a question nobody has answered yet — on fictional acts only, since a wall of invented fans saying invented things about a real band attributes them a community they never had. Wall seeding is idempotent **per act**, which `PilotSeedTest` now checks: re-running gave a band the same announcement twice.
 
-## Step 4 — Artist-level moderation
+## Step 4 — Artist-level moderation — ✅ BUILT (November 12, 2026)
 
 **Why before show threads:** a new discussion surface should never ship without the people who own it being able to clean it. Step 3 opened a wall; this step hands over the broom before Step 5 opens another.
 
@@ -93,18 +95,47 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - An audit trail on each action (`hidden_by`, `hidden_at`) — the same shape as the report trail, for the same reason.
 - Tests: a member hides and unhides; a non-member can't; a banned fan can't post but can still read and follow; an artist hide doesn't resolve a report; a moderator's `remove_comment` survives the artist unhiding it.
 
-**Done when:** a band hides one unpleasant comment and removes its author from the wall, without a platform moderator being involved, and nothing is destroyed.
+**Done when:** a band hides one unpleasant comment and removes its author from the wall, without a platform moderator being involved, and nothing is destroyed. ✅
 
-## Step 5 — Show threads
+### Notes from building step 4 (and the wall revisions that came with it)
+
+**Owner notes addressed first**
+- **The wall is now the last card on the artist page.** It grows without bound, so everything factual about an artist reads before it.
+- **Replies are indented behind a rail** and get a smaller avatar; aligned with their siblings they were indistinguishable from them.
+- **Comment and reply pagination.** `GET posts/{post}/comments` and `GET comments/{comment}/replies` (public, `map` limiter) back "Show N more comments" and "See N more replies". The client starts at **page 1 and deduplicates by id**, because these endpoints page by `comments_per_page` while the wall ships only `comments_per_post` — asking for "page 2" would have silently skipped everything between. A test covers it.
+- **Seeded conversations were the real gap.** The data existed (the owner's database was from an intermediate code state and had no replies), but only 5 of 95 artists had a wall. Now: scripted walls on every fictional pilot act plus 14 scattered ones (**19 walls, 23 posts, 80 comments, 38 replies**), with one deliberately busy wall — 8 top-level comments and a 4-reply thread — so both "show more" controls appear in the demo without anyone typing. Scripts live in `Database\Seeders\Support\WallScripts`.
+
+**What artist-level moderation is, and is not**
+- Members **hide and unhide**; they never delete or archive. `status` flips, the row stays, and there is no artist-level route that destroys a fan's words. Getting something off Riff means **reporting** it, so a second person decides — and hiding something never closes a report about it.
+- **A moderator's `removed` outranks an artist's `hidden`.** Unhide restores only what the artist hid; hide refuses to relabel a removed row as the artist's doing. Both directions are tested, because this is the whole reason the two words are different.
+- **The trail is append-only** (`wall_moderation_events`): a hide and its undo are two rows. Members see the full history per entity, newest first, not just the current state — a row hidden, restored and hidden again tells a different story. Emitted to members only.
+- **A ban is about the wall, not the fandom.** A barred listener keeps following, keeps reading, and keeps everything they already wrote; hiding that is a separate decision. A member can't be banned from their own wall.
+
+**Structural changes this forced**
+- **`App\Services\WallReader`** now owns every wall read. Three callers (the page and the two thread endpoints) have to agree on the rules, and *who sees hidden content* is one of them.
+- The status vocabulary moved to **`App\Models\Concerns\HasWallStatus`** as `visibleStatuses(bool $includeHidden)` — a plain list fed to `whereIn`, not a query scope. Most of these queries are built inside eager-load closures where the receiver is a `Relation`, and a scope there resolves for neither the reader nor PHPStan (it failed static analysis as a scope).
+- The members' extra eager load (the trail) is covered by its own query-count test, the same guard the wall itself has.
+
+## Step 5 — Show threads — ✅ BUILT (November 12, 2026)
 
 - Each show gets a short discussion ("who's going?", "set times?") using the Step 3 polymorphic comments on the `Show` subject. **It closes after the date** — `config('riff.shows.thread_closes_after_hours')` past the start (reuse the existing `still_on_hours` logic for "tonight's show hasn't ended") — after which the thread is read-only, not deleted. Nothing lingers, the same rule that keeps one-off locations off the map.
 - Who may post: signed-in users; guests get the `intent=fan` register prompt the rest of the app uses. Cancelled shows keep a read-only thread (ticket holders still need the banner and the context).
 - Moderation: the **host artist's** members moderate the thread (they own the night), plus the platform queue. Reuse Step 4's machinery wholesale.
 - **Attendee list stays opt-in**, which `show_rsvps.is_public` already encodes: the thread shows the public count, and only names of fans who chose to be listed. This step must not become a back door to the private ones — a test asserts a private RSVP's name never reaches the payload.
 
-**Done when:** a Friday show has a "who's going?" thread that answers itself, and by Sunday it's read-only.
+**Done when:** a Friday show has a "who's going?" thread that answers itself, and by Sunday it's read-only. ✅
 
-## Step 6 — "Your scene" takes over the feed's place in the nav
+### Notes from building it
+
+**The polymorphism paid, but only after one more abstraction.** Comments already hung off anything; what did not was everything *around* them — who may post, who moderates, whether the thread is open. Without a contract those would have become `instanceof Post` chains in the controller, the policy, the reader and the moderation controller. `App\Contracts\Commentable` collapses them into four questions the subject answers, and the whole of step 5's behaviour is: `Show` implements it. No second comment controller, no second reader, no second component.
+
+- **One flat thread per show**, not a wall of posts — a show is one subject, so the conversation is one conversation. `CommentThread` is reused verbatim; it gained a `replyRoute` prop and nothing else.
+- **Closing** is `thread_closes_after_hours` (24), deliberately longer than `still_on_hours` (4): "that was great" is worth saying the morning after, "what time are you on?" is not worth asking a week later. A cancelled show closes too. Both go **read-only, not hidden** — and the page says *why*, because a missing box reads as a broken site.
+- **Owned by the host artist**, as asked. Moderation reuses step 4 wholesale: the same hide/unhide routes, the same append-only trail (kept against the host), the same "artists hide, moderators remove". `ArtistPolicy::postOnWall` is reused too, which means **a wall ban also bars someone from that artist's show threads** — both are the same artist's space, and a ban covering only half of it is a gap someone would find. Flagged here because it is a judgment call, not something the plan specified.
+- **The attendee rule held.** Posting in a thread does not create an RSVP, and the thread does not surface private attendees; both have tests, since the thread sits right beside the opt-in list.
+- **Seed data:** threads on three upcoming fictional-host shows (a question the host answers, fans arranging a lift between themselves, an unanswered one) plus the cancelled show, so the closed-and-still-readable state is visible. No past show exists in the seed set, so the *time-based* close is covered by tests rather than by the demo.
+
+## Step 6 — "Your scene" takes over the feed's place in the nav — ✅ BUILT (November 12, 2026)
 
 - The signed-in home becomes **your scene**: posts from artists you follow, their upcoming shows, and new shows and listings near you — **ordered by date and distance, never by engagement**. A guest's home stays the map (`/` already redirects there).
 - **`/feed` is not deleted** (decision 8). Your scene gets its own route (`/scene`), controller and page; the existing feed keeps its route, controller and page, and moves to the end of the nav. It is scaffolding for a future followed-entity digest, not a surface to extend — principle 2 still rules out what it does today.
@@ -114,9 +145,24 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - Nav: "Your scene" takes the slot "Feed" holds today, and both are auth-only (`AuthenticatedLayout` renders for guests, so they have to be guarded).
 - Tests: only followed artists' posts appear, blocked artists never appear, ordering is date/distance, a guest is sent to the map, pagination bounded, query count flat as the follow list grows.
 
-**Done when:** a fan who follows three bands opens Riff signed in and sees what those bands said and when they next play, with nothing in it chosen by popularity.
+**Done when:** a fan who follows three bands opens Riff signed in and sees what those bands said and when they next play, with nothing in it chosen by popularity. ✅
 
-## Step 7 — In-app notifications
+### Notes from building it
+
+- **Two halves, deliberately.** The top is about the bands you chose (their updates, their next dates); the bottom is about where you are (what's on nearby, whoever is playing). The "around you" half is `SceneMapSearch` with the viewer's own point, exactly as `SceneView` composes a scene page, so the home page and the map cannot disagree.
+- **Artist-voice posts only.** A followed wall also carries what *fans* wrote there, and pulling that in would turn a page about the bands you chose into a stream of strangers — which is the global feed this replaces. There's a test for it.
+- **Uncached and therefore bounded.** It is per-viewer by definition, so it follows the `MapFilters::hiddenFor` rule: no shared cache, and every section has a hard limit from `config('riff.scene_home')` with the updates paginating. A query-count test asserts the cost does not grow with the follow list.
+- **The feed is kept, demoted, and marked.** `/feed` keeps its route, controller and page and moves to the *end* of the nav; `/scene` takes the slot it held. Both the route comment and CLAUDE.md now say plainly that it must not be extended in its current form — a global timeline is what principle 2 rules out — and that it exists as the starting point for the followed-entity digest the owner wants to return to.
+- **A parse error got past PHPStan**, which is worth remembering: an unparenthesised nested ternary meant the file never compiled, so static analysis reported "no errors" on a file it could not read. The tests caught it as "Premature end of PHP process". Analysis passing is not the same as the code parsing.
+
+### Owner notes addressed in the same round (from step 5 review)
+
+- **Badges now say standing, not names.** `App\DTO\ThreadBadges`: `Artist` on a wall, `Host` on a show, `On the bill` for another confirmed act, and `Member` / `Member of X` for someone in one of those bands posting as themselves. The wall previously repeated the band's name in a badge directly under the band's name. Built once per render; building it per post was an N+1 the existing query-count test caught immediately.
+- **Show threads no longer require a follow.** A show is a public event, not the host's page, so `Commentable::commentsFollowWallMode()` is false for a `Show` and any verified user may post. Bans and blocks still apply — the artist's own exclusions are not a side door.
+- **Other acts on the bill can speak as themselves.** `voiceArtistFor()` grants the artist voice to the host *or* any confirmed act the user belongs to; pending acts get nothing, since they appear on no public surface until they have agreed to be on one.
+- A test fixture bug surfaced here and is worth knowing: `lineup_entries.status` is **not fillable** (only `Lineup::sync()` and the confirm/decline endpoints write it) and defaults to `confirmed`, so passing `status` to `create()` silently produced a confirmed entry and inverted a test. Fixtures must `forceFill` it.
+
+## Step 7 — In-app notifications — ✅ BUILT (November 12, 2026)
 
 - Add Laravel's `notifications` table (none exists today) and `App\Notifications\*`. In-app first, email in Step 8, so the delivery channel is a separate release from the eventing.
 - **What generates one** — each anchored to an artist, show, or thread, never to "activity in general":
@@ -129,9 +175,27 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - A bell in the layout with an unread count, a list page, mark-read. Blocking an artist clears and suppresses its notifications.
 - Tests: `Notification::fake()` throughout; a blocked artist generates none, per-artist mute respected, collapsing works, the lineup invite reaches every member of the invited artist.
 
-**Done when:** a band lists a show and its fans — and the other band on the bill — know about it without opening the Artist Zone.
+**Done when:** a band lists a show and its fans — and the other band on the bill — know about it without opening the Artist Zone. ✅
 
-## Step 8 — Email digest
+### Notes from building it
+
+**Foundations, not a product.** Six kinds (`App\Support\NotificationType`): replies, new fans, wall posts, artist updates, new shows, and lineup invitations. Laravel's standard `notifications` table, unmodified, because in-app messaging (Phase 4) will write to it too — the explicit ask was that this be the base for that, and adding a kind should be a subclass plus a config entry with nothing in the client changing.
+
+**One funnel.** `Notifier::send()` asks the three questions every trigger would otherwise have to remember: does this person want the kind, have they **blocked** the artist it is about, and is it already in their bell. It also drops the actor. Two bugs the tests caught prove the point of centralising it:
+- The Notifier *claimed* in a comment to drop the actor and did not — someone replying to their own post was notified about it. Notifications now carry `causedBy($user)` and the filter is real.
+- Reply routing used the speaker's *voice* artist rather than the thread's owner, so a stranger's question on a show thread reached nobody: a non-member has no voice artist. It uses `moderatingArtist()` now.
+
+**Folding** is what keeps the bell from becoming a feed: a `collapseKey()` merges into an *unread* notification about the same thing inside the window and bumps a count ("and 3 more"). A read notification never folds into — once you have seen it, the next one is news again.
+
+**Two dials, because there are two questions.** `users.notification_preferences` (JSON, defaulting from config) answers "do I want this kind at all"; `artist_follows.notify` answers "do I want it from *this* band", and is reachable from the artist page without unfollowing. Mutes apply only to the kinds that arrive *because* of a follow — a reply to your own words is not a subscription. `lineup_invite` is `required` and cannot be switched off, since an unanswered invitation keeps somebody else's show unlisted.
+
+**The Phase 2 debt is paid.** `Lineup::sync()` now asks the invited acts' members, and re-asks after a material change — but only those who had already answered, since someone still sitting on the first invitation does not need a second. A pending act's own fans hear nothing until it confirms, because announcing it would name an act that has not agreed to be named.
+
+**Not in this step:** any email. The lineup invitation's immediate email (decision 5) lands with step 8, where the mail infrastructure does. `riff.notifications` config carries the collapse window, bell limit and page size.
+
+**Gotcha worth knowing:** notifications are `ShouldQueue` and the local queue is the database driver with no worker, so the seeded demo bell was five rows in `jobs` until `Notifier::send()` grew an `immediately:` flag for seeders and commands.
+
+## Step 8 — Email digest — ✅ BUILT (November 12, 2026)
 
 - A scheduled, queued `riff:send-digests` building from **Step 6's query** — the digest is "your scene, by email", which is why Step 6 comes first.
 - Frequency per user (`off` | `daily` | `weekly`, default weekly), hard-capped, with nothing sent when there's nothing to say. A **signed unsubscribe URL** in every send (no login required to stop email — that's table stakes), and a one-click "fewer emails" that lands on the preference page.
@@ -140,7 +204,32 @@ This turns Phase 3 of [ROADMAP.md](../ROADMAP.md) into eight PR-sized steps. As 
 - Watch the failed-jobs table — the roadmap asks for that before real users arrive, and a digest run is the first scheduled job with real volume.
 - Tests: `Mail::fake()`; nothing sent to an unsubscribed or empty-scene user, cap respected, unsubscribe link works signed-out, no HTML injection from post content.
 
-**Done when:** a weekly email tells a fan what their bands are doing, and one click stops it forever.
+**Done when:** a weekly email tells a fan what their bands are doing, and one click stops it forever. ✅
+
+### Notes from building it
+
+- **Four sections, in the order someone cares about them:** the shows you said you were going to (the only thing you have already committed to), then when the artists you follow next play, then what they said since your last digest, then what's on around you. Built from the same searches the map and "your scene" use.
+- **Three rules in `DigestSender`:** only people who asked, never twice inside the window, never an empty one. The third matters most — a person with no news is skipped *and their `digest_sent_at` is left alone*, so their window keeps growing until there is something worth sending.
+- **A real bug the tests caught:** the sender used `->each()`, which chunks — but sending updates `digest_sent_at`, the very column the query filters on, so the set shifted under the cursor and people were silently skipped. It uses a bounded `get()` now.
+- **A second one:** `preferences` was validated `required`, so a form of toggles with everything switched off rejected exactly the person who wanted silence. It is `present` now.
+- **The text part is deliberately unescaped.** `text/plain` has no HTML context, and Blade's default put `&amp;` in front of real band names in people's inboxes. The HTML view still escapes everything, and the comment in the text view says loudly that the reasoning does not transfer.
+- The lineup invitation now sends its immediate email (decision 5) — the only per-event mail in Riff.
+
+## Owner notes addressed in the same round
+
+- **Notifications are a dropdown now**, bounded by `bell_limit` and ending in "See all and settings"; the list is fetched when the menu opens rather than shared with every page (a count is cheap on every response, a list of titles is not).
+- **Notifications deep-link to the thing, not the page.** Reply and post notifications carry `#comment-123` / `#post-456`, and `Composables/useHashHighlight.js` scrolls to it and flashes it — on mount *and* on every Inertia navigation, since clicking a second notification for the same page remounts nothing. If the target is on an older page of a wall it quietly does nothing rather than jumping somewhere wrong.
+- **The flaky test is fixed and understood.** `MapSceneTest > a genre filter keeps venues with a matching bill coming up` left a show's host artist unpinned, and `ArtistFactory` assigns one or two genres *at random from all 32* — so the "jazz room" host drew Punk about one run in twenty and matched a punk filter. The host's genres are pinned now; 30 consecutive runs green.
+
+## The pilot dataset's rules changed (owner decision, November 12, 2026)
+
+The demo now seeds **real, already-public data**: real acts with their publicly credited members, factual bios, their own Bandcamp links, and real venues at their public addresses — because a recruiting demo built from the actual scene is worth more than one built from invented names, and none of it is private. Researched this session for Boundaries, Perennial, The Lonesome While, West End Blend, Joey Batts & Them, Anxious and Cheem.
+
+**The one hard line the owner set — no contact details, ever — is now the dataset's main enforced rule.** No email or phone in the file, and every seeded account sits on an RFC-reserved `example.*` domain, so a demo digest or notification is *physically incapable* of reaching a real person. `PilotDatasetTest` asserts both, against the file and against the seeded database.
+
+**Walls and show threads now carry simulated conversation on real acts**, written around their actual records and rooms. Worth being clear-eyed about: this is the one thing in the dataset that is invented *about a real subject*. It is what makes the demo show a populated scene rather than an empty directory, the seeders refuse production, and the dataset's `_meta` says so plainly.
+
+Two things kept from the old rules, and why: **no real DIY space** (a club's address is public, a DIY space's is not — that distinction is the whole reason private venues exist in Riff), and **judgements stay fictional** (the report queue, hidden/archived profiles, a cancellation, a declined slot — being reported is not a public fact about anybody).
 
 ---
 

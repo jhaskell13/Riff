@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Contracts\Commentable;
+use App\Models\Concerns\HasWallStatus;
 use App\Support\AuthorContext;
 use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,9 +31,9 @@ use Illuminate\Support\Carbon;
  * @property-read User|null $user
  * @property-read Artist|null $artist
  */
-class Post extends Model
+class Post extends Model implements Commentable
 {
-    use HasFactory;
+    use HasFactory, HasWallStatus;
 
     /**
      * author_context is fillable but is never a validation rule, so
@@ -62,6 +65,7 @@ class Post extends Model
     }
 
     /** The wall this post lives on. */
+    /** @return BelongsTo<Artist, $this> */
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
@@ -76,6 +80,62 @@ class Post extends Model
     public function comments(): MorphMany
     {
         return $this->morphMany(Comment::class, 'commentable');
+    }
+
+    /**
+     * The artist-level moderation trail for this row, newest first: every
+     * hide and every undo, not just the current state. An artist who hid
+     * something by mistake needs the history, and a row that has been
+     * hidden, restored and hidden again tells a different story from one
+     * hidden once.
+     *
+     * @return MorphMany<WallModerationEvent, $this>
+     */
+    public function wallEvents(): MorphMany
+    {
+        return $this->morphMany(WallModerationEvent::class, 'subject')->latest('id');
+    }
+
+    // ---- Commentable ----------------------------------------------------
+
+    /** The artist whose wall this post lives on. */
+    public function moderatingArtist(): ?Artist
+    {
+        return $this->artist;
+    }
+
+    public function threadUrl(): ?string
+    {
+        return $this->artist === null ? null : route('artists.show', $this->artist);
+    }
+
+    public function voiceArtistFor(User $user): ?Artist
+    {
+        return $this->artist !== null && $user->isMemberOf($this->artist)
+            ? $this->artist
+            : null;
+    }
+
+    /** @return EloquentCollection<int, Artist> */
+    public function commentVoiceArtists(): EloquentCollection
+    {
+        return new EloquentCollection($this->artist === null ? [] : [$this->artist]);
+    }
+
+    /** A wall is the artist's own page: their wall_mode governs it. */
+    public function commentsFollowWallMode(): bool
+    {
+        return true;
+    }
+
+    public function acceptsComments(): bool
+    {
+        return $this->status === self::PUBLISHED && $this->artist !== null;
+    }
+
+    public function commentsClosedReason(): ?string
+    {
+        return $this->acceptsComments() ? null : 'This post is no longer open for replies.';
     }
 
     /** @return MorphMany<Report, $this> */

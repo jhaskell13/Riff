@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\DTO\WallViewer;
 use App\Http\Requests\ArtistZone\ArtistStoreRequest;
 use App\Http\Requests\ArtistZone\ArtistUpdateRequest;
-use App\Http\Resources\PostResource;
 use App\Http\Resources\ShowCardResource;
 use App\Http\Resources\SupportLinkResource;
 use App\Models\Artist;
@@ -18,6 +16,7 @@ use App\Models\Show;
 use App\Models\Venue;
 use App\Services\ArtistPhotos;
 use App\Services\FanCounts;
+use App\Services\WallReader;
 use App\Support\SceneLinks;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +27,8 @@ use Inertia\Response;
 
 class ArtistZoneController extends Controller
 {
+    public function __construct(private WallReader $wallReader) {}
+
     public function index(Request $request): Response
     {
         $columns = ['artists.id', 'artists.name', 'artists.slug', 'artists.artist_type', 'artists.hometown', 'artists.stateOrProvince', 'artists.country', 'artists.image_path'];
@@ -203,8 +204,19 @@ class ArtistZoneController extends Controller
             'localFans' => $fanCounts->displayLocal($artist),
             // The wall: updates from the band and posts from fans, newest
             // first, in one stream. Ordered by time, never by likes.
-            'wall' => $this->wall($request, $artist),
+            'wall' => $this->wallReader->wall($request, $artist),
             'wallMode' => $artist->wall_mode,
+            // The members' own list of who they barred, so a ban is
+            // visible and liftable where it was made.
+            'wallBans' => $user?->can('moderateWall', $artist)
+                ? $artist->wallBans()->with('user:id,name')->latest()->get()
+                    ->map(fn ($ban) => [
+                        'userId' => $ban->user_id,
+                        'name' => $ban->user?->name,
+                        'reason' => $ban->reason,
+                        'at' => $ban->created_at?->toIso8601String(),
+                    ])->all()
+                : [],
             'wallModeLabel' => config('riff.wall.modes.'.$artist->wall_mode),
             // Whether *this* viewer may post, and in which voice. Guests
             // get false for both and are offered registration instead.
@@ -213,85 +225,14 @@ class ArtistZoneController extends Controller
             'canManage' => $user?->can('update', $artist) ?? false,
             'canFollow' => $user !== null,
             'isFollowing' => $user?->follows($artist) ?? false,
+            // Whether this fan still wants to hear from them. Only
+            // meaningful while following; false otherwise.
+            'isMuted' => $user !== null && $user->follows($artist)
+                ? ! $user->wantsNotificationsFrom($artist)
+                : false,
             'isBlocked' => $user?->blocks($artist) ?? false,
             'canBlock' => $user?->can('block', $artist) ?? false,
         ]);
-    }
-
-    /**
-     * One page of an artist's wall.
-     *
-     * Both voices in one stream, newest first. Each post carries its first
-     * few replies (and each reply its first few answers) so a reader sees a
-     * conversation rather than a count -- bounded by config so a long
-     * thread can't make the page unbounded.
-     *
-     * @return array<string, mixed>
-     */
-    private function wall(Request $request, Artist $artist): array
-    {
-        $commentsPerPost = (int) config('riff.wall.comments_per_post');
-        $repliesPerComment = (int) config('riff.wall.replies_per_comment');
-        $viewerId = $request->user()?->id;
-
-        // Whether *this* viewer has reacted, as one EXISTS per row in the
-        // same query rather than a lookup per post and per comment. A wall
-        // is ten posts, each with replies and their answers: done naively
-        // that is over a hundred queries for a page of hearts.
-        $likedByViewer = fn ($query) => $query->when(
-            $viewerId !== null,
-            fn ($scope) => $scope->withExists([
-                'likers as is_liked' => fn ($likers) => $likers->whereKey($viewerId),
-            ]),
-        );
-
-        $posts = Post::query()
-            ->onWall($artist)
-            ->published()
-            ->with([
-                'user:id,name',
-                'artist:id,name,slug,image_path',
-                // Only top-level comments here; replies hang off them.
-                'comments' => fn ($query) => $likedByViewer($query)
-                    ->published()
-                    ->topLevel()
-                    ->with([
-                        'user:id,name',
-                        'artist:id,name,image_path',
-                        'replies' => fn ($replies) => $likedByViewer($replies)
-                            ->published()
-                            ->with(['user:id,name', 'artist:id,name,image_path'])
-                            ->oldest()
-                            ->limit($repliesPerComment),
-                    ])
-                    ->withCount(['replies' => fn ($replies) => $replies->published()])
-                    // A conversation reads forwards, unlike a wall.
-                    ->oldest()
-                    ->limit($commentsPerPost),
-            ])
-            ->withCount(['comments' => fn ($query) => $query->published()])
-            ->tap($likedByViewer)
-            ->latest('published_at')
-            ->latest('id')
-            ->paginate((int) config('riff.wall.posts_per_page'))
-            ->withQueryString();
-
-        // Worked out once for the whole page; see App\DTO\WallViewer.
-        $wallViewer = WallViewer::for($request->user(), $artist);
-
-        return [
-            'posts' => $posts->getCollection()
-                ->map(fn (Post $post) => PostResource::make($post)->forViewer($wallViewer)->resolve($request))
-                ->all(),
-            'total' => $posts->total(),
-            'nextPage' => $posts->hasMorePages() ? $posts->currentPage() + 1 : null,
-            'commentsPerPost' => $commentsPerPost,
-            'repliesPerComment' => $repliesPerComment,
-            // Shared to the client so the composer's limit matches what
-            // validation will accept, as reportReasons does for reports.
-            'maxPost' => (int) config('riff.wall.max_post'),
-            'maxComment' => (int) config('riff.wall.max_comment'),
-        ];
     }
 
     /**

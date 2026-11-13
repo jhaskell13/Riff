@@ -1,14 +1,16 @@
 {
     "_meta": {
         "purpose": "Demo seed data for the Greater Hartford pilot scene. Researched from public sources so the demo looks like the real Connecticut scene instead of a directory of invented names.",
-        "researched_at": "2026-11-11",
+        "researched_at": "2026-11-12",
         "rules": [
-            "DEMO AND LOCAL DEVELOPMENT ONLY. None of the real acts or venues listed here agreed to be on Riff; this file must never seed a public or production database (the seeders refuse production).",
-            "Entries with \"real\": true describe real acts/venues from public sources: factual third-person bios, public street addresses for public venues, and only music links verified during research.",
-            "Entries with \"real\": false are invented. Everything that attributes a state or action to its subject stays on fictional entries ONLY: hidden/archived profiles, seeded reports and the moderation queue, feed posts written in the artist's voice, listings, lineup slots shown as pending/declined, and cancelled shows.",
-            "Shows are plausible compositions (real bands at venues they could play, dated relative to seeding), not real events. Member accounts behind every act are invented.",
-            "No real DIY space is listed: a private venue's whole point is that Riff never holds its address, and outing one's existence is harm the privacy rules exist to prevent. The DIY space here is fictional.",
-            "Support links are on fictional entries ONLY. A support section is an invitation to pay, which is a stronger attribution than listing a link: Riff must not imply a real act asks for money anywhere. Real acts keep only their research-verified Bandcamp link, rendered as a link, not as a support ask. Seeded click counts are invented and exist to demo the counter. A fictional act's links must never resolve to anything a stranger could own: use reserved example.* domains, or (where a type requires a known host) that service's own homepage. An invented band name is exactly the kind of name a real band may already have taken on Bandcamp or Ko-fi."
+            "DEMO AND LOCAL DEVELOPMENT ONLY. None of the acts or venues here asked to be on Riff; this file must never seed a public or production database (the seeders refuse production).",
+            "Entries with \"real\": true carry real, already-public information: names, members credited publicly, factual bios, their own links, and for venues their public street address. Owner decision, November 2026: real data makes a better recruiting demo than invented names, and none of it is private.",
+            "NO CONTACT DETAILS, EVER. No real email address, phone number or private address appears in this file or is seeded anywhere. Every seeded account uses an RFC-reserved example.* address, so a demo digest or notification can never reach a real person's inbox. PilotDatasetTest enforces both.",
+            "Walls and show threads carry SIMULATED conversation, including words in the voice of real acts and their members. That is the point of the demo -- it shows what a populated scene looks like -- and it is also the one thing here that is invented about a real subject. The seeders refuse production; nothing here may ever reach a live database.",
+            "Shows are plausible compositions (real bands at venues they could play, dated relative to seeding), not real events.",
+            "No real DIY space is listed. A private venue's whole point is that Riff never holds its address, and a DIY space's address is not public information -- unlike a club's. The DIY space here stays fictional.",
+            "Entries with \"real\": false are invented, and still carry every state that would be odd to attribute to anyone: the report queue, hidden and archived profiles, a cancellation, a declined slot.",
+            "A fictional act's links must never resolve to anything a stranger could own: use reserved example.* domains, or the bare homepage of a service."
         ],
         "sources": [
             "https://ctvisit.com/articles/great-venues-live-music-and-concerts-connecticut",
@@ -46,7 +48,23 @@
                 "Metal",
                 "Hardcore"
             ],
-            "bio": "Metalcore out of Hartford, formed in 2015 and heavier with every record — Your Receding Warmth, Burying the Brightness, and Death Is Little More on Unbeaten Records."
+            "bio": "Metallic hardcore from Hartford, formed in 2013. Matthew McDougal (vocals), Cory Emond and Cody DelVecchio (guitars), Nathan Calcagno (bass) and Tim Sullivan (drums). Records include Your Receding Warmth (2020), Burying Brightness (2022) and Death Is Little More (2024).",
+            "members": [
+                "Matthew McDougal",
+                "Cory Emond",
+                "Cody DelVecchio",
+                "Tim Sullivan",
+                "Nathan Calcagno"
+            ],
+            "music_url": "https://boundarieshc.bandcamp.com",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://boundarieshc.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -58,7 +76,22 @@
                 "Indie"
             ],
             "music_url": "https://thelonesomewhile.bandcamp.com",
-            "bio": "Hartford punk and indie rock. The Lost of Us (2025) collected a decade of songs that nearly stayed on the shelf — one of the city's underrated gems."
+            "bio": "Post-indie rock out of Hartford, guitars and harmonies and a long memory. Empty Mansions (2016), We Don't Sleep Anymore (2018), The Beach Song (2020) and The Lost of Us (2025), which landed on more than one list of the year's best Connecticut records.",
+            "members": [
+                "Kevin",
+                "Dave",
+                "Laura",
+                "Steve",
+                "Nate"
+            ],
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://thelonesomewhile.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -69,7 +102,21 @@
                 "Punk",
                 "Experimental"
             ],
-            "bio": "Art-punk three-piece — electric guitar, electric organ, drums — splitting the difference between mod pop, post-hardcore and 60s soul. A Stereogum Best New Artist of 2024; Modernism is the latest."
+            "bio": "Art-punk trio formed in Connecticut in 2015: Chad Jewett (guitar, vocals), Chelsey Hahn (organ, vocals) and Ceej Wolf (drums). Mod and Dischord in equal measure, songs that rarely pass two minutes. Their fourth album, Modernism, came out in 2026.",
+            "members": [
+                "Chad Jewett",
+                "Chelsey Hahn",
+                "Ceej Wolf"
+            ],
+            "music_url": "https://perennialtheband.bandcamp.com",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://perennialtheband.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -81,7 +128,23 @@
                 "Soul"
             ],
             "music_url": "https://westendblend.bandcamp.com",
-            "bio": "Eight-piece funk and soul powerhouse from Hartford fronted by Erica T. Bryan — a Northeast club and festival staple for a decade."
+            "bio": "Hartford funk and soul, started in 2012 by players out of the Jackie McLean Institute at The Hartt School and grown into a horn-heavy live band fronted by Erica Bryan. Voted Best New Band at the 2014 CT Music Awards. Releases include Live from Telefunken (2014) and Say Hey! (2016).",
+            "members": [
+                "Erica Bryan",
+                "Sam Horan",
+                "Jesse Combs",
+                "Mike Bafundo",
+                "Tom Sullivan",
+                "Paul Phillippone"
+            ],
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://westendblend.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -92,7 +155,23 @@
                 "Hip-Hop",
                 "Rock"
             ],
-            "bio": "Alternative hip-hop with a live band, from Hartford. Joey Batts taught in Hartford public schools for years and runs Hip Hop for the Homeless, a statewide benefit tour, every December."
+            "bio": "Live hip-hop from Hartford, together since 2011: Joey Batts on vocals with a full band behind him. Bowtie Chronicles (2012) and Fandalize (2015). Batts also founded Hip-Hop for the Homeless, which has raised money through CT artists playing every December since 2014.",
+            "members": [
+                "Joey Batts",
+                "Tony Volpe",
+                "John Dotson",
+                "Marty Wirt",
+                "Mike \"Beatwiz\" Spellman"
+            ],
+            "music_url": "https://joeybattsandthem.bandcamp.com",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://joeybattsandthem.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -114,7 +193,23 @@
                 "Emo",
                 "Hardcore"
             ],
-            "bio": "Melodic hardcore and emo from Fairfield County. The second LP, Bambi, came out on Run for Cover in February 2025."
+            "bio": "Emo and melodic hardcore out of Fairfield County, formed in 2016. Little Green House (2022) was recorded with Chris Teti and released on Run For Cover; Bambi followed in 2025.",
+            "members": [
+                "Grady Allen",
+                "Dante Melucci",
+                "Sam Allen",
+                "Tommy Harte",
+                "Jonny Camner"
+            ],
+            "music_url": "https://anxious18.bandcamp.com",
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://anxious18.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,
@@ -126,7 +221,22 @@
                 "Alternative"
             ],
             "music_url": "https://cheem.bandcamp.com",
-            "bio": "Nu pop from nu England: Trumbull's own, splicing 2000s pop, metal and post-hardcore. Fast Fashion and Faster Fashion say it all."
+            "bio": "\"Nu pop from nu england\" — formed 2013, somewhere between hyperpop, emo and nu-metal and unbothered about which. Making a Planet (2016), Downhill (2017), Guilty Pleasure (2022), Fast Fashion (2024) and Power Move (2025).",
+            "members": [
+                "Sam Nazaretian",
+                "Skye Holden",
+                "Gabriel Weitzman",
+                "Nathan Porter",
+                "Sean Thomas"
+            ],
+            "support": [
+                {
+                    "type": "bandcamp",
+                    "url": "https://cheem.bandcamp.com",
+                    "label": null,
+                    "clicks": 0
+                }
+            ]
         },
         {
             "real": true,

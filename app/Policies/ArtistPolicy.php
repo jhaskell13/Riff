@@ -54,6 +54,20 @@ class ArtistPolicy
     }
 
     /**
+     * Whether this user may moderate the artist's own wall: hide a post or
+     * comment, put it back, and bar someone from posting.
+     *
+     * Membership, like speaking as the artist -- it is the same authority
+     * over the same page. Note what this does *not* grant: nothing here
+     * can delete or take anything off Riff. That stays with platform
+     * moderators, and members reach them by reporting.
+     */
+    public function moderateWall(User $user, Artist $artist): bool
+    {
+        return $user->isMemberOf($artist);
+    }
+
+    /**
      * Whether this user may post on the artist's wall *as themselves*.
      *
      * The artist chooses who can, through wall_mode:
@@ -73,6 +87,12 @@ class ArtistPolicy
         }
 
         if ($user->blocks($artist)) {
+            return false;
+        }
+
+        // Barred from this wall by its members. They keep following and
+        // keep reading; they just cannot post here.
+        if ($user->isBannedFromWall($artist)) {
             return false;
         }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Contracts\Geocodable;
 use App\Observers\GeocodableObserver;
+use App\Support\NotificationType;
 use App\Support\OnboardingIntent;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -25,6 +27,9 @@ use Illuminate\Support\Str;
  * @property string $distance_unit
  * @property OnboardingIntent|null $onboarding_intent
  * @property bool $is_moderator
+ * @property array<string, bool>|null $notification_preferences
+ * @property string $digest_frequency
+ * @property Carbon|null $digest_sent_at
  * @property float|null $lat
  * @property float|null $lng
  */
@@ -48,6 +53,8 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
         'country',
         'distance_unit',
         'onboarding_intent',
+        'notification_preferences',
+        'digest_frequency',
         'lat',
         'lng',
     ];
@@ -73,6 +80,8 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'onboarding_intent' => OnboardingIntent::class,
+            'notification_preferences' => 'array',
+            'digest_sent_at' => 'datetime',
             // Absent from $fillable on purpose: no request may grant it.
             // See the riff:moderator command.
             'is_moderator' => 'boolean',
@@ -112,7 +121,10 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     /** @return BelongsToMany<Artist, $this> */
     public function followedArtists(): BelongsToMany
     {
-        return $this->belongsToMany(Artist::class, 'artist_follows')->withTimestamps();
+        return $this->belongsToMany(Artist::class, 'artist_follows')
+            // notify is the per-artist mute; see wantsNotificationsFrom().
+            ->withPivot('notify')
+            ->withTimestamps();
     }
 
     public function follows(Artist $artist): bool
@@ -125,6 +137,57 @@ class User extends Authenticatable implements Geocodable, MustVerifyEmail
     public function blockedArtists(): BelongsToMany
     {
         return $this->belongsToMany(Artist::class, 'artist_blocks')->withTimestamps();
+    }
+
+    /**
+     * Whether this account receives a kind of notification.
+     *
+     * Null preferences mean "never chosen", so the config defaults apply:
+     * a new account is not silently opted out of everything. A kind marked
+     * `required` cannot be switched off -- turning the lineup invitation
+     * off would quietly break other people's listings.
+     */
+    public function wantsNotification(NotificationType $type): bool
+    {
+        if ($type->config()['required'] ?? false) {
+            return true;
+        }
+
+        $preferences = $this->notification_preferences;
+
+        if (! is_array($preferences) || ! array_key_exists($type->value, $preferences)) {
+            return $type->onByDefault();
+        }
+
+        return (bool) $preferences[$type->value];
+    }
+
+    /**
+     * Whether this listener still wants to hear from one particular
+     * artist. Following a band you love should not mean the same volume as
+     * following one you are curious about, so the dial is on the follow.
+     */
+    public function wantsNotificationsFrom(Artist $artist): bool
+    {
+        $follow = $this->followedArtists()
+            ->whereKey($artist->id)
+            ->first();
+
+        // Not following at all: nothing to mute, and nothing arrives by
+        // way of a follow either.
+        return $follow === null || (bool) $follow->pivot->getAttribute('notify');
+    }
+
+    /** Walls this listener may no longer post on. */
+    /** @return BelongsToMany<Artist, $this> */
+    public function bannedFromWalls(): BelongsToMany
+    {
+        return $this->belongsToMany(Artist::class, 'artist_wall_bans')->withTimestamps();
+    }
+
+    public function isBannedFromWall(Artist $artist): bool
+    {
+        return $this->bannedFromWalls()->whereKey($artist->id)->exists();
     }
 
     public function blocks(Artist $artist): bool

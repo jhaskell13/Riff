@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\DTO\ThreadBadges;
 use App\DTO\WallViewer;
 use App\Models\Comment;
 use App\Models\Post;
+use App\Models\WallModerationEvent;
 use App\Support\AuthorContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -23,6 +25,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class PostResource extends JsonResource
 {
     private ?WallViewer $wallViewer = null;
+
+    private ?ThreadBadges $badges = null;
+
+    /**
+     * Who is who in this thread, worked out once per render. See
+     * App\DTO\ThreadBadges.
+     */
+    public function withBadges(?ThreadBadges $badges): static
+    {
+        $this->badges = $badges;
+
+        return $this;
+    }
 
     /**
      * What this viewer may do here, worked out once for the whole wall
@@ -49,6 +64,8 @@ class PostResource extends JsonResource
             'id' => $this->id,
             'content' => $this->content,
             'authorContext' => $this->author_context->value,
+            'badge' => ($this->badges ?? ThreadBadges::none())
+                ->labelFor($isArtistVoice, $this->artist_id, $this->user_id),
             'publishedAt' => $this->published_at?->toIso8601String(),
             // Kept for the feed's existing payload shape.
             'published_at' => $this->published_at?->toIso8601String(),
@@ -89,10 +106,42 @@ class PostResource extends JsonResource
                 fn () => $this->comments
                     ->map(fn (Comment $comment) => CommentResource::make($comment)
                         ->forViewer($wallViewer)
+                        ->withBadges($this->badges)
                         ->resolve($request))
                     ->all(),
             ),
             'canDelete' => $wallViewer->canDelete($isArtistVoice, $this->user_id),
+            // Hidden rows only ever reach a member (WallReader::visible),
+            // so these are meaningless to anyone else -- but they are
+            // emitted plainly rather than conditionally, because a client
+            // that renders a hidden row as normal would be the bug.
+            'isHidden' => $this->status === Post::HIDDEN,
+            'canModerate' => $wallViewer->canModerate,
+            // What a member did to this, newest first, so an accidental
+            // hide is both visible and undoable where it happened -- and
+            // so a row hidden, restored and hidden again reads as that
+            // rather than as a single state. Loaded only for members.
+            'moderation' => $this->whenLoaded(
+                'wallEvents',
+                fn () => $this->wallEvents->first() === null ? null : [
+                    'action' => $this->wallEvents->first()->action->value,
+                    'label' => $this->wallEvents->first()->action->label(),
+                    'by' => $this->wallEvents->first()->actor?->name,
+                    'at' => $this->wallEvents->first()->created_at?->toIso8601String(),
+                    'note' => $this->wallEvents->first()->note,
+                ],
+            ),
+            'moderationTrail' => $this->whenLoaded(
+                'wallEvents',
+                fn () => $this->wallEvents->map(fn (WallModerationEvent $event) => [
+                    'id' => $event->id,
+                    'action' => $event->action->value,
+                    'label' => $event->action->label(),
+                    'by' => $event->actor?->name,
+                    'at' => $event->created_at?->toIso8601String(),
+                    'note' => $event->note,
+                ])->all(),
+            ),
             // A published post on a wall this viewer may post on.
             'canComment' => $wallViewer->canPost && $this->status === 'published',
         ];

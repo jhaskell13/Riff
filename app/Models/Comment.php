@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Contracts\Commentable;
+use App\Models\Concerns\HasWallStatus;
 use App\Support\AuthorContext;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,15 +37,7 @@ use Illuminate\Support\Carbon;
  */
 class Comment extends Model
 {
-    use HasFactory;
-
-    public const PUBLISHED = 'published';
-
-    /** Hidden by the artist whose page it is. Recoverable. */
-    public const HIDDEN = 'hidden';
-
-    /** Removed by a platform moderator. The row stays for the audit trail. */
-    public const REMOVED = 'removed';
+    use HasFactory, HasWallStatus;
 
     /**
      * author_context and artist_id are fillable but never validation
@@ -78,6 +72,7 @@ class Comment extends Model
     }
 
     /** Which artist is speaking, when the voice is the artist's. */
+    /** @return BelongsTo<Artist, $this> */
     public function artist(): BelongsTo
     {
         return $this->belongsTo(Artist::class);
@@ -92,6 +87,31 @@ class Comment extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
+    }
+
+    /**
+     * The artist-level moderation trail for this row, newest first: every
+     * hide and every undo, not just the current state. An artist who hid
+     * something by mistake needs the history, and a row that has been
+     * hidden, restored and hidden again tells a different story from one
+     * hidden once.
+     *
+     * @return MorphMany<WallModerationEvent, $this>
+     */
+    public function wallEvents(): MorphMany
+    {
+        return $this->morphMany(WallModerationEvent::class, 'subject')->latest('id');
+    }
+
+    /**
+     * Where to read this comment in context -- its thread's own answer, so
+     * a new commentable kind needs no change here.
+     */
+    public function threadUrl(): ?string
+    {
+        return $this->commentable instanceof Commentable
+            ? $this->commentable->threadUrl()
+            : null;
     }
 
     /** @return MorphMany<Report, $this> */

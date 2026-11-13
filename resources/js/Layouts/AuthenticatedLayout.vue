@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import NotificationBell from '@/Components/NotificationBell.vue';
 // Quasar and its icon font, inside the "quasar" cascade layer (see the
 // layer order in resources/css/app.css).
 import '../../css/icons.css';
@@ -13,14 +14,20 @@ const user = computed(() => usePage().props.auth?.user ?? null);
 const navLinks = computed(() => user.value
     ? [
         { name: 'map.index', title: 'Map', icon: 'map' },
-        { name: 'feed.index', title: 'Feed', icon: 'dynamic_feed' },
+        // "Your scene" takes the slot the global feed used to hold.
+        { name: 'scene.home', title: 'Your scene', short: 'Scene', icon: 'interests' },
         { name: 'artists.*', route: 'artists.index', title: 'Artist Zone', short: 'Artists', icon: 'library_music' },
+        // The old feed, demoted rather than deleted: it is where a
+        // followed-entity digest will be picked up later. Last on purpose.
+        { name: 'feed.index', title: 'Feed', icon: 'dynamic_feed' },
     ]
     : [{ name: 'map.index', title: 'Map', icon: 'map' }]);
 
 // Moderators reach the report queue from the account menu rather than the
 // main nav: it is not part of using Riff, and most accounts never see it.
 const isModerator = computed(() => Boolean(user.value?.is_moderator));
+
+
 
 // The phone footer adds the account page, which the header reaches
 // through its menu instead.
@@ -65,7 +72,9 @@ const activeTab = computed(() => footerLinks.value.find(isCurrent)?.name);
                     <q-btn unelevated rounded no-caps dense padding="xs md" color="primary" label="Join Riff" :href="route('register')" type="a" />
                 </template>
 
-                <q-btn v-else flat round dense icon="account_circle" color="grey-4" aria-label="Account">
+                <NotificationBell v-if="user" />
+
+                <q-btn v-if="user" flat round dense icon="account_circle" color="grey-4" aria-label="Account">
                     <q-menu dark anchor="bottom right" self="top right" class="bg-riff-surface-2">
                         <q-list dark style="min-width: 220px">
                             <q-item-label header class="text-grey-5">

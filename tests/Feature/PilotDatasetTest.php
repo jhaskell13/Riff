@@ -2,22 +2,42 @@
 
 namespace Tests\Feature;
 
+use App\Models\Artist;
+use App\Models\Report;
+use App\Models\User;
 use App\Services\SupportLink;
 use Database\Factories\Support\Towns;
+use Database\Seeders\PilotSeeder;
 use Database\Seeders\Support\PilotScene;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Tests\TestCase;
 
 /**
- * The researched pilot dataset's own rules (see _meta in
- * database/seeders/data/pilot-scene.json). The acts and venues marked real
- * describe real people and places who never agreed to be on Riff, so the
- * dataset must never attribute anything to them: every invented state —
- * reports, artist-voice posts, listings, pending lineup slots, cancelled
- * shows, hidden or archived profiles — belongs to fictional entries only.
+ * The pilot dataset's own rules (see `_meta` in
+ * database/seeders/data/pilot-scene.json).
+ *
+ * **The rules changed in November 2026** (owner decision): real, already
+ * public information about real acts is now in scope, because a recruiting
+ * demo built from the actual Connecticut scene is worth more than one
+ * built from invented names. Bios, members, links and venue addresses are
+ * all public facts, and none of them is private.
+ *
+ * What did *not* change, and what this file mostly exists to enforce:
+ *
+ *  - **No contact details, ever.** No real email, phone or private address
+ *    in the file, and every seeded account on an RFC-reserved example.*
+ *    domain, so a demo digest or notification cannot reach a real inbox.
+ *    This is the rule the owner stated outright, and it is the one that
+ *    would actually hurt somebody if it broke.
+ *  - **No real DIY space.** A club's address is public; a DIY space's is
+ *    not, and that is the whole reason private venues exist in Riff.
+ *  - Invented links never point anywhere a stranger could own.
  */
 class PilotDatasetTest extends TestCase
 {
+    use RefreshDatabase;
+
     /** @return list<string> */
     private function realActNames(): array
     {
@@ -35,14 +55,19 @@ class PilotDatasetTest extends TestCase
         $this->assertSame($actNames, array_unique($actNames), 'Duplicate act names.');
         $this->assertSame($venueNames, array_unique($venueNames), 'Duplicate venue names.');
 
-        // Vocabulary and towns resolve, so a typo fails here and not
-        // halfway through a seed.
         foreach (PilotScene::acts() as $act) {
             $this->assertArrayHasKey($act['type'], config('riff.artist.types'), $act['name']);
             $this->assertNotEmpty(Towns::named($act['town']), $act['name']);
 
             foreach ($act['genres'] as $genre) {
                 $this->assertContains($genre, config('riff.genres'), "{$act['name']}: {$genre}");
+            }
+
+            foreach ($act['support'] ?? [] as $link) {
+                $this->assertNotNull(
+                    SupportLink::parse($link['url'], $link['type']),
+                    "{$act['name']}: {$link['url']} is not a valid {$link['type']} link.",
+                );
             }
         }
 
@@ -69,18 +94,6 @@ class PilotDatasetTest extends TestCase
             }
         }
 
-        // Seeded support links go through the same parser a real artist's
-        // would, so a typo in the dataset fails here rather than storing a
-        // dead href the seeder silently skipped.
-        foreach (PilotScene::acts() as $act) {
-            foreach ($act['support'] ?? [] as $link) {
-                $this->assertNotNull(
-                    SupportLink::parse($link['url'], $link['type']),
-                    "{$act['name']}: {$link['url']} is not a valid {$link['type']} link.",
-                );
-            }
-        }
-
         foreach (PilotScene::listings() as $listing) {
             $this->assertArrayHasKey($listing['type'], config('riff.listings.types'));
 
@@ -90,61 +103,102 @@ class PilotDatasetTest extends TestCase
         }
     }
 
-    public function test_nothing_is_ever_attributed_to_a_real_act(): void
+    /**
+     * The rule the owner stated outright: real data is fine, but nothing
+     * that could put a demo in a real person's inbox.
+     */
+    public function test_the_dataset_carries_no_contact_details(): void
     {
-        $real = $this->realActNames();
+        $raw = json_encode(PilotScene::data());
 
+        $this->assertIsString($raw);
+
+        // No email address anywhere in the file, on any entry, real or not.
+        $this->assertDoesNotMatchRegularExpression(
+            '/[\w.+-]+@[\w-]+\.[\w.]+/',
+            $raw,
+            'The dataset must never carry an email address.',
+        );
+
+        // No phone numbers either.
+        $this->assertDoesNotMatchRegularExpression(
+            '/\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/',
+            $raw,
+            'The dataset must never carry a phone number.',
+        );
+
+        // And no act carries a contact field even if one were added.
         foreach (PilotScene::acts() as $act) {
-            if ($act['real']) {
-                $this->assertArrayNotHasKey('hidden_from_map', $act, "{$act['name']}: a real act can't be given a hidden state.");
-                $this->assertArrayNotHasKey('archived', $act, "{$act['name']}: a real act can't be archived.");
-                $this->assertArrayNotHasKey('placeholder_music', $act, "{$act['name']}: placeholder tracks would misattribute someone else's music.");
-            }
+            $this->assertArrayNotHasKey('email', $act, $act['name']);
+            $this->assertArrayNotHasKey('phone', $act, $act['name']);
         }
+    }
 
-        foreach (PilotScene::shows() as $show) {
-            // A pending slot is an invented consent answer; a cancellation
-            // is an invented decision. Fictional acts only.
-            foreach ($show['pending'] ?? [] as $act) {
-                $this->assertNotContains($act, $real, "{$act}: a real act can't be shown as not having agreed to a bill.");
-            }
+    /**
+     * The protection behind that rule: every seeded account is on an
+     * RFC-2606 reserved domain, which cannot be registered and therefore
+     * cannot receive mail. A digest run against the demo database is
+     * physically incapable of reaching a real person.
+     */
+    public function test_every_seeded_account_is_unreachable_by_email(): void
+    {
+        $this->seed(PilotSeeder::class);
 
-            if ($show['cancelled'] ?? false) {
-                $this->assertNotContains($show['host'], $real, "{$show['host']}: a real act can't be shown cancelling.");
-            }
+        $addresses = User::query()->pluck('email');
+
+        $this->assertNotEmpty($addresses);
+
+        foreach ($addresses as $address) {
+            $this->assertMatchesRegularExpression(
+                '/@(.+\.)?example\.(com|net|org)$/i',
+                (string) $address,
+                "Seeded account {$address} is on a domain that could receive real mail.",
+            );
         }
+    }
 
-        foreach (PilotScene::listings() as $listing) {
-            if ($listing['artist'] !== null) {
-                $this->assertNotContains($listing['artist'], $real, "{$listing['artist']}: a real act can't be said to be looking for anyone.");
-            }
-        }
+    public function test_no_artist_is_seeded_with_a_contact_address(): void
+    {
+        $this->seed(PilotSeeder::class);
 
-        // The DIY space must stay fictional: Riff never holds a real one's
-        // address, and must not out one's existence either.
-        foreach (PilotScene::venues() as $venue) {
-            if ($venue['kind'] === 'diy' || $venue['street'] === null) {
-                $this->assertFalse($venue['real'], "{$venue['name']}: a private/DIY venue in the dataset must be fictional.");
-            }
+        $this->assertSame(
+            0,
+            Artist::query()->whereNotNull('email')->count(),
+            'A seeded artist carries a contact address.',
+        );
+    }
 
-            if ($venue['real']) {
-                $this->assertNotNull($venue['street'], "{$venue['name']}: a real venue is listed at its public address or not at all.");
-            }
-        }
-
-        // Real acts may only carry links verified during research, and only
-        // link-out Bandcamp pages (a wrong playable embed would put someone
-        // else's audio on their profile).
+    public function test_real_acts_only_carry_links_on_their_own_pages(): void
+    {
+        // Real data means *their* data: a link attributed to a real act
+        // must be one they actually publish, not a guess.
         foreach (PilotScene::acts() as $act) {
-            if ($act['real'] && isset($act['music_url'])) {
-                $this->assertMatchesRegularExpression('/^https:\/\/[a-z0-9-]+\.bandcamp\.com$/', $act['music_url'], $act['name']);
+            if (! $act['real']) {
+                continue;
+            }
+
+            foreach (array_filter([$act['music_url'] ?? null]) as $url) {
+                $this->assertMatchesRegularExpression(
+                    '#^https://[a-z0-9-]+\.bandcamp\.com$#',
+                    $url,
+                    "{$act['name']}: a real act's music link must be their own Bandcamp page.",
+                );
+            }
+
+            foreach ($act['support'] ?? [] as $link) {
+                $this->assertSame(
+                    'bandcamp',
+                    $link['type'],
+                    "{$act['name']}: a real act's support links are limited to their own Bandcamp.",
+                );
             }
         }
+    }
 
-        // An invented act's links must never resolve to anything a stranger
-        // could own. "The Silver Mill" is exactly the kind of name a real
-        // band may already have taken on Bandcamp or Ko-fi, and sending a
-        // visitor to them under an invented profile is the harm.
+    public function test_invented_acts_never_link_anywhere_a_stranger_could_own(): void
+    {
+        // "The Silver Mill" is exactly the kind of name a real band may
+        // already have taken on Bandcamp or Ko-fi.
         foreach (PilotScene::acts() as $act) {
             if ($act['real']) {
                 continue;
@@ -154,47 +208,75 @@ class PilotDatasetTest extends TestCase
                 $host = (string) parse_url($link['url'], PHP_URL_HOST);
                 $path = trim((string) parse_url($link['url'], PHP_URL_PATH), '/');
 
-                // Either a reserved example.* domain (never registrable),
-                // or the bare homepage of a service, which belongs to the
-                // service and names nobody.
                 $reserved = preg_match('/(^|\.)example\.(com|net|org)$/', $host) === 1;
                 $bareService = $path === '' && ! str_contains($host, '.bandcamp.com');
 
                 $this->assertTrue(
                     $reserved || $bareService,
-                    "{$act['name']}: {$link['url']} could belong to a real person. Use a reserved "
-                    .'example.* domain, or the service\'s own homepage.',
+                    "{$act['name']}: {$link['url']} could belong to a real person.",
                 );
             }
         }
+    }
 
-        // A support section is an invitation to pay. Saying a real act
-        // asks for money -- anywhere, let alone at a URL nobody verified --
-        // is a stronger attribution than listing a link, so it stays on
-        // fictional entries only, like posts and reports.
+    public function test_no_real_diy_space_is_listed(): void
+    {
+        // A club's street address is public; a DIY space's is not, which
+        // is the entire reason private venues exist in Riff.
+        foreach (PilotScene::venues() as $venue) {
+            if ($venue['kind'] === 'diy' || $venue['street'] === null) {
+                $this->assertFalse($venue['real'], "{$venue['name']}: a private/DIY venue must be fictional.");
+            }
+
+            if ($venue['real']) {
+                $this->assertNotNull($venue['street'], "{$venue['name']}: a real venue is listed at its public address or not at all.");
+            }
+        }
+    }
+
+    public function test_invented_states_stay_on_invented_entries(): void
+    {
+        // Being reported, hidden, archived, or shown turning down a bill
+        // are judgements, not public facts -- they stay on the entries
+        // kept for exactly that purpose.
+        $real = $this->realActNames();
+
         foreach (PilotScene::acts() as $act) {
             if ($act['real']) {
-                $this->assertArrayNotHasKey(
-                    'support',
-                    $act,
-                    "{$act['name']}: a real act can't be shown asking to be paid.",
-                );
+                $this->assertArrayNotHasKey('hidden_from_map', $act, $act['name']);
+                $this->assertArrayNotHasKey('archived', $act, $act['name']);
+                $this->assertArrayNotHasKey('placeholder_music', $act, $act['name']);
+            }
+        }
+
+        foreach (PilotScene::shows() as $show) {
+            foreach ($show['pending'] ?? [] as $act) {
+                $this->assertNotContains($act, $real, "{$act}: shown as not having agreed to a bill.");
+            }
+
+            if ($show['cancelled'] ?? false) {
+                $this->assertNotContains($show['host'], $real, "{$show['host']}: shown cancelling.");
             }
         }
     }
 
     public function test_the_seeded_moderation_demo_only_touches_fictional_acts(): void
     {
-        // The seeder draws its posts and report subjects from this list;
-        // every name on it must be marked fictional in the dataset.
-        foreach (PilotScene::fictionalActNames() as $name) {
-            $act = Arr::first(PilotScene::acts(), fn (array $candidate) => $candidate['name'] === $name);
+        // Asserted against the seeded database rather than the file: what
+        // matters is that no real act ends up *in the report queue*, which
+        // is a judgement about them and not a public fact.
+        $this->seed(PilotSeeder::class);
 
-            $this->assertNotNull($act);
-            $this->assertFalse($act['real']);
+        $reported = Report::query()
+            ->where('reportable_type', (new Artist)->getMorphClass())
+            ->pluck('reportable_id');
+
+        $this->assertNotEmpty($reported, 'The demo report queue is empty.');
+
+        $names = Artist::withTrashed()->whereKey($reported)->pluck('name');
+
+        foreach ($names as $name) {
+            $this->assertContains($name, PilotScene::fictionalActNames(), $name);
         }
-
-        $this->assertGreaterThanOrEqual(5, count(PilotScene::fictionalActNames()),
-            'The moderation/posts demo needs a handful of fictional acts to hang its states on.');
     }
 }

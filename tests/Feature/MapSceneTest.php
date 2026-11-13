@@ -269,8 +269,13 @@ class MapSceneTest extends TestCase
 
         $punkRoom = Venue::factory()->at('Hartford')->create(['name' => 'Punk Room']);
         Show::factory()->create(['host_artist_id' => $band->id, 'venue_id' => $punkRoom->id]);
+        // The host's genres must be pinned, not left to the factory: it
+        // assigns one or two at random from the whole vocabulary, so an
+        // unpinned host drew Punk about one run in twenty and this test
+        // failed for reasons that had nothing to do with the filter.
         $jazzRoom = Venue::factory()->at('Hartford')->create(['name' => 'Jazz Room']);
-        Show::factory()->create(['venue_id' => $jazzRoom->id]);
+        $other = Artist::factory()->withGenres(['Jazz'])->create();
+        Show::factory()->create(['host_artist_id' => $other->id, 'venue_id' => $jazzRoom->id]);
 
         $this->venues(['genres' => 'punk'])
             ->assertJsonCount(1, 'data')

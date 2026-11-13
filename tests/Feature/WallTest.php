@@ -198,6 +198,76 @@ class WallTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
+    #[Test]
+    public function the_wall_badge_says_artist_not_the_bands_name(): void
+    {
+        // The author line already says which band said it; repeating the
+        // name in the badge beside it was noise.
+        $artist = Artist::factory()->create(['name' => 'The Silver Mill']);
+        $member = $this->member($artist);
+
+        Post::factory()->asArtist($artist, $member)->create();
+
+        $this->logOut();
+        $this->get(route('artists.show', $artist))
+            ->assertInertia(fn ($page) => $page
+                ->where('wall.posts.0.badge.label', 'Artist')
+                ->where('wall.posts.0.badge.tone', 'owner'));
+    }
+
+    #[Test]
+    public function a_band_member_speaking_as_themselves_is_badged_member(): void
+    {
+        // Otherwise someone in the band reads as any other fan on their
+        // own page.
+        $artist = Artist::factory()->create();
+        $member = $this->member($artist);
+
+        $this->actingAs($member)->post(route('wall.posts.store', $artist), [
+            'content' => 'Speaking for myself here',
+            'as_artist' => false,
+        ])->assertSessionHasNoErrors();
+
+        $this->logOut();
+        $this->get(route('artists.show', $artist))
+            ->assertInertia(fn ($page) => $page
+                ->where('wall.posts.0.authorContext', 'fan')
+                // On a wall there is only one band it could be, so the
+                // badge does not name it.
+                ->where('wall.posts.0.badge.label', 'Member')
+                ->where('wall.posts.0.badge.tone', 'member'));
+    }
+
+    #[Test]
+    public function an_ordinary_fan_on_a_wall_gets_no_badge(): void
+    {
+        $artist = Artist::factory()->create();
+        $fan = $this->follower($artist);
+
+        $this->actingAs($fan)->post(route('wall.posts.store', $artist), ['content' => 'Love this']);
+
+        $this->logOut();
+        $this->get(route('artists.show', $artist))
+            ->assertInertia(fn ($page) => $page->where('wall.posts.0.badge', null));
+    }
+
+    #[Test]
+    public function an_artist_voice_reply_is_badged_artist_too(): void
+    {
+        $artist = Artist::factory()->create();
+        $member = $this->member($artist);
+        $post = Post::factory()->asArtist($artist, $member)->create();
+
+        $this->actingAs($member)->post(route('wall.comments.store', $post), [
+            'content' => 'Thanks', 'as_artist' => true,
+        ]);
+
+        $this->logOut();
+        $this->get(route('artists.show', $artist))
+            ->assertInertia(fn ($page) => $page
+                ->where('wall.posts.0.comments.0.badge.label', 'Artist'));
+    }
+
     // ---------------------------------------------------------------
     // Who may post: wall_mode
     // ---------------------------------------------------------------

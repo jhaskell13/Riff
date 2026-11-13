@@ -26,6 +26,7 @@ final class WallViewer
         public readonly ?int $userId = null,
         public readonly bool $isMember = false,
         public readonly bool $canPost = false,
+        public readonly bool $canModerate = false,
     ) {}
 
     /** Nobody: a guest, or a caller that did not ask for viewer state. */
@@ -34,9 +35,9 @@ final class WallViewer
         return new self;
     }
 
-    public static function for(?User $user, Artist $artist): self
+    public static function for(?User $user, ?Artist $artist): self
     {
-        if ($user === null) {
+        if ($user === null || $artist === null) {
             return self::guest();
         }
 
@@ -44,6 +45,7 @@ final class WallViewer
             userId: $user->id,
             isMember: $user->can('postAsArtist', $artist),
             canPost: $user->can('postOnWall', $artist),
+            canModerate: $user->can('moderateWall', $artist),
         );
     }
 

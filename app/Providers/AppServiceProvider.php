@@ -121,6 +121,13 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Artist-level moderation. Generous -- a band cleaning up after a
+        // bad night should not be throttled mid-cleanup -- but bounded,
+        // since each action writes a trail row.
+        RateLimiter::for('wall-moderation', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         // Outbound support-link clicks. Public and unauthenticated, so it
         // needs a ceiling -- but a generous one: the counter it feeds
         // answers "do support links get clicked", and throttling a real
